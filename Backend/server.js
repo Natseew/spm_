@@ -1,6 +1,8 @@
 require('dotenv').config()
 
 const express = require('express')
+
+// TO CHANGE
 const workoutRoutes = require('./routes/workouts')
 
 // express app
@@ -14,7 +16,7 @@ app.use((req,res,next) => {
     next()
 })
 
-// routes
+// TO CHANGE : all routes start with api/workouts
 app.use('/api/workouts',workoutRoutes)
 
 

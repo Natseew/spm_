@@ -2,6 +2,8 @@ const express = require('express')
 
 const router = express.Router()
 
+// TO CHANGE BELOW:
+
 // GET all workouts
 router.get('/', (req,res) => {
     res.json({mssg: "Get all workouts"})
