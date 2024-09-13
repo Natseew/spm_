@@ -1,0 +1,13 @@
+CREATE TABLE WFH_Backlog (
+    Req_ID INT NOT NULL,                        -- Foreign Key from WFH_Request
+    Staff_ID INT NOT NULL,                      -- Foreign Key from Staff
+    Req_date DATE NOT NULL,                     -- Request Date
+    Sched_date_am JSON NOT NULL,                -- JSON type to store AM scheduled dates
+    Sched_date_pm JSON NOT NULL,                -- JSON type to store PM scheduled dates
+    Approved BOOLEAN NOT NULL DEFAULT FALSE,    -- Approval status
+    Rejected BOOLEAN NOT NULL DEFAULT FALSE,     -- Rejection status
+    Reason VARCHAR(100),                        -- Reason for request
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Request(Req_ID),  -- Foreign Key to WFH_Request
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID),  -- Foreign Key to Staff
+    PRIMARY KEY (Req_ID, Staff_ID)              -- Composite Primary Key
+);
