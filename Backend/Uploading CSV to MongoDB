@@ -1,3 +1,0 @@
-Steps to import csv to MongoDB [Dont need to replicate steps below as everyone should be able to see my cluster's database]
-1. I first ran my script to convert csv to json
-2. Then i imported the json values into my database
