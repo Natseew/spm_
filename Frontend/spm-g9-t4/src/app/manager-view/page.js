@@ -1,4 +1,4 @@
-export default function MyApp() {
+export default function page() {
     const generateDateOptions = () => {
     const options = [];
     const today = new Date();
@@ -21,6 +21,7 @@ export default function MyApp() {
 
     return options;
     };
+
 return (
     <>
     <div class="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
@@ -51,3 +52,4 @@ return (
 </>
 );
 }
+
