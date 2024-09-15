@@ -14,7 +14,9 @@
     "react": "^18",
     "react-dom": "^18",
     "react-router-dom": "^6.26.1",
-    "spm-g9-t4": "file:"
+    "spm-g9-t4": "file:",
+    "@fullcalendar/react": "^5.10.1", 
+    "@fullcalendar/daygrid": "^5.10.1" 
   },
   "devDependencies": {
     "eslint": "^8",
