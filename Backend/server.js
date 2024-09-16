@@ -1,8 +1,7 @@
 require('dotenv').config();
-
 const express = require('express');
-const mongoose = require('mongoose');
-const employeeRoutes = require('./routes/records'); // Ensure this path is correct
+const client = require('./databasepg');  // Import PostgreSQL client
+const employeeRoutes = require('./routes/records');
 
 // express app
 const app = express();
@@ -18,14 +17,7 @@ app.use((req, res, next) => {
 // all routes start with /api/employees
 app.use('/api/employees', employeeRoutes);
 
-// connect to db
-mongoose.connect(process.env.MONG_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
-        // listen for requests
-        app.listen(process.env.PORT, () => {
-            console.log('Connected to db & listening on port', process.env.PORT);
-        });
-    })
-    .catch((error) => {
-        console.log(error);
-    });
+// listen for requests
+app.listen(process.env.PORT, () => {
+    console.log('Listening on port', process.env.PORT);
+});
