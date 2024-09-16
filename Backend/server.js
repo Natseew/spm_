@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 });
 
 // all routes start with /api/employees
-app.use('/api/employees', employeeRoutes);
+app.use(employeeRoutes);
 
 // listen for requests
 app.listen(process.env.PORT, () => {
