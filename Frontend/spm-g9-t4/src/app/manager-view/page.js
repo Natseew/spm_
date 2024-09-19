@@ -2,6 +2,7 @@
 
 import CalendarComponent from "@/components/CalendarComponent";
 
+
 export default function managerview() {
     
     const generateDateOptions = () => {
@@ -62,8 +63,36 @@ return (
 
     <div Class="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
         <div>
+            {/* Uncomment for Calendar Component
             <div>
                     <CalendarComponent/>
+            </div> */}
+
+            <p>Employee timetable Display</p>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
+                    <thead class="bg-gray-500 text-white">
+                        <tr class="text-center">
+                            <th class="py-2 px-4 border-b border-gray-300">Name</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Monday</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Tuesday</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Wednesday</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Thursday</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Friday</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="text-center">
+                            <td class="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">Austin Zhao</td>
+                            <td class="hover:bg-blue-100 transition-colorspy-2 px-4 border-b border-gray-300"></td>
+                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b bg-gray-200 border-gray-300">Scheduled</td>
+                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b bg-gray-200 border-gray-300">Scheduled</td>
+                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300"></td>
+                            <td class="hover:bg-blue-100 transition-colorspy-2 px-4 border-b border-gray-300"></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
