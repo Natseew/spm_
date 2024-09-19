@@ -1,4 +1,9 @@
-export default function page() {
+// import CalendarComponent from '../components/CalendarComponent';
+
+import CalendarComponent from "@/components/CalendarComponent";
+
+export default function managerview() {
+    
     const generateDateOptions = () => {
     const options = [];
     const today = new Date();
@@ -21,6 +26,12 @@ export default function page() {
 
     return options;
     };
+
+    const events=[];
+    
+    const generateEmployeeTimetable = () => {
+        return null;
+    }
 
 return (
     <>
@@ -48,6 +59,14 @@ return (
         </select>
     </div>
     </form>
+
+    <div Class="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
+        <div>
+            <div>
+                    <CalendarComponent/>
+            </div>
+        </div>
+    </div>
     </div>
 </>
 );
