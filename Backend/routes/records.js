@@ -4,10 +4,24 @@ const client = require('../databasepg');
 
 // update WFH_Request DB after staff submit WFH request form
 router.post('/wfh_request', async (req, res) => {
-  const { staff_id, req_date, wfh_date, sched_date_am, sched_date_pm, approved, rejected, reason } = req.body;
+  const { staff_id, wfh_date, time_period, approved, rejected, reason } = req.body;
 
-  if (!staff_id || !req_date || !wfh_date || !sched_date_am || !sched_date_pm) {
-    return res.status(400).json({ message: 'Staff ID, request date, WFH date, AM schedule dates, and PM schedule dates are required.' });
+  if (!staff_id || !wfh_date || !time_period) {
+    return res.status(400).json({ message: 'Staff ID, WFH date, and time period are required.' });
+  }
+
+  const today = new Date().toISOString().split('T')[0]; // Set request date to today
+  let sched_date_am = false;
+  let sched_date_pm = false;
+
+  // Map the time period to AM/PM schedule
+  if (time_period === "AM") {
+    sched_date_am = true;
+  } else if (time_period === "PM") {
+    sched_date_pm = true;
+  } else if (time_period === "Full Day") {
+    sched_date_am = true;
+    sched_date_pm = true;
   }
 
   try {
@@ -26,13 +40,14 @@ router.post('/wfh_request', async (req, res) => {
         Reason = EXCLUDED.Reason
       RETURNING *;
       `,
-      [staff_id, req_date, wfh_date, sched_date_am, sched_date_pm, approved || false, rejected || false, reason || null]
+      [staff_id, today, wfh_date, sched_date_am, sched_date_pm, approved || false, rejected || false, reason || null]
     );
     res.status(200).json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 
 // update WFH_backlog DB after manager click "approve/rej button"
