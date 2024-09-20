@@ -1,3 +1,6 @@
 1. Navigate in your terminal to the Backend directory
-2. Type "node server.js"
-3. Ask me to whitelist your IP address
+2. In terminal, type "npm install"
+3. Ensure you have downloaded .env file , and placed it inside Backend folder , and name it as ".env". MUST INCLUDE dot in the name
+4. Type "node server.js"
+5. To test out the get/post request : Go to Postman and type in "localhost:4000/"
+5.2 Alternatively make a get/post request from the frontend
