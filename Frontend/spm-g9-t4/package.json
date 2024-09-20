@@ -9,20 +9,27 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
     "@fullcalendar/core": "^6.1.15",
     "@fullcalendar/daygrid": "^5.11.5",
     "@fullcalendar/react": "^5.11.5",
+    "@mui/material": "^6.1.1",
+    "@mui/styled-engine-sc": "^6.1.1",
+    "@mui/x-date-pickers": "^7.17.0",
     "@tailwindcss/forms": "^0.5.9",
+    "dayjs": "^1.11.13",
     "next": "14.2.8",
     "react": "^18",
     "react-dom": "^18",
     "react-router-dom": "^6.26.1",
-    "spm-g9-t4": "file:"
+    "spm-g9-t4": "file:",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
     "eslint": "^8",
     "eslint-config-next": "14.2.8",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.12"
   }
 }
