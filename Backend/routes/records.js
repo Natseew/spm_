@@ -29,6 +29,11 @@ router.post('/wfh_request', async (req, res) => {
     const req_id = result.rows[0].req_id;
 
     // Insert into WFH_Sessions for each date
+    // Eg. Dates
+            // "dates": [
+            //   { "sched_date": "2024-09-21", "am": true, "pm": false },
+            //   { "sched_date": "2024-09-22", "am": false, "pm": true }
+            // ]
     const sessionsPromises = dates.flatMap(({ sched_date, am, pm }) => {
       const sessions = [];
       if (am) {
