@@ -124,9 +124,6 @@ router.get('/schedule/:department_name/:date', async (req, res) => {
   }
 });
 
-
-
-
 // GET all employees
 router.get('/', async (req, res) => {
   try {
@@ -135,6 +132,22 @@ router.get('/', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+});
+
+//Get all approved wfh of employee
+router.get('/employee/:id', async(req, res) => {
+  try{
+    const result = await client.query(`
+      SELECT * FROM wfh_sessions w
+      WHERE w.staff_id = ${req.params.id}
+      AND w.approved = true
+    `);
+    console.log(result.rows)
+    res.status(200).json(result.rows)
+  }catch(error){
+
+  }
+
 });
 
 module.exports = router;

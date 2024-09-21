@@ -1,10 +1,15 @@
 "use client"
 
+import { LineAxisOutlined } from '@mui/icons-material'
 import React, {useState} from 'react'
 import ReactDOM from 'react-dom'
 import Scheduler from "react-mui-scheduler"
 
 export default function Page() {
+
+  <Suspense fallback={<p>Loading feed...</p>}>
+    let data = await fetch('localhost:4000/employee/140894', { cache: 'force-cache' | 'no-store' })
+  </Suspense>
   const [state] = useState({  
     options: {
       transitionMode: "zoom", // or fade
@@ -19,7 +24,7 @@ export default function Page() {
       open: true,
       color: "info",          // info | success | warning | error
       severity: "info",       // info | success | warning | error
-      message: "🚀 Let's start with awesome react-mui-scheduler 🔥 🔥 🔥" ,
+      message: "" ,
       showActionButton: true,
       showNotification: true,
       delay: 1500
@@ -33,11 +38,11 @@ export default function Page() {
   
   const events = [
     {
-      id: "event-1",
-      label: "Medical consultation",
-      groupLabel: "Dr Shaun Murphy",
+      id: "WFH-1",
+      label: "WFH",
+      groupLabel: "WFH",
       user: "Dr Shaun Murphy",
-      color: "#f28f6a",
+      color: "#099ce5",
       startHour: "04:00 AM",
       endHour: "05:00 AM",
       date: "2022-05-05",
@@ -45,10 +50,10 @@ export default function Page() {
       createdBy: "Kristina Mayer"
     },
     {
-      id: "event-2",
-      label: "Medical consultation",
-      groupLabel: "Dr Claire Brown",
-      user: "Dr Claire Brown",
+      id: "WFH-2",
+      label: "WFH",
+      groupLabel: "WFH",
+      user: "Dr Shaun Murphy",
       color: "#099ce5",
       startHour: "09:00 AM",
       endHour: "10:00 AM",
@@ -70,7 +75,7 @@ export default function Page() {
     },
     {
       id: "event-4",
-      label: "Consultation prénatale",
+      label: "Consultation",
       groupLabel: "Dr Shaun Murphy",
       user: "Dr Shaun Murphy",
       color: "#f28f6a",
@@ -104,7 +109,8 @@ export default function Page() {
       events={events}
       legacyStyle={false}
       options={state?.options}
-      alertProps={state?.alertProps}
+      user = {"Dr Shaun Murphy"}
+      // alertProps={state?.alertProps}
       toolbarProps={state?.toolbarProps}
       onEventsChange={handleEventsChange}
       onCellClick={handleCellClick}
