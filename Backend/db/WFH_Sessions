@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS WFH_Sessions (
     FOREIGN KEY (Req_ID) REFERENCES WFH_Request(Req_ID) ON DELETE CASCADE, -- Foreign Key to WFH_Request
     FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE -- Foreign Key to Employee
 );
+
+

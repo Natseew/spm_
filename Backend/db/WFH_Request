@@ -5,5 +5,7 @@ CREATE TABLE IF NOT EXISTS WFH_Request (
     Approved BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall approval status of the request
     Rejected BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall rejection status of the request
     Reason VARCHAR(100),                      -- Reason for request
+     UNIQUE (Staff_ID, Req_date),             -- Unique constraint on Staff_ID and Req_date
     FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE -- Foreign Key constraint
 );
+

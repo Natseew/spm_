@@ -13,14 +13,14 @@ router.post('/wfh_request', async (req, res) => {
   try {
     // Insert or update into WFH_Request
     const result = await client.query(
-      `
+      ` 
       INSERT INTO WFH_Request (Staff_ID, Req_date, Approved, Rejected, Reason)
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (Staff_ID, Req_date)
       DO UPDATE SET
         Approved = EXCLUDED.Approved,
         Rejected = EXCLUDED.Rejected,
-        Reason = EXCLUDED.Reason
+        Reason = EXCLUDED.Reason,
       RETURNING Req_ID;
       `,
       [staff_id, req_date, approved || false, rejected || false, reason || null]
@@ -34,40 +34,40 @@ router.post('/wfh_request', async (req, res) => {
             //   { "sched_date": "2024-09-21", "am": true, "pm": false },
             //   { "sched_date": "2024-09-22", "am": false, "pm": true }
             // ]
-    const sessionsPromises = dates.flatMap(({ sched_date, am, pm }) => {
-      const sessions = [];
-      if (am) {
-        sessions.push(client.query(
-          `
-          INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-          VALUES ($1, $2, $3, TRUE, FALSE, FALSE, FALSE)
-          ON CONFLICT (Req_ID, Sched_date)
-          DO UPDATE SET
-            AM = EXCLUDED.AM,
-            PM = EXCLUDED.PM,
-            Approved = EXCLUDED.Approved,
-            Rejected = EXCLUDED.Rejected;
-          `,
-          [req_id, staff_id, sched_date]
-        ));
-      }
-      if (pm) {
-        sessions.push(client.query(
-          `
-          INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-          VALUES ($1, $2, $3, FALSE, TRUE, FALSE, FALSE)
-          ON CONFLICT (Req_ID, Sched_date)
-          DO UPDATE SET
-            AM = EXCLUDED.AM,
-            PM = EXCLUDED.PM,
-            Approved = EXCLUDED.Approved,
-            Rejected = EXCLUDED.Rejected;
-          `,
-          [req_id, staff_id, sched_date]
-        ));
-      }
-      return sessions;
-    });
+  const sessionsPromises = dates.flatMap(({ sched_date, am, pm }) => {
+  const sessions = [];
+  if (am) {
+    sessions.push(client.query(
+      `
+      INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
+      VALUES ($1, $2, $3, TRUE, FALSE, FALSE, FALSE)
+      ON CONFLICT (Req_ID, Sched_date)
+      DO UPDATE SET
+        AM = EXCLUDED.AM,
+        PM = EXCLUDED.PM,
+        Approved = EXCLUDED.Approved,
+        Rejected = EXCLUDED.Rejected;
+      `,
+      [req_id, staff_id, sched_date]
+    ));
+  }
+  if (pm) {
+    sessions.push(client.query(
+      `
+      INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
+      VALUES ($1, $2, $3, FALSE, TRUE, FALSE, FALSE)
+      ON CONFLICT (Req_ID, Sched_date)
+      DO UPDATE SET
+        AM = EXCLUDED.AM,
+        PM = EXCLUDED.PM,
+        Approved = EXCLUDED.Approved,
+        Rejected = EXCLUDED.Rejected;
+      `,
+      [req_id, staff_id, sched_date]
+    ));
+  }
+  return sessions;
+});
 
     await Promise.all(sessionsPromises);
 
