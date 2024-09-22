@@ -20,7 +20,7 @@ router.post('/wfh_request', async (req, res) => {
       DO UPDATE SET
         Approved = EXCLUDED.Approved,
         Rejected = EXCLUDED.Rejected,
-        Reason = EXCLUDED.Reason,
+        Reason = EXCLUDED.Reason
       RETURNING Req_ID;
       `,
       [staff_id, req_date, approved || false, rejected || false, reason || null]
