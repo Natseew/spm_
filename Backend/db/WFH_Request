@@ -1,12 +1,9 @@
 CREATE TABLE IF NOT EXISTS WFH_Request (
-    Req_ID SERIAL PRIMARY KEY,                 -- Primary Key with auto-increment
-    Staff_ID INT NOT NULL,                     -- Foreign Key from Employee
-    Req_date DATE NOT NULL,                     -- Request Date
-    WFH_date DATE NOT NULL,
-    Sched_date_am DATE[] NOT NULL,            -- Array type to store AM scheduled dates
-    Sched_date_pm DATE[] NOT NULL,            -- Array type to store PM scheduled dates
-    Approved BOOLEAN NOT NULL DEFAULT FALSE,     -- Approval status
-    Rejected BOOLEAN NOT NULL DEFAULT FALSE,      -- Rejection status
-    Reason VARCHAR(100),                  -- Reason for request
+    Req_ID SERIAL PRIMARY KEY,                -- Primary Key with auto-increment
+    Staff_ID INT NOT NULL,                    -- Foreign Key from Employee
+    Req_date DATE NOT NULL,                   -- Date the request was made
+    Approved BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall approval status of the request
+    Rejected BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall rejection status of the request
+    Reason VARCHAR(100),                      -- Reason for request
     FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE -- Foreign Key constraint
 );
