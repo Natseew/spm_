@@ -5,8 +5,6 @@
 
 import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
-// import { Grid, Typography, Box, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper } from '@mui/material';
-// import dayjs from 'dayjs';  // For date formatting
 
 
 export default function managerview() {
@@ -14,40 +12,49 @@ export default function managerview() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [dayOfWeek, setDayOfWeek] = useState("");
 
-    const generateDateOptions = () => {
-    const options = [];
-    const today = new Date();
+    // const generateDateOptions = () => {
+    // const options = [];
+    // const today = new Date();
 
 
-    for (let i = 0; i < 30; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
+    // for (let i = 0; i < 30; i++) {
+    //     const date = new Date(today);
+    //     date.setDate(today.getDate() + i);
 
-        // Format the date as dd/mm/yyyy
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-        const year = date.getFullYear();
+    //     // Format the date as dd/mm/yyyy
+    //     const day = String(date.getDate()).padStart(2, '0');
+    //     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+    //     const year = date.getFullYear();
 
-        options.push(
-            <option key={date.toISOString()} value={`${day}/${month}/${year}`}>
-                {`${day}/${month}/${year}`}
-            </option>
-        );
-    }
+    //     options.push(
+    //         <option key={date.toISOString()} value={`${day}/${month}/${year}`}>
+    //             {`${day}/${month}/${year}`}
+    //         </option>
+    //     );
+    // }
 
-    return options;
-    };
+    // return options;
+    // };
     
     
 // Utility function to get the day name
+// function getDayName(date) {
+//     if (isNaN(date.getTime())) {
+//         return 'Invalid Date'; // Handle invalid date scenario
+//     }
+
+//     const options = { weekday: 'long' };
+//     return date.toLocaleDateString(undefined, options); // format the date as needed
+// }
+
 function getDayName(date) {
     if (isNaN(date.getTime())) {
-        return 'Invalid Date'; // Handle invalid date scenario
+      return 'Invalid Date'; // Handle invalid date scenario
     }
 
     const options = { weekday: 'long' };
-    return date.toLocaleDateString(undefined, options); // format the date as needed
-}
+    return date.toLocaleDateString(undefined, options); // Example result: 'Monday'
+    }
 
     // Function to handle date selection change
     const handleDateChange = (event) => {
@@ -64,8 +71,8 @@ function getDayName(date) {
         if (selectedDate) {
             const [day, month, year] = selectedDate.split('/').map(Number);
             const dateObject = new Date(year, month - 1, day);
-
             const dayName = getDayName(dateObject);
+            
             setDayOfWeek(dayName);
         }
     }, [selectedDate]);
@@ -77,24 +84,20 @@ return (
             <h1>Filter by:</h1>
             <div>
                 {/* Date Selector */}
-                <select className="Date" id="date" name="date" onChange={handleDateChange}>
+                {/* <select className="Date" id="date" name="date" onChange={handleDateChange}>
                     <option value="" disabled selected>Select a date</option>
                     {generateDateOptions()}
-                </select>
+                </select> */}
+                <input
+                    type="date"
+                    id="date"
+                    name="date"
+                    placeholder="Select a Date"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    style={{paddingLeft: '30px' }}
+                />     
             </div>
-            
-            {/* <Box sx={{ marginTop: '20px', width: '200px' }}>
-                <TextField
-                label="Select Date"
-                type="date"
-                value={date}
-                onChange={handleDateChange}
-                InputLabelProps={{
-                    shrink: true,
-                }}
-                fullWidth
-                />
-            </Box>   */}
 
             <div>
                 {/* Department Selector */}
