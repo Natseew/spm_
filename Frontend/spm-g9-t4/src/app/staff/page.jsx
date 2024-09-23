@@ -1,15 +1,61 @@
 "use client"
 
 import { LineAxisOutlined } from '@mui/icons-material'
-import React, {useState} from 'react'
+import React, {useState, useEffect, useRef} from 'react'
 import ReactDOM from 'react-dom'
 import Scheduler from "react-mui-scheduler"
+import axios from 'axios';
+import { uuid } from 'uuidv4';
+import dayjs from 'dayjs';  // For date formatting
 
 export default function Page() {
+  const [events, setEvents] = useState([
+    //   {
+  //     id: "WFH-1",
+  //     label: "WFH",
+  //     groupLabel: "WFH",
+  //     user: "Dr Shaun Murphy",
+  //     color: "#099ce5",
+  //     startHour: "04:00 AM",
+  //     endHour: "05:00 AM",
+  //     date: "2022-05-05",
+  //     createdAt: new Date(),
+  //     createdBy: "Kristina Mayer"
+  //   }
+  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const eventsRef = useRef(events)
 
-  <Suspense fallback={<p>Loading feed...</p>}>
-    let data = await fetch('localhost:4000/employee/140894', { cache: 'force-cache' | 'no-store' })
-  </Suspense>
+  useEffect(()=>{
+    try {
+      const fetchStaffSchedule = async () => {
+        const response = await axios.get(`http://localhost:4000/employee/140894`);
+        console.log("Response data:", response.data);
+        let eventsArray = []
+        for(let item of response.data){
+          let eventItem = {
+            id: uuid(),
+            label: "WFH",
+            groupLabel: "WFH",
+            user: "Current",
+            color: "#099ce5",
+            startHour: "08:00 AM",
+            endHour: "06:00 PM",
+            date: dayjs(item.sched_date).format('YYYY-MM-DD'),
+            createdAt: new Date(),
+            createdBy: "Admin"
+          }
+          eventsArray.push(eventItem);
+        }
+        setEvents(eventsArray);
+        setIsLoading(false);
+      };
+      fetchStaffSchedule();
+    } catch (error) {
+      console.error("Error fetching staff schedule:", error);
+    }
+  }, [eventsRef])
+
   const [state] = useState({  
     options: {
       transitionMode: "zoom", // or fade
@@ -36,57 +82,6 @@ export default function Page() {
     }
   })
   
-  const events = [
-    {
-      id: "WFH-1",
-      label: "WFH",
-      groupLabel: "WFH",
-      user: "Dr Shaun Murphy",
-      color: "#099ce5",
-      startHour: "04:00 AM",
-      endHour: "05:00 AM",
-      date: "2022-05-05",
-      createdAt: new Date(),
-      createdBy: "Kristina Mayer"
-    },
-    {
-      id: "WFH-2",
-      label: "WFH",
-      groupLabel: "WFH",
-      user: "Dr Shaun Murphy",
-      color: "#099ce5",
-      startHour: "09:00 AM",
-      endHour: "10:00 AM",
-      date: "2022-05-09",
-      createdAt: new Date(),
-      createdBy: "Kristina Mayer"
-    },
-    {
-      id: "event-3",
-      label: "Medical consultation",
-      groupLabel: "Dr Menlendez Hary",
-      user: "Dr Menlendez Hary",
-      color: "#263686",
-      startHour: "13 PM",
-      endHour: "14 PM",
-      date: "2022-05-10",
-      createdAt: new Date(),
-      createdBy: "Kristina Mayer"
-    },
-    {
-      id: "event-4",
-      label: "Consultation",
-      groupLabel: "Dr Shaun Murphy",
-      user: "Dr Shaun Murphy",
-      color: "#f28f6a",
-      startHour: "08:00 AM",
-      endHour: "09:00 AM",
-      date: "2022-05-11",
-      createdAt: new Date(),
-      createdBy: "Kristina Mayer"
-    }
-  ]
-  
   const handleCellClick = (event, row, day) => {
     // Do something...
   }
@@ -102,6 +97,11 @@ export default function Page() {
   const handleAlertCloseButtonClicked = (item) => {
     // Do something...
   }
+  // if (isLoading){
+  //   return(
+  //     <div>Loading</div>
+  //   )
+  // }
   
   return (
     <Scheduler
@@ -109,8 +109,7 @@ export default function Page() {
       events={events}
       legacyStyle={false}
       options={state?.options}
-      user = {"Dr Shaun Murphy"}
-      // alertProps={state?.alertProps}
+      user="Current"
       toolbarProps={state?.toolbarProps}
       onEventsChange={handleEventsChange}
       onCellClick={handleCellClick}
@@ -118,6 +117,4 @@ export default function Page() {
       onAlertCloseButtonClicked={handleAlertCloseButtonClicked}
     />
   )
-
-  ReactDOM.render(<App />, document.querySelector('#yourComponentRootId'))
 }
