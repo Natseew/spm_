@@ -4,10 +4,9 @@ CREATE TABLE IF NOT EXISTS WFH_Recurring_Request (
     Start_date DATE NOT NULL,                 -- Start date of the recurring request
     End_date DATE NOT NULL,                   -- End date of the recurring request
     Day_of_week INT CHECK (Day_of_week BETWEEN 1 AND 5), -- 1=Monday, 5=Friday
-    Approved BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall approval status
-    Rejected BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall rejection status
-    Reason VARCHAR(100),                      -- Reason for the request
+    Reason VARCHAR(100) NOT NULL,             -- Reason for the request
+    Edit_reason VARCHAR(100) DEFAULT 'NA',    -- Reason for any edits made
+    Status VARCHAR(10) CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')) DEFAULT 'Pending', -- Status of the recurring request
+    Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- When the request was created/changed
     FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
 );
-
-
