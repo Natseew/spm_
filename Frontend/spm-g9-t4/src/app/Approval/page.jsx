@@ -15,12 +15,18 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { addMonths, subMonths } from "date-fns"; // Importing date functions
 
 export default function ArrangementForm() {
   const [staffId, setStaffId] = useState(""); // Staff ID input
   const [wfhDate, setWfhDate] = useState(null); // For WFH date picker
   const [scheduleType, setScheduleType] = useState(""); // For selecting AM, PM, or Full Day
   const [reason, setReason] = useState(""); // For reason textarea
+
+  // Current date and date restrictions
+  const today = new Date(); // Current date
+  const minDate = subMonths(today, 2); // 2 months back
+  const maxDate = addMonths(today, 3); // 3 months in front
 
   // Handles form submission
   const handleSubmit = async () => {
@@ -87,6 +93,8 @@ export default function ArrangementForm() {
             label="WFH Date"
             value={wfhDate}
             onChange={(newValue) => setWfhDate(newValue)}
+            minDate={minDate} // Set minimum date
+            maxDate={maxDate} // Set maximum date
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
             )}

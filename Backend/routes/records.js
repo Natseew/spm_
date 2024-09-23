@@ -7,8 +7,54 @@ router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, status, reason } = req.body;
 
   try {
-    // Begin a transaction to ensure atomicity of both inserts
+
+    // Begin a transaction to ensure atomicity
     await client.query('BEGIN');
+   
+    // Query to get the reporting manager ID for the staff
+    const managerResult = await client.query(
+      `SELECT reporting_manager FROM Employee WHERE staff_id = $1`,
+      [staff_id]
+    );
+  
+    if (managerResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Manager ID not found.' });
+    }
+
+    const reportingManagerId = managerResult.rows[0].reporting_manager;
+   
+    // First Query: Count number of teammates WFH on the scheduled date
+    const wfhCountResult = await client.query(
+      `SELECT COUNT(*) AS wfh_count FROM WFH_Backlog
+       WHERE Sched_date = $1 AND Status = 'Approved' AND Staff_ID IN (
+         SELECT staff_id FROM Employee WHERE reporting_manager = $2
+       )`,
+      [sched_date, reportingManagerId]
+    );
+
+    const wfhCount = parseInt(wfhCountResult.rows[0].wfh_count, 10);
+    
+    // Second Query: Get total number of people in the sub-team
+    const totalCountResult = await client.query(
+      `SELECT COUNT(*) AS total_count FROM Employee WHERE reporting_manager = $1`,
+      [reportingManagerId]
+    );
+
+    const totalCount = parseInt(totalCountResult.rows[0].total_count, 10);
+    console.log('Total Count:', totalCount);
+
+    // Third Function: Fraction calculation
+    // Calculate new WFH count if this request is approved
+    const newWfhCount = wfhCount + 1; // Adding 1 for the new request
+    console.log('NEW WFH Count:', newWfhCount);
+    const wfhFraction = newWfhCount / totalCount;
+    console.log('WFH fraction:', wfhFraction);
+
+    if (wfhFraction >= 0.5) {
+      // If 50% or more of the team is WFH, reject the request
+      return res.status(403).json({ message: 'WFH request denied. At least 50% of the team must be in the office.' });
+    }
+
 
     // Insert into WFH_Request table
     const wfhRequestResult = await client.query(
