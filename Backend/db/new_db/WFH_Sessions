@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS WFH_Sessions (
+    Session_ID SERIAL PRIMARY KEY,            -- Unique ID for each session (auto-increment)
+    Req_ID INT NOT NULL,                      -- Foreign Key from WFH_Adhoc_Request
+    Staff_ID INT NOT NULL,                    -- Foreign Key from Employee
+    Sched_date DATE NOT NULL,                 -- The scheduled WFH date
+    AM BOOLEAN NOT NULL,                      -- Is AM requested?
+    PM BOOLEAN NOT NULL,                      -- Is PM requested?
+    Approved BOOLEAN NOT NULL DEFAULT FALSE,  -- Approval status for this specific session
+    Rejected BOOLEAN NOT NULL DEFAULT FALSE,  -- Rejection status for this specific session
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Adhoc_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
+);

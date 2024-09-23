@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS WFH_Backlog (
+    Change_ID SERIAL PRIMARY KEY,                  -- Unique ID for each change (auto-increment)
+    Req_ID INT NOT NULL,                           -- Foreign Key from WFH_Adhoc_Request or WFH_Recurring_Request
+    Staff_ID INT NOT NULL,                         -- Foreign Key from Employee
+    Sched_date DATE NOT NULL,                      -- Scheduled date for WFH
+    Session CHAR(2) CHECK (Session IN ('AM', 'PM')),-- AM or PM session
+    Approved BOOLEAN NOT NULL,                     -- Approval status for each change
+    Rejected BOOLEAN NOT NULL,                     -- Rejection status for each change
+    Reason VARCHAR(100) NOT NULL,                           -- Reason for the change 
+    Recurring BOOLEAN NOT NULL DEFAULT FALSE,      -- Indicates if this change is for a recurring request
+    Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- When the change was made
+    Action_type VARCHAR(10) NOT NULL,              -- 'Create', 'Update', 'Cancel', etc.
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Adhoc_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
+);
