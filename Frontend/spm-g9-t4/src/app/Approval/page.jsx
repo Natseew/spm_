@@ -22,39 +22,32 @@ export default function ArrangementForm() {
   const [scheduleType, setScheduleType] = useState(""); // For selecting AM, PM, or Full Day
   const [reason, setReason] = useState(""); // For reason textarea
 
+  // Handles form submission
   const handleSubmit = async () => {
     const reqDate = new Date().toISOString().split("T")[0]; // Current request date
 
-    // Ensure the date is formatted correctly without the timestamp
+    // Ensure the WFH date is formatted correctly
     const formattedWfhDate = wfhDate ? new Date(wfhDate).toISOString().split("T")[0] : null;
 
-    // Create the 'dates' array with proper formatting and boolean values
-    const dates = [
-      {
-        sched_date: formattedWfhDate, // Save only the date part (YYYY-MM-DD)
-        am: scheduleType === "AM" || scheduleType === "Full Day", // True for AM or Full Day
-        pm: scheduleType === "PM" || scheduleType === "Full Day" // True for PM or Full Day
-      }
-    ];
-
+    // Prepare payload to match the backend schema
     const payload = {
       staff_id: staffId,
-      req_date: reqDate,
-      dates, // This matches the backend structure
-      approved: false,
-      rejected: false,
-      reason
+      req_date: reqDate, // Request date
+      sched_date: formattedWfhDate, // Scheduled WFH date
+      timeSlot: scheduleType === "Full Day" ? 'FD' : scheduleType, // Match TimeSlot (AM, PM, or FD)
+      status: 'Pending', // Default status for new requests
+      reason, // WFH request reason
     };
 
     console.log(payload); // For debugging purposes
 
     try {
-      const response = await fetch('http://localhost:4000/wfh_request', {
+      const response = await fetch('http://localhost:4000/wfh_adhoc_request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload), // Send the payload
       });
 
       if (response.ok) {
@@ -68,6 +61,7 @@ export default function ArrangementForm() {
     }
   };
 
+  // Handles form cancellation
   const handleCancel = () => {
     console.log("Form cancelled");
   };
@@ -119,6 +113,7 @@ export default function ArrangementForm() {
             multiline
             rows={4}
             margin="normal"
+            required
           />
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginTop: 2 }}>

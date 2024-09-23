@@ -2,78 +2,44 @@ const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
 
-// Update WFH_Request and WFH_Sessions DB after staff submit WFH request form
-router.post('/wfh_request', async (req, res) => {
-  const { staff_id, req_date, dates, approved, rejected, reason } = req.body;
-
-  if (!staff_id || !req_date || !dates) {
-    return res.status(400).json({ message: 'Staff ID, request date, and dates with AM/PM info are required.' });
-  }
+// POST WFH request
+router.post('/wfh_adhoc_request', async (req, res) => {
+  const { staff_id, req_date, sched_date, timeSlot, status, reason } = req.body;
 
   try {
-    // Insert or update into WFH_Request
-    const result = await client.query(
-      ` 
-      INSERT INTO WFH_Request (Staff_ID, Req_date, Approved, Rejected, Reason)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (Staff_ID, Req_date)
-      DO UPDATE SET
-        Approved = EXCLUDED.Approved,
-        Rejected = EXCLUDED.Rejected,
-        Reason = EXCLUDED.Reason
+    // Begin a transaction to ensure atomicity of both inserts
+    await client.query('BEGIN');
+
+    // Insert into WFH_Request table
+    const wfhRequestResult = await client.query(
+      `
+      INSERT INTO WFH_Adhoc_Request (Staff_ID, Req_date, Sched_date, TimeSlot, Status, Reason)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING Req_ID;
       `,
-      [staff_id, req_date, approved || false, rejected || false, reason || null]
+      [staff_id, req_date, sched_date, timeSlot, status, reason]
     );
 
-    const req_id = result.rows[0].req_id;
+    const req_id = wfhRequestResult.rows[0].req_id;
 
-    // Insert into WFH_Sessions for each date
-    // Eg. Dates
-            // "dates": [
-            //   { "sched_date": "2024-09-21", "am": true, "pm": false },
-            //   { "sched_date": "2024-09-22", "am": false, "pm": true }
-            // ]
-  const sessionsPromises = dates.flatMap(({ sched_date, am, pm }) => {
-  const sessions = [];
-  if (am) {
-    sessions.push(client.query(
+    // Insert into WFH_Backlog table
+    await client.query(
       `
-      INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-      VALUES ($1, $2, $3, TRUE, FALSE, FALSE, FALSE)
-      ON CONFLICT (Req_ID, Sched_date)
-      DO UPDATE SET
-        AM = EXCLUDED.AM,
-        PM = EXCLUDED.PM,
-        Approved = EXCLUDED.Approved,
-        Rejected = EXCLUDED.Rejected;
+      INSERT INTO WFH_Backlog (Req_ID, Staff_ID, Sched_date, TimeSlot, Reason, Status)
+      VALUES ($1, $2, $3, $4, $5, $6);
       `,
-      [req_id, staff_id, sched_date]
-    ));
-  }
-  if (pm) {
-    sessions.push(client.query(
-      `
-      INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-      VALUES ($1, $2, $3, FALSE, TRUE, FALSE, FALSE)
-      ON CONFLICT (Req_ID, Sched_date)
-      DO UPDATE SET
-        AM = EXCLUDED.AM,
-        PM = EXCLUDED.PM,
-        Approved = EXCLUDED.Approved,
-        Rejected = EXCLUDED.Rejected;
-      `,
-      [req_id, staff_id, sched_date]
-    ));
-  }
-  return sessions;
-});
+      [req_id, staff_id, sched_date, timeSlot, 'New Request', status]
+    );
 
-    await Promise.all(sessionsPromises);
+    // Commit transaction
+    await client.query('COMMIT');
 
-    res.status(200).json({ message: 'WFH request updated successfully.' });
+    res.status(201).json({ message: 'WFH request submitted successfully', req_id });
+
   } catch (error) {
-    console.error('Error updating WFH request:', error);
+    // Rollback transaction in case of any error
+    await client.query('ROLLBACK');
+    console.error('Error submitting WFH request:', error);
     res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
