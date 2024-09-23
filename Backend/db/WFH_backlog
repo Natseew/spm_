@@ -9,6 +9,6 @@ CREATE TABLE IF NOT EXISTS WFH_Backlog (
     Recurring BOOLEAN NOT NULL DEFAULT FALSE,      -- Indicates if this change is for a recurring request
     Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Timestamp when the change was made
     Status VARCHAR(10) CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')) NOT NULL,  -- Status reflecting action taken
-    FOREIGN KEY (Req_ID) REFERENCES WFH_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Adhoc_Request(Req_ID) ON DELETE CASCADE,
     FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
 );
