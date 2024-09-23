@@ -1,12 +1,13 @@
 CREATE TABLE IF NOT EXISTS WFH_Backlog (
-    Req_ID INT NOT NULL,                           -- Foreign Key from WFH_Request
+    Change_ID SERIAL PRIMARY KEY,                  -- Unique ID for each change (auto-increment)
+    Req_ID INT NOT NULL,                           -- Foreign Key from WFH_Adhoc_Request or WFH_Recurring_Request
     Staff_ID INT NOT NULL,                         -- Foreign Key from Employee
-    Sched_date DATE NOT NULL,                      -- Single scheduled date
-    Session CHAR(2) CHECK (Session IN ('AM', 'PM')), -- 'AM' or 'PM' session
-    Approved BOOLEAN NOT NULL DEFAULT FALSE,       -- Approval status for each date/session
-    Rejected BOOLEAN NOT NULL DEFAULT FALSE,       -- Rejection status for each date/session
-    Reason VARCHAR(100),                           -- Reason for approval/rejection
-    FOREIGN KEY (Req_ID) REFERENCES WFH_Request(Req_ID) ON DELETE CASCADE,  -- Foreign Key to WFH_Request
-    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE, -- Foreign Key to Employee
-    PRIMARY KEY (Req_ID, Staff_ID, Sched_date, Session) -- Composite Primary Key
+    Sched_date DATE NOT NULL,                      -- Scheduled date for WFH
+    Session CHECK (Session IN ('AM', 'PM','Day')), 
+    Reason VARCHAR(100) NOT NULL,                  -- Reason "New Request" or "Withdraw" or "Approve/reject"
+    Recurring BOOLEAN NOT NULL DEFAULT FALSE,      -- Indicates if this change is for a recurring request
+    Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- When the change was made
+    Action_type VARCHAR(10) NOT NULL,              -- 'Pending', 'Withdrawn', 'Approved', 'Rejected' 
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Adhoc_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
 );

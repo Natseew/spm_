@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS WFH_Recurring_Request (
+    Req_ID SERIAL PRIMARY KEY,                -- Unique ID for the recurring request
+    Staff_ID INT NOT NULL,                    -- Foreign Key from Employee
+    Start_date DATE NOT NULL,                 -- Start date of the recurring request
+    End_date DATE NOT NULL,                   -- End date of the recurring request
+    Day_of_week INT CHECK (Day_of_week BETWEEN 1 AND 5), -- 1=Monday, 5=Friday
+    Approved BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall approval status
+    Rejected BOOLEAN NOT NULL DEFAULT FALSE,  -- Overall rejection status
+    Reason VARCHAR(100),                      -- Reason for the request
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
+);
+
+
