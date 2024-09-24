@@ -5,12 +5,27 @@
 
 import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
+// import { useRouter } from 'next/router';
 
 
 export default function managerview() {
     const [selectedDate, setSelectedDate] = useState(""); // State to track the selected date
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [dayOfWeek, setDayOfWeek] = useState("");
+    // const { departmentId } = router.query; // Assume you want to fetch based on departmentId
+
+    // // Fetching data when the component mounts or when departmentId changes
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         if (departmentId) {
+    //             const response = await fetch(`https://jsonplaceholder.typicode.com/posts?departmentId=${departmentId}`);
+    //             const fetchedData = await response.json();
+    //             setData(fetchedData);
+    //         }
+    //     };
+
+    //     fetchData();
+    // }, [departmentId]);
 
     // const generateDateOptions = () => {
     // const options = [];
@@ -46,6 +61,15 @@ export default function managerview() {
 //     const options = { weekday: 'long' };
 //     return date.toLocaleDateString(undefined, options); // format the date as needed
 // }
+
+async function getServerSideProps() {
+    const res = await fetch('https://jsonplaceholder.typicode.com/posts');
+    const data = await res.json();
+
+return {
+    props: { data },
+};
+}
 
 function getDayName(date) {
     if (isNaN(date.getTime())) {
