@@ -10,6 +10,23 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     // Begin a transaction to ensure atomicity
     await client.query('BEGIN');
+
+     // First, check if a request for the same employee and date already exists with a non-rejected status [Timeslot does not matter as long as request is same day]
+     const existingRequest = await client.query(
+      `
+      SELECT * FROM WFH_Adhoc_Request 
+      WHERE Staff_ID = $1 AND Sched_date = $2 AND Status IN ('Pending', 'Approved')
+      `,
+      [staff_id, sched_date]
+    );
+
+    // If an existing request is found, deny the request
+    if (existingRequest.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        message: 'A WFH request for this date already exists and is either pending or approved. Please choose a different date or wait for the current request to be processed.'
+      });
+    }
    
     // Query to get the reporting manager ID for the staff
     const managerResult = await client.query(
@@ -22,6 +39,8 @@ router.post('/wfh_adhoc_request', async (req, res) => {
     }
 
     const reportingManagerId = managerResult.rows[0].reporting_manager;
+
+
    
     // First Query: Count number of teammates WFH on the scheduled date
     const wfhCountResult = await client.query(
