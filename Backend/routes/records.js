@@ -232,6 +232,52 @@ router.get('/schedule/:department_name/:date', async (req, res) => {
 });
 
 
+// GET pending WFH requests by staff_id and status
+router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
+  const { staff_id, status } = req.params;
+  console.log('Staff ID:', staff_id);
+  console.log('Status:', status);
+
+  try {
+    // Query to fetch pending WFH requests for the specified staff_id and status
+    const pendingRequests = await client.query(
+      `
+      SELECT 
+        wfh.Change_ID, 
+        wfh.Sched_date, 
+        wfh.TimeSlot, 
+        wfh.Status,
+        adhoc.Req_date,
+        adhoc.Reason
+      FROM 
+        WFH_Backlog wfh
+      JOIN 
+        WFH_Adhoc_Request adhoc ON wfh.Staff_ID = adhoc.Staff_ID
+      WHERE 
+        wfh.Staff_ID = $1
+      AND 
+        wfh.Status = $2;
+      `,
+      [staff_id, status]
+    );
+   
+
+    if (pendingRequests.rows.length === 0) {
+      return res.status(404).json({ message: 'No pending requests found.' });
+    }
+
+    // Return the pending requests
+    res.status(200).json(pendingRequests.rows);
+    
+  } catch (error) {
+    console.error('Error fetching pending WFH requests:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
+
+
 // GET all employees
 router.get('/', async (req, res) => {
   try {
