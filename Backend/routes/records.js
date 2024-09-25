@@ -318,4 +318,79 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+
+// GET all adhoc request 
+router.get('/adhoc_request', async (req, res) => {
+  try {
+    const result = await client.query('SELECT * FROM wfh_adhoc_request');
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
+// // GET all adhoc request 
+// router.get('/recurring_schedule', async (req, res) => {
+//   try {
+//     const result = await client.query('SELECT * FROM wfh_recurring_sessions');
+//     res.status(200).json(result.rows);
+//   } catch (error) {
+//     console.error('Error fetching employees:', error);
+//     res.status(500).json({ message: 'Internal server error. ' + error.message });
+//   }
+// });
+router.get('/recurring_schedule', async (req, res) => {
+  try {
+    const result = await client.query(`
+      SELECT 
+          ws.req_id, 
+          ws.staff_id, 
+          e.staff_fname,
+          e.staff_lname,
+          ws.sched_date, 
+          ws.timeslot, 
+          ws.status
+      FROM wfh_recurring_sessions ws
+      JOIN Employee e ON ws.staff_id = e.staff_id;
+    `);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching schedule:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+// GET WFH Adhoc Requests along with Employee names
+router.get('/adhoc_requests', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+          wr.Req_ID, 
+          wr.Staff_ID, 
+          e.staff_fname, 
+          e.staff_lname, 
+          wr.Req_date, 
+          wr.Sched_date, 
+          wr.TimeSlot, 
+          wr.Status, 
+          wr.Reason, 
+          wr.Edit_reason
+      FROM 
+          WFH_Adhoc_Request wr
+      JOIN 
+          Employee e ON wr.Staff_ID = e.Staff_ID;
+    `;
+
+    const result = await client.query(query);
+    
+    // Return the retrieved rows as JSON
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching WFH Adhoc Requests:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+  module.exports = router;

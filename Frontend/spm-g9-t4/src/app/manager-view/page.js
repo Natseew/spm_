@@ -1,77 +1,57 @@
 // Mark this component as a Client Component
 "use client";
 
-// import CalendarComponent from '../components/CalendarComponent';
-
 import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
-// import { useRouter } from 'next/router';
+import { useRouter } from 'next/router';
+import ManagerAdhocComponent from "@/components/ManagerAdhocComponent";
 
 
 export default function managerview() {
     const [selectedDate, setSelectedDate] = useState(""); // State to track the selected date
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [dayOfWeek, setDayOfWeek] = useState("");
-    // const { departmentId } = router.query; // Assume you want to fetch based on departmentId
+    const [data, setData] = useState([]);  // State to track fetched data
+    const [adhocData, setAdhocData] = useState([]); // State to track fetched adhoc schedule data
 
-    // // Fetching data when the component mounts or when departmentId changes
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         if (departmentId) {
-    //             const response = await fetch(`https://jsonplaceholder.typicode.com/posts?departmentId=${departmentId}`);
-    //             const fetchedData = await response.json();
-    //             setData(fetchedData);
-    //         }
-    //     };
+    // Retrieve recurring schedule data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch('http://localhost:4000/recurring_schedule');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const fetchedData = await response.json();
+                setData(fetchedData);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+        fetchData();
+    }, []); // Dependency array is empty to fetch once on mount
 
-    //     fetchData();
-    // }, [departmentId]);
-
-    // const generateDateOptions = () => {
-    // const options = [];
-    // const today = new Date();
-
-
-    // for (let i = 0; i < 30; i++) {
-    //     const date = new Date(today);
-    //     date.setDate(today.getDate() + i);
-
-    //     // Format the date as dd/mm/yyyy
-    //     const day = String(date.getDate()).padStart(2, '0');
-    //     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-    //     const year = date.getFullYear();
-
-    //     options.push(
-    //         <option key={date.toISOString()} value={`${day}/${month}/${year}`}>
-    //             {`${day}/${month}/${year}`}
-    //         </option>
-    //     );
-    // }
-
-    // return options;
-    // };
     
-    
-// Utility function to get the day name
-// function getDayName(date) {
-//     if (isNaN(date.getTime())) {
-//         return 'Invalid Date'; // Handle invalid date scenario
-//     }
+    // Retrieve ad hoc schedule data
+    useEffect(() => {
+        const fetchAdhocData = async () => {
+            try {
+                const response = await fetch('http://localhost:4000/adhoc_requests'); // Adjust endpoint as needed
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const fetchedData = await response.json();
+                setAdhocData(fetchedData); // Store ad hoc data in state
+            } catch (error) {
+                console.error('Error fetching ad hoc schedule data:', error);
+            }
+        };
 
-//     const options = { weekday: 'long' };
-//     return date.toLocaleDateString(undefined, options); // format the date as needed
-// }
+        fetchAdhocData();
+    }, []); // Fetch ad hoc schedule data once on mount
 
-async function getServerSideProps() {
-    const res = await fetch('https://jsonplaceholder.typicode.com/posts');
-    const data = await res.json();
 
-return {
-    props: { data },
-};
-}
-
-function getDayName(date) {
+    function getDayName(date) {
     if (isNaN(date.getTime())) {
       return 'Invalid Date'; // Handle invalid date scenario
     }
@@ -144,6 +124,7 @@ return (
         <p>Selected Date: {selectedDate}</p>
         <p>Selected Department: {selectedDepartment}</p>
         {/* Display data based on selections */}
+        <p>Data from server:</p>
     </div>
 
     <div Class="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
@@ -155,9 +136,10 @@ return (
 
             <p>Employee timetable Display</p>
             
+
             <div class="overflow-x-auto">
 
-                <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
+                {/* <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
                     <thead class="bg-gray-500 text-white">
                         <tr class="text-center">
                             <th class="py-2 px-4 border-b border-gray-300">Name</th>
@@ -177,6 +159,31 @@ return (
                             <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300"></td>
                             <td class="hover:bg-blue-100 transition-colorspy-2 px-4 border-b border-gray-300"></td>
                         </tr>
+                    </tbody>
+                </table> */}
+                
+                <ManagerAdhocComponent/>
+                {/* Recurring */}
+                <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
+                    <thead class="bg-gray-500 text-white">
+                        <tr class="text-center">
+                            <th class="py-2 px-4 border-b border-gray-300">Request ID</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Name</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Timeslot</th>
+                            <th class="py-2 px-4 border-b border-gray-300">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.map((item, index) => (
+                        <tr key={index} className="text-center">
+                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.req_id}</td>
+                            {/* <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td> */}
+                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{`${item.staff_fname} ${item.staff_lname}`}</td>
+                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{new Date(item.sched_date).toLocaleDateString()}</td>
+                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
+                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.status}</td>                        </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
