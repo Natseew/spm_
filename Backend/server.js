@@ -4,6 +4,7 @@ require('dotenv').config();
 // Import necessary modules
 const express = require('express');
 const cors = require('cors');
+
 const client = require('./databasepg'); // PostgreSQL client
 const employeeRoutes = require('./routes/records'); // Import routes
 
@@ -23,6 +24,7 @@ app.use((req, res, next) => {
 });
 
 app.use(employeeRoutes);
+
 
 // Start the server and listen on the port defined in .env
 const port = process.env.PORT || 4000; // Default to port 4000 if no .env config
