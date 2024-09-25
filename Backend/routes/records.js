@@ -395,36 +395,39 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Update WFH_Recurring_Request DB after staff submits recurring WFH request form
+// Insert recurring WFH request
 router.post('/wfh_recurring_request', async (req, res) => {
-  const { staff_id, start_date, end_date, day_of_week, approved, rejected, reason } = req.body;
+  const { staff_id, start_date, end_date, day_of_week, reason } = req.body;
 
   // Validate required fields
-  if (!staff_id || !start_date || !end_date || !day_of_week) {
-    return res.status(400).json({ message: 'Staff ID, start date, end date, and day of week are required.' });
+  if (!staff_id || !start_date || !end_date || !day_of_week || !reason) {
+    return res.status(400).json({ message: 'Staff ID, start date, end date, day of week, and reason are required.' });
+  }
+
+  // Check if the day_of_week is valid (1-5)
+  if (day_of_week < 1 || day_of_week > 5) {
+    return res.status(400).json({ message: 'Day of week must be between 1 (Monday) and 5 (Friday).' });
   }
 
   try {
-    // Insert or update the recurring work-from-home request
+    // Insert into WFH_Recurring_Request table
     const result = await client.query(
       `
-      INSERT INTO WFH_Recurring_Request (Staff_ID, Start_date, End_date, Day_of_week, Approved, Rejected, Reason)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (Staff_ID, Start_date, Day_of_week)
-      DO UPDATE SET
-        End_date = EXCLUDED.End_date,
-        Approved = EXCLUDED.Approved,
-        Rejected = EXCLUDED.Rejected,
-        Reason = EXCLUDED.Reason
-      RETURNING *;
+      INSERT INTO WFH_Recurring_Request (Staff_ID, Start_date, End_date, Day_of_week, Reason)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING Req_ID;
       `,
-      [staff_id, start_date, end_date, day_of_week, approved || false, rejected || false, reason || null]
+      [staff_id, start_date, end_date, day_of_week, reason]
     );
-    
-    res.status(200).json(result.rows[0]);
+
+    const req_id = result.rows[0].req_id;
+
+    res.status(201).json({ message: 'Recurring WFH request submitted successfully', req_id });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error submitting recurring WFH request:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
+
 
 module.exports = router;
