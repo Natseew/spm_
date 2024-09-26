@@ -12,13 +12,17 @@ import {
   FormControl,
   InputLabel,
   Tabs,
-  Tab
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  DialogContent,
+  DialogContentText
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { addMonths, subMonths } from "date-fns"; // Importing date functions
-import PropTypes from 'prop-types';
 
 export default function RecurringArrangementForm() {
     const [staffId, setStaffId] = useState('');
@@ -26,12 +30,22 @@ export default function RecurringArrangementForm() {
     const [endDate, setEndDate] = useState(null);
     const [dayOfWeek, setDayOfWeek] = useState('');
     const [reason, setReason] = useState('');
-    const [value, setValue] = useState('');
+    const [open, setOpen] = React.useState(false);
+    const [status, setStatus] = useState('');
 
   // Current date and date restrictions
   const today = new Date(); // Current date
   const minDate = subMonths(today, 2); // 2 months back
   const maxDate = addMonths(today, 3); // 3 months in front
+
+  // for handling popup
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
 
   // Handles form submission
   const handleSubmit = async () => {
@@ -47,6 +61,8 @@ export default function RecurringArrangementForm() {
 
     console.log(payload); // For debugging purposes
 
+    setOpen(true);
+
     try {
       const response = await fetch('http://localhost:4000/wfh_recurring_request', {
         method: 'POST',
@@ -59,11 +75,14 @@ export default function RecurringArrangementForm() {
       if (response.ok) {
         const data = await response.json();
         console.log("Request successful:", data);
+        setStatus("Request Successful. Your request will be reviewed soon.");
       } else {
         console.error("Request failed:", response.statusText);
+        setStatus("Request Failed. Please fill in the form with the required details.");
       }
     } catch (error) {
       console.error("Error:", error);
+      setStatus("An error occurred. Please try again.");
     }
   };
 
@@ -81,49 +100,10 @@ export default function RecurringArrangementForm() {
     setValue(newValue);
   }
 
-  function a11yProps(index) {
-    return {
-      id: `simple-tab-${index}`,
-      'aria-controls': `simple-tabpanel-${index}`,
-    };
-  }
-
-  function CustomTabPanel(props) {
-    const { children, value, index, ...other } = props;
-  
-    return (
-      <div
-        role="tabpanel"
-        hidden={value !== index}
-        id={`simple-tabpanel-${index}`}
-        aria-labelledby={`simple-tab-${index}`}
-        {...other}
-      >
-        {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-      </div>
-    );
-  }
-  
-  CustomTabPanel.propTypes = {
-    children: PropTypes.node,
-    index: PropTypes.number.isRequired,
-    value: PropTypes.number.isRequired,
-  };
 
   return (
-    <Box>
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-          <Tab label="Ad-Hoc Application" {...a11yProps(0)} />
-          <Tab label="Recurring Application" {...a11yProps(1)} />
-        </Tabs>
-      </Box>
-      <CustomTabPanel value={value} index={0}>
-        Item One
-      </CustomTabPanel>
-      <CustomTabPanel value={value} index={1}>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
+    
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: 600 }}>
         <Typography variant="h6" gutterBottom>
           WFH Recurring Request Application
@@ -193,11 +173,21 @@ export default function RecurringArrangementForm() {
           </Box>
         </form>
       </Paper>
-    </LocalizationProvider>
-      </CustomTabPanel>
-    </Box>
 
-    
-    </Box>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {status}
+        </DialogTitle>
+        <DialogActions>
+          <Button onClick={handleClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+    </LocalizationProvider>
   );
 }
