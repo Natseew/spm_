@@ -407,9 +407,6 @@ router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
   }
 });
 
-
-
-
 // GET all employees
 router.get('/', async (req, res) => {
   try {
@@ -455,5 +452,21 @@ router.post('/wfh_recurring_request', async (req, res) => {
   }
 });
 
+
+//Get all approved wfh of employee
+router.get('/employee/:id', async(req, res) => {
+  try{
+    const result = await client.query(`
+      SELECT * FROM wfh_sessions w
+      WHERE w.staff_id = ${req.params.id}
+      AND w.approved = true
+    `);
+    console.log(result.rows)
+    res.status(200).json(result.rows)
+  }catch(error){
+
+  }
+
+});
 
 module.exports = router;
