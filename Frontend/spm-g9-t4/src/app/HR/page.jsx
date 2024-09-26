@@ -74,8 +74,10 @@ const HRPage = () => {
   }, [department, date]);
 
   const calculateStaffCounts = () => {
-    const amHomeStaff = staffData.filter(staff => ['AM', 'AM & PM'].includes(staff.schedule_status)).length;
-    const pmHomeStaff = staffData.filter(staff => ['PM', 'AM & PM'].includes(staff.schedule_status)).length;
+    // Calculate AM/PM In-Office and At-Home staff
+    const amHomeStaff = staffData.filter(staff => staff.schedule_status === 'AM' || staff.schedule_status === 'Full-Day').length;
+    const pmHomeStaff = staffData.filter(staff => staff.schedule_status === 'PM' || staff.schedule_status === 'Full-Day').length;
+    
     const amOfficeStaff = totalStaffCount - amHomeStaff;
     const pmOfficeStaff = totalStaffCount - pmHomeStaff;
 
