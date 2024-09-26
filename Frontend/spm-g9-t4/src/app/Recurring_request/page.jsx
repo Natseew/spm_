@@ -31,7 +31,7 @@ export default function RecurringArrangementForm() {
     const [dayOfWeek, setDayOfWeek] = useState('');
     const [reason, setReason] = useState('');
     const [open, setOpen] = React.useState(false);
-    const [status, setStatus] = useState('');
+    const [statusMessage, setStatusMessage] = useState('');
 
   // Current date and date restrictions
   const today = new Date(); // Current date
@@ -75,14 +75,14 @@ export default function RecurringArrangementForm() {
       if (response.ok) {
         const data = await response.json();
         console.log("Request successful:", data);
-        setStatus("Request Successful. Your request will be reviewed soon.");
+        setStatusMessage(data.message);
       } else {
         console.error("Request failed:", response.statusText);
-        setStatus("Request Failed. Please fill in the form with the required details.");
+        setStatusMessage(data.message);
       }
     } catch (error) {
       console.error("Error:", error);
-      setStatus("An error occurred. Please try again.");
+      setStatusMessage("Please fill up the form with the correct details and try again");
     }
   };
 
@@ -122,6 +122,8 @@ export default function RecurringArrangementForm() {
           <DatePicker
             label="Start Date"
             value={startDate}
+            minDate={minDate} // Set minimum date
+            maxDate={maxDate} // Set maximum date
             onChange={(newValue) => setStartDate(newValue)}
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
@@ -131,6 +133,8 @@ export default function RecurringArrangementForm() {
           <DatePicker
             label="End Date"
             value={endDate}
+            minDate={minDate} // Set minimum date
+            maxDate={maxDate} // Set maximum date
             onChange={(newValue) => setEndDate(newValue)}
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
@@ -181,7 +185,7 @@ export default function RecurringArrangementForm() {
         aria-describedby="alert-dialog-description"
       >
         <DialogTitle id="alert-dialog-title">
-          {status}
+          {statusMessage}
         </DialogTitle>
         <DialogActions>
           <Button onClick={handleClose}>Close</Button>
