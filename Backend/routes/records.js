@@ -4,15 +4,14 @@ const client = require('../databasepg');
 
 // POST WFH request
 router.post('/wfh_adhoc_request', async (req, res) => {
-  const { staff_id, req_date, sched_date, timeSlot, status, reason } = req.body;
+  const { staff_id, req_date, sched_date, timeSlot, status = 'Pending', reason } = req.body; // Default status is 'Pending'
 
   try {
-
     // Begin a transaction to ensure atomicity
     await client.query('BEGIN');
 
-     // First, check if a request for the same employee and date already exists with a non-rejected status [Timeslot does not matter as long as request is same day]
-     const existingRequest = await client.query(
+    // Check if a request for the same employee and date already exists with a non-rejected status
+    const existingRequest = await client.query(
       `
       SELECT * FROM WFH_Adhoc_Request 
       WHERE Staff_ID = $1 AND Sched_date = $2 AND Status IN ('Pending', 'Approved')
@@ -20,7 +19,6 @@ router.post('/wfh_adhoc_request', async (req, res) => {
       [staff_id, sched_date]
     );
 
-    // If an existing request is found, deny the request
     if (existingRequest.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -28,21 +26,26 @@ router.post('/wfh_adhoc_request', async (req, res) => {
       });
     }
    
-    // Query to get the reporting manager ID for the staff
+    // Get the reporting manager ID for the staff
     const managerResult = await client.query(
       `SELECT reporting_manager FROM Employee WHERE staff_id = $1`,
       [staff_id]
     );
   
     if (managerResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Manager ID not found.' });
     }
 
     const reportingManagerId = managerResult.rows[0].reporting_manager;
 
+    // If the staff is the reporting manager, auto-approve the request
+    let updatedStatus = status;
+    if (staff_id === reportingManagerId) {
+      updatedStatus = 'Approved'; // Auto-approve if the reporting manager is making the request
+    }
 
-   
-    // First Query: Count number of teammates WFH on the scheduled date
+    // Check the number of teammates WFH on the scheduled date
     const wfhCountResult = await client.query(
       `SELECT COUNT(*) AS wfh_count FROM WFH_Backlog
        WHERE Sched_date = $1 AND Status = 'Approved' AND Staff_ID IN (
@@ -53,47 +56,43 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     const wfhCount = parseInt(wfhCountResult.rows[0].wfh_count, 10);
     
-    // Second Query: Get total number of people in the sub-team
+    // Get total number of people in the sub-team
     const totalCountResult = await client.query(
       `SELECT COUNT(*) AS total_count FROM Employee WHERE reporting_manager = $1`,
       [reportingManagerId]
     );
 
     const totalCount = parseInt(totalCountResult.rows[0].total_count, 10);
-    console.log('Total Count:', totalCount);
 
-    // Third Function: Fraction calculation
     // Calculate new WFH count if this request is approved
-    const newWfhCount = wfhCount + 1; // Adding 1 for the new request
-    console.log('NEW WFH Count:', newWfhCount);
+    const newWfhCount = wfhCount + 1;
     const wfhFraction = newWfhCount / totalCount;
-    console.log('WFH fraction:', wfhFraction);
 
-    if (wfhFraction >= 0.5) {
+    if (wfhFraction >= 0.5 && staff_id !== reportingManagerId) {
       // If 50% or more of the team is WFH, reject the request
+      await client.query('ROLLBACK');
       return res.status(403).json({ message: 'WFH request denied. At least 50% of the team must be in the office.' });
     }
 
-
-    // Insert into WFH_Request table
+    // Insert into WFH_Adhoc_Request table with the updated status
     const wfhRequestResult = await client.query(
       `
       INSERT INTO WFH_Adhoc_Request (Staff_ID, Req_date, Sched_date, TimeSlot, Status, Reason)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING Req_ID;
       `,
-      [staff_id, req_date, sched_date, timeSlot, status, reason]
+      [staff_id, req_date, sched_date, timeSlot, updatedStatus, reason]
     );
 
     const req_id = wfhRequestResult.rows[0].req_id;
 
-    // Insert into WFH_Backlog table
+    // Insert into WFH_Backlog table with the updated status
     await client.query(
       `
       INSERT INTO WFH_Backlog (Req_ID, Staff_ID, Sched_date, TimeSlot, Reason, Status)
       VALUES ($1, $2, $3, $4, $5, $6);
       `,
-      [req_id, staff_id, sched_date, timeSlot, 'New Request', status]
+      [req_id, staff_id, sched_date, timeSlot, 'New Request', updatedStatus]
     );
 
     // Commit transaction
@@ -108,6 +107,7 @@ router.post('/wfh_adhoc_request', async (req, res) => {
     res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
+
 
 // Update WFH_Request and WFH_Sessions DB after manager clicks "approve/reject" button
 router.post('/wfh_approval', async (req, res) => {
@@ -232,7 +232,7 @@ router.get('/schedule/:department_name/:date', async (req, res) => {
 });
 
 
-// GET pending WFH requests by staff_id and status
+// GET WFH requests by staff_id and status
 router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
   const { staff_id, status } = req.params;
   console.log('Staff ID:', staff_id);
@@ -249,10 +249,12 @@ router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
         wfh.Status,
         adhoc.Req_date,
         adhoc.Reason
+       
       FROM 
         WFH_Backlog wfh
       JOIN 
         WFH_Adhoc_Request adhoc ON wfh.Staff_ID = adhoc.Staff_ID
+     
       WHERE 
         wfh.Staff_ID = $1
       AND 
@@ -261,13 +263,37 @@ router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
       [staff_id, status]
     );
    
+     // Query to fetch recurring WFH requests for the specified staff_id and status
+     const recurringRequests = await client.query(
+      `
+      SELECT 
+        recurring.Start_date, 
+        recurring.End_date, 
+        recurring.Day_of_week, 
+        recurring.Reason
+      FROM 
+        WFH_Recurring_Request recurring
+      WHERE 
+        recurring.Staff_ID = $1
+      AND 
+        recurring.Status = $2;
+     
+      `,
+      [staff_id, status]
+    );
 
-    if (pendingRequests.rows.length === 0) {
-      return res.status(404).json({ message: 'No pending requests found.' });
+    // Combine the results from both adhoc and recurring requests
+    const combinedRequests = [
+      ...pendingRequests.rows,
+      ...recurringRequests.rows
+    ];
+
+    if (combinedRequests.length === 0) {
+      return res.status(404).json({ message: 'No requests found.' });
     }
 
     // Return the pending requests
-    res.status(200).json(pendingRequests.rows);
+    res.status(200).json(combinedRequests);
     
   } catch (error) {
     console.error('Error fetching pending WFH requests:', error);

@@ -16,7 +16,7 @@ export default function PendingRequests() {
   const [requests, setRequests] = useState([]);
 
   // Hardcoded staffId and status
-  const staffId = "140001"; // Hardcoded staff ID
+  const staffId = "170166"; // Hardcoded staff ID
   const status = "Pending"; // Hardcoded status
 
   // Fetch requests from the backend
