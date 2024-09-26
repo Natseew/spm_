@@ -469,4 +469,34 @@ router.get('/employee/:id', async(req, res) => {
 
 });
 
+//get all wfh details by staffId
+router.get('/wfh_backlog/employee/:staffId', async (req, res) => {
+  const staffId = parseInt(req.params.staffId, 10); // Get Staff ID from request parameters
+
+  if (isNaN(staffId)) {
+    return res.status(400).json({ message: 'Invalid Staff ID' });
+  }
+  
+  try {
+    const result = await client.query(`
+      SELECT 
+        Sched_date,
+        TimeSlot,
+        Reason,
+        Status
+      FROM 
+        WFH_Backlog
+      WHERE 
+        Staff_ID = $1
+      ORDER BY 
+        Sched_date
+    `, [staffId]);
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching WFH backlog:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 module.exports = router;
