@@ -1,42 +1,69 @@
 import React, { useState, useEffect } from 'react';
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected']; // Status options available
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected'];
 
-const AdHocSchedule = () => {
-    const [adhocData, setAdhocData] = useState([]); // State to store fetched ad hoc data
-    const [loading, setLoading] = useState(true); // State to track loading status
-    const [error, setError] = useState(null); // State to capture any error messages
-    const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]); // Default to 'Pending'
-    const [selectedDate, setSelectedDate] = useState(""); // State for date filtering
+const CombinedSchedule = () => {
+    const [adhocData, setAdhocData] = useState([]);
+    const [recurringData, setRecurringData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
+    const [selectedDate, setSelectedDate] = useState("");
 
     // Retrieve ad hoc schedule data
     useEffect(() => {
         const fetchAdhocData = async () => {
             try {
-                const response = await fetch('http://localhost:4000/adhoc_requests'); // Adjust endpoint as needed
+                const response = await fetch('http://localhost:4000/adhoc_requests');
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 const fetchedData = await response.json();
-                setAdhocData(fetchedData); // Store ad hoc data in state
+                setAdhocData(fetchedData);
             } catch (error) {
                 console.error('Error fetching ad hoc schedule data:', error);
-                setError(error.message); // Set error state if fetching fails
-            } finally {
-                setLoading(false); // Set loading to false either way
+                setError(error.message);
             }
         };
 
         fetchAdhocData();
-    }, []); // Fetch ad hoc schedule data once on mount
+    }, []); // Fetch once on mount
 
-    if (loading) {
-        return <p>Loading...</p>; // Display loading message
-    }
+    // Retrieve recurring schedule data
+    useEffect(() => {
+        const fetchRecurringData = async () => {
+            try {
+                const response = await fetch('http://localhost:4000/recurring_schedule');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const fetchedData = await response.json();
+                setRecurringData(fetchedData);
+            } catch (error) {
+                console.error('Error fetching recurring schedule data:', error);
+                setError(error.message);
+            } finally {
+                setLoading(false); // Ensure loading state is updated to false
+            }
+        };
 
-    if (error) {
-        return <p>Error: {error}</p>; // Display error message
-    }
+        fetchRecurringData();
+    }, []); // Fetch once on mount
+
+    if (loading) return <p>Loading...</p>; // Display loading message
+    if (error) return <p>Error: {error}</p>; // Display error message
+
+    // Combined Data
+    const combinedData = [...adhocData, ...recurringData];
+
+    // Filtering logic
+    const filteredData = combinedData.filter(item => {
+        const dateMatches = selectedDate ?
+            new Date(item.sched_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() :
+            true;
+        return item.status === selectedStatus && dateMatches; // Both status and date match
+    });
+
     // Handle status toggle
     const handleStatusChange = (status) => {
         setSelectedStatus(status);
@@ -47,21 +74,15 @@ const AdHocSchedule = () => {
         setSelectedDate(event.target.value); // Update selected date
     };
 
-    // Filtering logic
-    const filteredData = adhocData.filter(item => {
-        const dateMatches = selectedDate ? new Date(item.sched_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
-        return item.status === selectedStatus && dateMatches; // Both status and date match
-    });
-    
     return (
         <div>
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
                     {statusOptions.map(status => (
-                        <button id='button'
-                            key={status} 
-                            className={`py-2 px-4 mr-2 ${selectedStatus === status ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} 
+                        <button
+                            key={status}
+                            className={`py-2 px-4 mr-2 ${selectedStatus === status ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
                             onClick={() => handleStatusChange(status)}
                         >
                             {status}
@@ -78,11 +99,9 @@ const AdHocSchedule = () => {
                         onChange={handleDateChange}
                         className="p-2 border border-gray-300 rounded"
                     />
-                </div>  
+                </div>
             </div>
-
             <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-                
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
@@ -93,9 +112,7 @@ const AdHocSchedule = () => {
                     </tr>
                 </thead>
                 <tbody>
-                        {filteredData
-                        .filter(item => item.status === selectedStatus) // Filter data by selected status
-                        .map((item, index) => (
+                    {filteredData.map((item, index) => (
                         <tr key={item.req_id} className="text-center">
                             <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.req_id}</td>
                             <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{`${item.staff_fname} ${item.staff_lname}`}</td>
@@ -110,4 +127,4 @@ const AdHocSchedule = () => {
     );
 };
 
-export default AdHocSchedule;
+export default CombinedSchedule;

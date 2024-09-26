@@ -4,52 +4,16 @@
 import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import ManagerAdhocComponent from "@/components/ManagerAdhocComponent";
-
+// import ManagerAdhocComponent from "@/components/ManagerAdhocComponent";
+// import ManagerRecurringComponent from "@/components/ManagerRecurringComponent";
+import ToggleView from "@/components/ToggleViewComponent";
+import ManagerViewComponent from "@/components/ManagerViewComponent";
 
 export default function managerview() {
     const [selectedDate, setSelectedDate] = useState(""); // State to track the selected date
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [dayOfWeek, setDayOfWeek] = useState("");
-    const [data, setData] = useState([]);  // State to track fetched data
-    const [adhocData, setAdhocData] = useState([]); // State to track fetched adhoc schedule data
-
-    // Retrieve recurring schedule data
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await fetch('http://localhost:4000/recurring_schedule');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                const fetchedData = await response.json();
-                setData(fetchedData);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-        fetchData();
-    }, []); // Dependency array is empty to fetch once on mount
-
     
-    // Retrieve ad hoc schedule data
-    useEffect(() => {
-        const fetchAdhocData = async () => {
-            try {
-                const response = await fetch('http://localhost:4000/adhoc_requests'); // Adjust endpoint as needed
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                const fetchedData = await response.json();
-                setAdhocData(fetchedData); // Store ad hoc data in state
-            } catch (error) {
-                console.error('Error fetching ad hoc schedule data:', error);
-            }
-        };
-
-        fetchAdhocData();
-    }, []); // Fetch ad hoc schedule data once on mount
-
 
     function getDayName(date) {
     if (isNaN(date.getTime())) {
@@ -133,64 +97,18 @@ return (
             <div>
                     <CalendarComponent/>
             </div> */}
-
-            <p>Employee timetable Display</p>
             
 
             <div class="overflow-x-auto">
-
-                {/* <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-                    <thead class="bg-gray-500 text-white">
-                        <tr class="text-center">
-                            <th class="py-2 px-4 border-b border-gray-300">Name</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Monday</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Tuesday</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Wednesday</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Thursday</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Friday</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="text-center">
-                            <td class="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">Austin Zhao</td>
-                            <td class="hover:bg-blue-100 transition-colorspy-2 px-4 border-b border-gray-300"></td>
-                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b bg-gray-200 border-gray-300">Scheduled</td>
-                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b bg-gray-200 border-gray-300">Scheduled</td>
-                            <td class="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300"></td>
-                            <td class="hover:bg-blue-100 transition-colorspy-2 px-4 border-b border-gray-300"></td>
-                        </tr>
-                    </tbody>
-                </table> */}
-                
-                <ManagerAdhocComponent/>
-                {/* Recurring */}
-                <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-                    <thead class="bg-gray-500 text-white">
-                        <tr class="text-center">
-                            <th class="py-2 px-4 border-b border-gray-300">Request ID</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Name</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Timeslot</th>
-                            <th class="py-2 px-4 border-b border-gray-300">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.map((item, index) => (
-                        <tr key={index} className="text-center">
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.req_id}</td>
-                            {/* <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td> */}
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{`${item.staff_fname} ${item.staff_lname}`}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{new Date(item.sched_date).toLocaleDateString()}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.status}</td>                        </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <ToggleView/>
+                {/* <ManagerAdhocComponent/> */}
+                {/* <ManagerRecurringComponent/> */}
+                {/* <ManagerViewComponent/> */}
             </div>
         </div>
     </div>
     </div>
+
 </>
 );
 }
-
