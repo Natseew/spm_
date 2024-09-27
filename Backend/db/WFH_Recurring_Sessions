@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS WFH_Recurring_Sessions (
+    Session_ID SERIAL PRIMARY KEY,            -- Unique ID for each session
+    Req_ID INT NOT NULL,                      -- Foreign Key from WFH_Recurring_Request
+    Staff_ID INT NOT NULL,                    -- Foreign Key from Employee
+    Sched_date DATE NOT NULL,                 -- The scheduled WFH date
+    TimeSlot CHAR(2) CHECK (TimeSlot IN ('AM', 'PM', 'FD')) NOT NULL, -- AM, PM, or Full-Day
+    Reason VARCHAR(100) NOT NULL,             -- Reason for the session change
+    Edit_reason VARCHAR(100) DEFAULT 'NA',    -- Reason for any edits made
+    Status VARCHAR(10) CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')) NOT NULL, -- Status of the session
+    Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- When the session was created/changed
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Recurring_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
+);

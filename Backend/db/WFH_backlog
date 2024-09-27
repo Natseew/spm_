@@ -1,13 +1,14 @@
 CREATE TABLE IF NOT EXISTS WFH_Backlog (
-    Req_ID INT NOT NULL,                        -- Foreign Key from WFH_Request
-    Staff_ID INT NOT NULL,                      -- Foreign Key from Employee
-    Req_date DATE NOT NULL,                     -- Request Date
-    Sched_date_am DATE[] NOT NULL,            -- Array type to store AM scheduled dates
-    Sched_date_pm DATE[] NOT NULL,            -- Array type to store PM scheduled dates
-    Approved BOOLEAN NOT NULL DEFAULT FALSE,     -- Approval status
-    Rejected BOOLEAN NOT NULL DEFAULT FALSE,      -- Rejection status
-    Reason VARCHAR(100),                         -- Reason for request
-    FOREIGN KEY (Req_ID) REFERENCES WFH_Request(Req_ID) ON DELETE CASCADE,  -- Foreign Key to WFH_Request
-    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE,    -- Foreign Key to Employee
-    PRIMARY KEY (Req_ID, Staff_ID)              -- Composite Primary Key
+    Change_ID SERIAL PRIMARY KEY,                  -- Unique ID for each change (auto-increment)
+    Req_ID INT NOT NULL,                           -- Foreign Key from WFH_Request
+    Staff_ID INT NOT NULL,                         -- Foreign Key from Employee
+    Sched_date DATE NOT NULL,                      -- Scheduled date for WFH
+    TimeSlot CHAR(2) CHECK (TimeSlot IN ('AM', 'PM', 'FD')) NOT NULL, -- AM, PM, or Full Day (FD)
+    Reason VARCHAR(100) NOT NULL,                  -- Reason for the change ("New Request", "Edit", "Withdraw", "Approve/Reject")
+    Edit_reason VARCHAR(100) DEFAULT 'NA',         -- Edit reason, in case of an edit
+    Recurring BOOLEAN NOT NULL DEFAULT FALSE,      -- Indicates if this change is for a recurring request
+    Change_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Timestamp when the change was made
+    Status VARCHAR(10) CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')) NOT NULL,  -- Status reflecting action taken
+    FOREIGN KEY (Req_ID) REFERENCES WFH_Adhoc_Request(Req_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
 );
