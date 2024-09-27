@@ -407,9 +407,6 @@ router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
   }
 });
 
-
-
-
 // GET all employees
 router.get('/', async (req, res) => {
   try {
@@ -419,6 +416,22 @@ router.get('/', async (req, res) => {
     console.error('Error fetching employees:', error);
     res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
+});
+
+//Get all approved wfh of employee
+router.get('/employee/:id', async(req, res) => {
+  try{
+    const result = await client.query(`
+      SELECT * FROM wfh_backlog w
+      WHERE w.staff_id = ${req.params.id}
+      AND w.status = 'Approved'
+    `);
+    console.log(result.rows)
+    res.status(200).json(result.rows)
+  }catch(error){
+
+  }
+
 });
 
 module.exports = router;
