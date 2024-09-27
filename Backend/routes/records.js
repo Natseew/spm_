@@ -422,9 +422,9 @@ router.get('/', async (req, res) => {
 router.get('/employee/:id', async(req, res) => {
   try{
     const result = await client.query(`
-      SELECT * FROM wfh_sessions w
+      SELECT * FROM wfh_backlog w
       WHERE w.staff_id = ${req.params.id}
-      AND w.approved = true
+      AND w.status = 'Approved'
     `);
     console.log(result.rows)
     res.status(200).json(result.rows)
