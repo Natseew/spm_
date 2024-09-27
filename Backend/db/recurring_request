@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS recurring_request (
+    requestID SERIAL PRIMARY KEY,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    staffID INT NOT NULL,
+    day_of_week VARCHAR(9) CHECK (day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')) NOT NULL,
+    request_reason TEXT,
+    status VARCHAR(10) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn')) NOT NULL,
+    timeslot VARCHAR(2) CHECK (timeslot IN ('AM', 'PM', 'FD')) NOT NULL,
+    wfh_dates DATE[],
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reject_reason TEXT,
+    FOREIGN KEY (staffID) REFERENCES Employee(Staff_ID)
+);
