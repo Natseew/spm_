@@ -22,7 +22,9 @@
     "react-dom": "^18",
     "react-mui-scheduler": "^2.0.4",
     "react-router-dom": "^6.26.1",
-    "spm-g9-t4": "file:"
+    "spm-g9-t4": "file:",
+    "uuid": "^10.0.0",
+    "uuidv4": "^6.2.13"
   },
   "devDependencies": {
     "eslint": "^8",
