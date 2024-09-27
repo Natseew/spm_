@@ -19,6 +19,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { addMonths, subMonths } from "date-fns";
+import dayjs from 'dayjs';
 
 export default function RecurringArrangementForm() {
   const [staffId, setStaffId] = useState('');
@@ -42,11 +43,10 @@ export default function RecurringArrangementForm() {
       const response = await fetch(`http://localhost:4000/wfh_backlog/employee/${staffId}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      const dates = Array.isArray(data) ? data.map(item => new Date(item.Sched_date)) : [];
-      const datex = data.map(item => new Date(item.Sched_date));
+      const dates = Array.isArray(data) ? data.map(item => new Date(item.sched_date)) : [];
       setDisabledDates(dates);
       console.log(data);
-      console.log(datex);
+      console.log(dates);
     } catch (error) {
       console.error('Error fetching scheduled dates:', error);
       setDisabledDates([]); // Reset to an empty array on error
