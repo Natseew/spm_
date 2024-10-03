@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
 
-// POST WFH request
+// POST AD_HOC_WFH request
 router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, status = 'Pending', reason } = req.body; // Default status is 'Pending'
 
@@ -338,54 +338,46 @@ router.get('/schedule/:department_name/:date', async (req, res) => {
 });
 
 
-// GET WFH requests by staff_id and status
-router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
+router.get('/wfh_requests/:staff_id', async (req, res) => {
   const { staff_id, status } = req.params;
-  console.log('Staff ID:', staff_id);
-  console.log('Status:', status);
 
   try {
-    // Query to fetch pending WFH requests for the specified staff_id and status
+    // Query to fetch pending WFH ad-hoc requests for the specified staff_id and status
     const pendingRequests = await client.query(
       `
       SELECT 
-        wfh.Change_ID, 
         wfh.Sched_date, 
         wfh.TimeSlot, 
         wfh.Status,
         adhoc.Req_date,
-        adhoc.Reason
-       
+        adhoc.Reason,
+        'adhoc' as request_type -- Add a field to indicate this is an ad-hoc request
       FROM 
         WFH_Backlog wfh
       JOIN 
-        WFH_Adhoc_Request adhoc ON wfh.Staff_ID = adhoc.Staff_ID
-     
+        WFH_Adhoc_Request adhoc ON wfh.req_id = adhoc.req_id
       WHERE 
         wfh.Staff_ID = $1
-      AND 
-        wfh.Status = $2;
       `,
-      [staff_id, status]
+      [staff_id]
     );
-   
-     // Query to fetch recurring WFH requests for the specified staff_id and status
-     const recurringRequests = await client.query(
+
+    // Query to fetch recurring WFH requests for the specified staff_id and status
+    const recurringRequests = await client.query(
       `
       SELECT 
         recurring.Start_date, 
         recurring.End_date, 
         recurring.Day_of_week, 
-        recurring.Reason
+        recurring.Reason,
+        recurring.Status,
+        'recurring' as request_type -- Add a field to indicate this is a recurring request
       FROM 
         WFH_Recurring_Request recurring
       WHERE 
         recurring.Staff_ID = $1
-      AND 
-        recurring.Status = $2;
-     
       `,
-      [staff_id, status]
+      [staff_id]
     );
 
     // Combine the results from both adhoc and recurring requests

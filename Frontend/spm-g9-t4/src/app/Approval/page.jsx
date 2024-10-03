@@ -15,10 +15,10 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { addMonths, subMonths } from "date-fns"; // Importing date functions
+import { addMonths, subMonths, isWeekend } from "date-fns"; // Importing date functions
 
 export default function ArrangementForm() {
-  const [staffId, setStaffId] = useState(""); // Staff ID input
+  const [staffId] = useState("140001"); // Hardcoded Staff ID
   const [wfhDate, setWfhDate] = useState(null); // For WFH date picker
   const [scheduleType, setScheduleType] = useState(""); // For selecting AM, PM, or Full Day
   const [reason, setReason] = useState(""); // For reason textarea
@@ -37,7 +37,7 @@ export default function ArrangementForm() {
 
     // Prepare payload to match the backend schema
     const payload = {
-      staff_id: staffId,
+      staff_id: staffId, // Use the hardcoded Staff ID
       req_date: reqDate, // Request date
       sched_date: formattedWfhDate, // Scheduled WFH date
       timeSlot: scheduleType === "Full Day" ? 'FD' : scheduleType, // Match TimeSlot (AM, PM, or FD)
@@ -80,21 +80,14 @@ export default function ArrangementForm() {
         </Typography>
 
         <form noValidate autoComplete="off">
-          <TextField
-            label="Staff ID"
-            value={staffId}
-            onChange={(e) => setStaffId(e.target.value)}
-            fullWidth
-            margin="normal"
-            required
-          />
-
+          {/* The Staff ID is hardcoded, so we no longer need the TextField for it */}
           <DatePicker
             label="WFH Date"
             value={wfhDate}
             onChange={(newValue) => setWfhDate(newValue)}
             minDate={minDate} // Set minimum date
             maxDate={maxDate} // Set maximum date
+            shouldDisableDate={(date) => isWeekend(date)} // Disable weekends
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
             )}
