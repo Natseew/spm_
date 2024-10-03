@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS ActivityLog (
+    LogID SERIAL PRIMARY KEY,
+    requestID INT,
+    recordID INT,
+    activity VARCHAR(50) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requestID) REFERENCES recurring_request(requestID),
+    FOREIGN KEY (recordID) REFERENCES wfh_records(recordID)
+);
