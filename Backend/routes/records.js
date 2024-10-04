@@ -2,81 +2,112 @@ const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
 
-// Update WFH_Request and WFH_Sessions DB after staff submit WFH request form
-router.post('/wfh_request', async (req, res) => {
-  const { staff_id, req_date, dates, approved, rejected, reason } = req.body;
-
-  if (!staff_id || !req_date || !dates) {
-    return res.status(400).json({ message: 'Staff ID, request date, and dates with AM/PM info are required.' });
-  }
+// POST WFH request
+router.post('/wfh_adhoc_request', async (req, res) => {
+  const { staff_id, req_date, sched_date, timeSlot, status = 'Pending', reason } = req.body; // Default status is 'Pending'
 
   try {
-    // Insert or update into WFH_Request
-    const result = await client.query(
+    // Begin a transaction to ensure atomicity
+    await client.query('BEGIN');
+
+    // Check if a request for the same employee and date already exists with a non-rejected status
+    const existingRequest = await client.query(
       `
-      INSERT INTO WFH_Request (Staff_ID, Req_date, Approved, Rejected, Reason)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (Staff_ID, Req_date)
-      DO UPDATE SET
-        Approved = EXCLUDED.Approved,
-        Rejected = EXCLUDED.Rejected,
-        Reason = EXCLUDED.Reason
-      RETURNING Req_ID;
+      SELECT * FROM WFH_Adhoc_Request 
+      WHERE Staff_ID = $1 AND Sched_date = $2 AND Status IN ('Pending', 'Approved')
       `,
-      [staff_id, req_date, approved || false, rejected || false, reason || null]
+      [staff_id, sched_date]
     );
 
-    const req_id = result.rows[0].req_id;
+    if (existingRequest.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        message: 'A WFH request for this date already exists and is either pending or approved. Please choose a different date or wait for the current request to be processed.'
+      });
+    }
+   
+    // Get the reporting manager ID for the staff
+    const managerResult = await client.query(
+      `SELECT reporting_manager FROM Employee WHERE staff_id = $1`,
+      [staff_id]
+    );
+  
+    if (managerResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Manager ID not found.' });
+    }
 
-    // Insert into WFH_Sessions for each date
-    // Eg. Dates
-            // "dates": [
-            //   { "sched_date": "2024-09-21", "am": true, "pm": false },
-            //   { "sched_date": "2024-09-22", "am": false, "pm": true }
-            // ]
-    const sessionsPromises = dates.flatMap(({ sched_date, am, pm }) => {
-      const sessions = [];
-      if (am) {
-        sessions.push(client.query(
-          `
-          INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-          VALUES ($1, $2, $3, TRUE, FALSE, FALSE, FALSE)
-          ON CONFLICT (Req_ID, Sched_date)
-          DO UPDATE SET
-            AM = EXCLUDED.AM,
-            PM = EXCLUDED.PM,
-            Approved = EXCLUDED.Approved,
-            Rejected = EXCLUDED.Rejected;
-          `,
-          [req_id, staff_id, sched_date]
-        ));
-      }
-      if (pm) {
-        sessions.push(client.query(
-          `
-          INSERT INTO WFH_Sessions (Req_ID, Staff_ID, Sched_date, AM, PM, Approved, Rejected)
-          VALUES ($1, $2, $3, FALSE, TRUE, FALSE, FALSE)
-          ON CONFLICT (Req_ID, Sched_date)
-          DO UPDATE SET
-            AM = EXCLUDED.AM,
-            PM = EXCLUDED.PM,
-            Approved = EXCLUDED.Approved,
-            Rejected = EXCLUDED.Rejected;
-          `,
-          [req_id, staff_id, sched_date]
-        ));
-      }
-      return sessions;
-    });
+    const reportingManagerId = managerResult.rows[0].reporting_manager;
 
-    await Promise.all(sessionsPromises);
+    // If the staff is the reporting manager, auto-approve the request
+    let updatedStatus = status;
+    if (staff_id === reportingManagerId) {
+      updatedStatus = 'Approved'; // Auto-approve if the reporting manager is making the request
+    }
 
-    res.status(200).json({ message: 'WFH request updated successfully.' });
+    // Check the number of teammates WFH on the scheduled date
+    const wfhCountResult = await client.query(
+      `SELECT COUNT(*) AS wfh_count FROM WFH_Backlog
+       WHERE Sched_date = $1 AND Status = 'Approved' AND Staff_ID IN (
+         SELECT staff_id FROM Employee WHERE reporting_manager = $2
+       )`,
+      [sched_date, reportingManagerId]
+    );
+
+    const wfhCount = parseInt(wfhCountResult.rows[0].wfh_count, 10);
+    
+    // Get total number of people in the sub-team
+    const totalCountResult = await client.query(
+      `SELECT COUNT(*) AS total_count FROM Employee WHERE reporting_manager = $1`,
+      [reportingManagerId]
+    );
+
+    const totalCount = parseInt(totalCountResult.rows[0].total_count, 10);
+
+    // Calculate new WFH count if this request is approved
+    const newWfhCount = wfhCount + 1;
+    const wfhFraction = newWfhCount / totalCount;
+
+    if (wfhFraction >= 0.5 && staff_id !== reportingManagerId) {
+      // If 50% or more of the team is WFH, reject the request
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'WFH request denied. At least 50% of the team must be in the office.' });
+    }
+
+    // Insert into WFH_Adhoc_Request table with the updated status
+    const wfhRequestResult = await client.query(
+      `
+      INSERT INTO WFH_Adhoc_Request (Staff_ID, Req_date, Sched_date, TimeSlot, Status, Reason)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING Req_ID;
+      `,
+      [staff_id, req_date, sched_date, timeSlot, updatedStatus, reason]
+    );
+
+    const req_id = wfhRequestResult.rows[0].req_id;
+
+    // Insert into WFH_Backlog table with the updated status
+    await client.query(
+      `
+      INSERT INTO WFH_Backlog (Req_ID, Staff_ID, Sched_date, TimeSlot, Reason, Status)
+      VALUES ($1, $2, $3, $4, $5, $6);
+      `,
+      [req_id, staff_id, sched_date, timeSlot, 'New Request', updatedStatus]
+    );
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    res.status(201).json({ message: 'WFH request submitted successfully', req_id });
+
   } catch (error) {
-    console.error('Error updating WFH request:', error);
+    // Rollback transaction in case of any error
+    await client.query('ROLLBACK');
+    console.error('Error submitting WFH request:', error);
     res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
+
 
 // Update WFH_Request and WFH_Sessions DB after manager clicks "approve/reject" button
 router.post('/wfh_approval', async (req, res) => {
@@ -307,6 +338,75 @@ router.get('/schedule/:department_name/:date', async (req, res) => {
 });
 
 
+// GET WFH requests by staff_id and status
+router.get('/wfh_requests/:staff_id/:status', async (req, res) => {
+  const { staff_id, status } = req.params;
+  console.log('Staff ID:', staff_id);
+  console.log('Status:', status);
+
+  try {
+    // Query to fetch pending WFH requests for the specified staff_id and status
+    const pendingRequests = await client.query(
+      `
+      SELECT 
+        wfh.Change_ID, 
+        wfh.Sched_date, 
+        wfh.TimeSlot, 
+        wfh.Status,
+        adhoc.Req_date,
+        adhoc.Reason
+       
+      FROM 
+        WFH_Backlog wfh
+      JOIN 
+        WFH_Adhoc_Request adhoc ON wfh.Staff_ID = adhoc.Staff_ID
+     
+      WHERE 
+        wfh.Staff_ID = $1
+      AND 
+        wfh.Status = $2;
+      `,
+      [staff_id, status]
+    );
+   
+     // Query to fetch recurring WFH requests for the specified staff_id and status
+     const recurringRequests = await client.query(
+      `
+      SELECT 
+        recurring.Start_date, 
+        recurring.End_date, 
+        recurring.Day_of_week, 
+        recurring.Reason
+      FROM 
+        WFH_Recurring_Request recurring
+      WHERE 
+        recurring.Staff_ID = $1
+      AND 
+        recurring.Status = $2;
+     
+      `,
+      [staff_id, status]
+    );
+
+    // Combine the results from both adhoc and recurring requests
+    const combinedRequests = [
+      ...pendingRequests.rows,
+      ...recurringRequests.rows
+    ];
+
+    if (combinedRequests.length === 0) {
+      return res.status(404).json({ message: 'No requests found.' });
+    }
+
+    // Return the pending requests
+    res.status(200).json(combinedRequests);
+    
+  } catch (error) {
+    console.error('Error fetching pending WFH requests:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 // GET all employees
 router.get('/', async (req, res) => {
   try {
@@ -318,79 +418,20 @@ router.get('/', async (req, res) => {
   }
 });
 
-
-// GET all adhoc request 
-router.get('/adhoc_request', async (req, res) => {
-  try {
-    const result = await client.query('SELECT * FROM wfh_adhoc_request');
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching employees:', error);
-    res.status(500).json({ message: 'Internal server error. ' + error.message });
-  }
-});
-
-
-// // GET all adhoc request 
-// router.get('/recurring_schedule', async (req, res) => {
-//   try {
-//     const result = await client.query('SELECT * FROM wfh_recurring_sessions');
-//     res.status(200).json(result.rows);
-//   } catch (error) {
-//     console.error('Error fetching employees:', error);
-//     res.status(500).json({ message: 'Internal server error. ' + error.message });
-//   }
-// });
-router.get('/recurring_schedule', async (req, res) => {
-  try {
+//Get all approved wfh of employee
+router.get('/employee/:id', async(req, res) => {
+  try{
     const result = await client.query(`
-      SELECT 
-          ws.req_id, 
-          ws.staff_id, 
-          e.staff_fname,
-          e.staff_lname,
-          ws.sched_date, 
-          ws.timeslot, 
-          ws.status
-      FROM wfh_recurring_sessions ws
-      JOIN Employee e ON ws.staff_id = e.staff_id;
+      SELECT * FROM wfh_backlog w
+      WHERE w.staff_id = ${req.params.id}
+      AND w.status = 'Approved'
     `);
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching schedule:', error);
-    res.status(500).json({ message: 'Internal server error. ' + error.message });
+    console.log(result.rows)
+    res.status(200).json(result.rows)
+  }catch(error){
+
   }
+
 });
 
-// GET WFH Adhoc Requests along with Employee names
-router.get('/adhoc_requests', async (req, res) => {
-  try {
-    const query = `
-      SELECT 
-          wr.Req_ID, 
-          wr.Staff_ID, 
-          e.staff_fname, 
-          e.staff_lname, 
-          wr.Req_date, 
-          wr.Sched_date, 
-          wr.TimeSlot, 
-          wr.Status, 
-          wr.Reason, 
-          wr.Edit_reason
-      FROM 
-          WFH_Adhoc_Request wr
-      JOIN 
-          Employee e ON wr.Staff_ID = e.Staff_ID;
-    `;
-
-    const result = await client.query(query);
-    
-    // Return the retrieved rows as JSON
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error fetching WFH Adhoc Requests:', error);
-    res.status(500).json({ message: 'Internal server error. ' + error.message });
-  }
-});
-
-  module.exports = router;
+module.exports = router;

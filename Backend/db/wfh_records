@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS wfh_records (
+    recordID SERIAL PRIMARY KEY,
+    staffID INT NOT NULL,
+    wfh_date DATE NOT NULL,
+    recurring BOOLEAN DEFAULT FALSE,
+    timeslot VARCHAR(2) CHECK (timeslot IN ('AM', 'PM', 'FD')) NOT NULL,
+    status VARCHAR(10) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn')) NOT NULL,
+    request_reason TEXT,
+    requestID INT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    requestDate DATE NOT NULL,
+    reject_reason TEXT,
+    FOREIGN KEY (staffID) REFERENCES Employee(Staff_ID),
+    FOREIGN KEY (requestID) REFERENCES recurring_request(requestID)
+);
