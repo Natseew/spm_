@@ -13,7 +13,7 @@ const AdHocSchedule = () => {
     useEffect(() => {
         const fetchAdhocData = async () => {
             try {
-                const response = await fetch('http://localhost:4000/adhoc_requests'); // Adjust endpoint as needed
+                const response = await fetch('http://localhost:4000/wfh_requests'); // Adjust endpoint as needed
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
