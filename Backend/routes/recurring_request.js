@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Insert recurring WFH request
+//submit recurring request
 router.post('/submit', async (req, res) => {
     const { staff_id, start_date, end_date, day_of_week, request_reason, timeslot } = req.body;
 
@@ -48,23 +48,77 @@ router.post('/submit', async (req, res) => {
     }
 
     try {
-        // Fetch existing dates from recurring_request and wfh_records table
+        // Fetch existing dates from recurring_request and wfh_records tables
         const existingDatesResult = await client.query(`
-            SELECT unnest(wfh_dates) AS date FROM recurring_request
+            SELECT unnest(wfh_dates) AS date FROM recurring_request WHERE staff_id = $1
             UNION ALL
-            SELECT wfh_date FROM wfh_records; 
-        `);
+            SELECT wfh_date FROM wfh_records WHERE staffid = $1`,
+            [staff_id]
+        );
 
         // Convert existing dates to a Set
-        const existingDates = new Set(existingDatesResult.rows.map(row => row.date));
-
+        const existingDates = new Set(existingDatesResult.rows.map(row => {
+            return row.date.toISOString ? row.date.toLocaleDateString('en-CA').split('T')[0] : row.date; // Convert to string format if necessary
+        }));
+        
         console.log('Existing Dates:', Array.from(existingDates)); // Debugging: Log existing dates
         console.log('Calculated wfh_dates:', wfh_dates); // Debugging: Log calculated wfh_dates
 
         // Check for overlaps
+
         const overlaps = wfh_dates.some(date => existingDates.has(date));
         if (overlaps) {
-            return res.status(409).json({ message: 'One or more requested WFH dates overlap with existing dates.' });
+            console.log('One or more requested WFH dates overlap with existing dates.');
+        } else {
+            console.log('No overlaps found.');
+        }
+        if (overlaps) {
+            return res.status(409).json({ message: `The following requested WFH dates overlap with existing dates` });
+            console.log("There is overlap");
+        }
+
+        // Get the reporting manager ID for the staff
+        const managerResult = await client.query(
+            `SELECT Reporting_Manager FROM Employee WHERE Staff_ID = $1`,
+            [staff_id]
+        );
+    
+        if (managerResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Staff ID not found.' });
+        }
+    
+        const reportingManagerId = managerResult.rows[0].reporting_manager;
+            // Check if approving this request would cause more than 50% of the team to be WFH
+        const totalTeamResult = await client.query(
+            `SELECT COUNT(*) AS total_team FROM Employee WHERE Reporting_Manager = $1 AND Staff_ID != $1`,
+            [reportingManagerId]
+        );
+        const totalTeam = parseInt(totalTeamResult.rows[0].total_team, 10) + 1;
+    
+        for (const date of wfh_dates) {
+            console.log(date); // Prints each date
+        }
+
+        const teamWfhResult = await client.query(
+            `
+            SELECT COUNT(*) AS team_wfh FROM wfh_records 
+            WHERE wfh_date = $1 AND status = 'Approved' AND staffID IN (
+            SELECT Staff_ID FROM Employee WHERE Reporting_Manager = $2 OR Staff_ID = $2
+            )
+            `,
+            [wfh_dates, reportingManagerId]
+        );
+        const teamWfh = parseInt(teamWfhResult.rows[0].team_wfh, 10);
+    
+        const newWfhCount = teamWfh + 1;
+        const wfhFraction = newWfhCount / totalTeam;
+    
+        if (wfhFraction > 0.5) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({
+            message: 'WFH request denied. More than 50% of the team would be WFH on this date.',
+            });
         }
 
         // Insert into recurring_request table
@@ -85,6 +139,7 @@ router.post('/submit', async (req, res) => {
         res.status(500).json({ message: 'Please fill up the form. ' + error.message });
     }
 });
+
 
 // Delete recurring WFH request
 router.delete('/:requestID', async (req, res) => {
