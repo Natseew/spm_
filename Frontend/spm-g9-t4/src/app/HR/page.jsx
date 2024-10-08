@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper, Button } from '@mui/material';
+import Link from 'next/link';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -35,13 +36,14 @@ const getStatusLabel = (scheduleStatus) => {
   }
 };
 
-const StaffListTable = ({ staffData }) => (
+const StaffListTable = ({ staffData, date }) => (
   <Table sx={{ marginTop: '20px' }}>
     <TableHead>
       <TableRow>
         <TableCell>Full Name</TableCell>
         <TableCell>Department</TableCell>
         <TableCell>Status</TableCell>
+        <TableCell>Reporting Manager ID</TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
@@ -51,11 +53,20 @@ const StaffListTable = ({ staffData }) => (
             <TableCell>{`${staff.staff_fname} ${staff.staff_lname}`}</TableCell>
             <TableCell>{staff.dept}</TableCell>
             <TableCell>{getStatusLabel(staff.schedule_status)}</TableCell>
+            {/* <TableCell>
+              {staff.reporting_manager ? (
+                <Link href={`/TeamSchedule?manager_id=${staff.reporting_manager}&date=${date}`} passHref>
+                  {staff.reporting_manager}
+                </Link>
+              ) : (
+                'N/A'
+              )}
+            </TableCell> */}
           </TableRow>
         ))
       ) : (
         <TableRow>
-          <TableCell colSpan={3} align="center">No staff data available.</TableCell>
+          <TableCell colSpan={4} align="center">No staff data available.</TableCell>
         </TableRow>
       )}
     </TableBody>
@@ -68,7 +79,6 @@ const HRPage = () => {
   const [selectedSessions, setSelectedSessions] = useState({ AM: true, PM: true });
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [staffData, setStaffData] = useState([]);
-  const [totalStaffCount, setTotalStaffCount] = useState(0);
 
   const handleDepartmentChange = (event) => {
     const { value, checked } = event.target;
@@ -93,7 +103,6 @@ const HRPage = () => {
       console.log("Frontend Response:", response.data);
 
       setStaffData(response.data.staff_schedules || []);
-      setTotalStaffCount(response.data.total_staff || 0);
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
     }
@@ -196,7 +205,7 @@ const HRPage = () => {
         </Grid>
       </Grid>
 
-      <StaffListTable staffData={staffData} />
+      <StaffListTable staffData={staffData} date={date} />
     </Box>
   );
 };
