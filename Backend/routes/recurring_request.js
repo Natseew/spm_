@@ -18,10 +18,10 @@ router.get('/', async (req, res) => {
 
 // Insert recurring WFH request
 router.post('/submit', async (req, res) => {
-    const { staffID, start_date, end_date, day_of_week, request_reason, timeslot } = req.body;
+    const { staff_id, start_date, end_date, day_of_week, request_reason, timeslot } = req.body;
 
     // Validate required fields
-    if (!staffID || !start_date || !end_date || !day_of_week || !request_reason || !timeslot) {
+    if (!staff_id || !start_date || !end_date || !day_of_week || !request_reason || !timeslot) {
         return res.status(400).json({ message: 'Staff ID, start date, end date, day of week, request reason, and timeslot are required.' });
     }
 
@@ -39,8 +39,6 @@ router.post('/submit', async (req, res) => {
     const wfh_dates = [];
     const startDate = new Date(start_date);
     const endDate = new Date(end_date);
-    
-    // Calculate the target day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
     const targetDay = (day_of_week % 7); // Convert 1-5 to 0-4 (Monday to Friday)
 
     for (let date = startDate; date <= endDate; date.setDate(date.getDate() + 1)) {
@@ -50,14 +48,33 @@ router.post('/submit', async (req, res) => {
     }
 
     try {
+        // Fetch existing dates from recurring_request and wfh_records table
+        const existingDatesResult = await client.query(`
+            SELECT unnest(wfh_dates) AS date FROM recurring_request
+            UNION ALL
+            SELECT wfh_date FROM wfh_records; 
+        `);
+
+        // Convert existing dates to a Set
+        const existingDates = new Set(existingDatesResult.rows.map(row => row.date));
+
+        console.log('Existing Dates:', Array.from(existingDates)); // Debugging: Log existing dates
+        console.log('Calculated wfh_dates:', wfh_dates); // Debugging: Log calculated wfh_dates
+
+        // Check for overlaps
+        const overlaps = wfh_dates.some(date => existingDates.has(date));
+        if (overlaps) {
+            return res.status(409).json({ message: 'One or more requested WFH dates overlap with existing dates.' });
+        }
+
         // Insert into recurring_request table
         const result = await client.query(
             `
-            INSERT INTO recurring_request (staffID, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates, status)
+            INSERT INTO recurring_request (staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates, status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending')
             RETURNING requestID;
             `,
-            [staffID, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates]
+            [staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates]
         );
 
         const requestID = result.rows[0].requestID;
@@ -65,7 +82,7 @@ router.post('/submit', async (req, res) => {
         res.status(201).json({ message: 'Recurring WFH request submitted successfully', requestID });
     } catch (error) {
         console.error('Error submitting recurring WFH request:', error);
-        res.status(500).json({ message: 'Internal server error. ' + error.message });
+        res.status(500).json({ message: 'Please fill up the form. ' + error.message });
     }
 });
 

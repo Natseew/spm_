@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS WFH_Adhoc_Request (
+    Req_ID SERIAL PRIMARY KEY,                -- Primary Key with auto-increment
+    Staff_ID INT NOT NULL,                    -- Foreign Key from Employee
+    Req_date DATE NOT NULL,                   -- Date the request was made
+    Sched_date DATE NOT NULL,                 -- The scheduled WFH date
+    TimeSlot CHAR(2) CHECK (TimeSlot IN ('AM', 'PM', 'FD')) NOT NULL, -- AM, PM, or Full-Day
+    Status VARCHAR(10) CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')) DEFAULT 'Pending',  -- If edited then go back to pending & change "edit reason" column
+    Reason VARCHAR(100) NOT NULL,             -- Reason for request
+    Edit_reason VARCHAR(100) DEFAULT 'NA',    
+    FOREIGN KEY (Staff_ID) REFERENCES Employee(Staff_ID) ON DELETE CASCADE
+);
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   TextField,
   Button,
@@ -19,10 +19,9 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { addMonths, subMonths } from "date-fns";
-import dayjs from 'dayjs';
 
 export default function RecurringArrangementForm() {
-  const [staffId, setStaffId] = useState('');
+  const [staff_id, setStaffId] = useState('');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [dayOfWeek, setDayOfWeek] = useState('');
@@ -30,58 +29,30 @@ export default function RecurringArrangementForm() {
   const [timeslot, setTimeSlot] = useState('');
   const [open, setOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [disabledDates, setDisabledDates] = useState([]);
 
   // Current date and date restrictions
   const today = new Date(); // Current date
   const minDate = subMonths(today, 2); // 2 months back
   const maxDate = addMonths(today, 3); // 3 months in front
 
-  // Fetch scheduled dates
-  const scheduledDates = async () => {
-    try {
-      const staffId = 140918; // Hardcoded staff ID here
-      const response = await fetch(`http://localhost:4000/wfh_records/${staffId}`);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const data = await response.json();
-      const dates = Array.isArray(data) ? data.map(item => new Date(item.sched_date)) : [];
-      setDisabledDates(dates);
-      console.log(data);
-      console.log(dates);
-    } catch (error) {
-      console.error('Error fetching scheduled dates:', error);
-      setDisabledDates([]); // Reset to an empty array on error
-    }
-  };
-  
-  // Log disabledDates whenever it changes
-  useEffect(() => {
-    console.log({ disabledDates });
-  }, [disabledDates]);
-
-  // Fetch scheduled dates on component mount
-  useEffect(() => {
-    scheduledDates();
-  }, []);
-
-  // Function to determine if a date should be disabled
-  const shouldDisableDate = (date) => {
-    return disabledDates.some(disabledDate => 
-        disabledDate.toDateString() === date.toDateString()
-      );
+  const handleCancel = () => {
+    setStaffId('');
+    setStartDate(null);
+    setEndDate(null);
+    setDayOfWeek('');
+    setReason('');
+    setTimeSlot('');
   };
 
-  // Handles form submission
   const handleSubmit = async () => {
     const payload = {
-      staffid: staffId,
+      staff_id: staff_id,
       start_date: startDate,
       end_date: endDate,
       day_of_week: dayOfWeek,
       request_reason: request_reason,
       timeslot: timeslot
     };
-
     setOpen(true);
 
     try {
@@ -97,21 +68,51 @@ export default function RecurringArrangementForm() {
         const data = await response.json();
         setStatusMessage(data.message);
       } else {
-        setStatusMessage('Request failed: ' + response.statusText);
+        // setStatusMessage('Recurring request application failed: Please try again.' + response.statusText);
+        // console.log(response); 
+        // Handle different HTTP status codes
+        switch (response.status) {
+          case 400:
+              // Bad Request
+              setStatusMessage('Bad Request: (test)' + data.message);
+              break;
+          case 409:
+              // Conflict
+              setStatusMessage('Conflict: (test)' + data.message);
+              break;
+          case 500:
+              // Internal Server Error
+              setStatusMessage('Server Error: (test)' + data.message);
+              break;
+          default:
+              // Other errors
+              setStatusMessage('Error: (test)' + data.message);
+              break;
+      }
       }
     } catch (error) {
       console.error("Error:", error);
-      setStatusMessage("Please fill up the form with the correct details and try again");
+      setStatusMessage("Request failed. Please fill up the form again");
+      // Handle different HTTP status codes
+    //   switch (response.status) {
+    //     case 400:
+    //         // Bad Request
+    //         setStatusMessage('Bad Request: (test)' + data.message);
+    //         break;
+    //     case 409:
+    //         // Conflict
+    //         setStatusMessage('Conflict: (test)' + data.message);
+    //         break;
+    //     case 500:
+    //         // Internal Server Error
+    //         setStatusMessage('Server Error: (test)' + data.message);
+    //         break;
+    //     default:
+    //         // Other errors
+    //         setStatusMessage('Error: (test)' + data.message);
+    //         break;
+    // }
     }
-  };
-
-  // Handles form cancellation
-  const handleCancel = () => {
-    setStaffId('');
-    setStartDate(null);
-    setEndDate(null);
-    setDayOfWeek('');
-    setReason('');
   };
 
   return (
@@ -120,11 +121,11 @@ export default function RecurringArrangementForm() {
         <Typography variant="h6" gutterBottom>
           WFH Recurring Request Application
         </Typography>
-        
+
         <form noValidate autoComplete="off">
           <TextField
             label="Staff ID"
-            value={staffId}
+            value={staff_id}
             onChange={(e) => setStaffId(e.target.value)}
             fullWidth
             margin="normal"
@@ -136,7 +137,6 @@ export default function RecurringArrangementForm() {
             value={startDate}
             minDate={minDate}
             maxDate={maxDate}
-            shouldDisableDate={shouldDisableDate} // Use the function here
             onChange={(newValue) => setStartDate(newValue)}
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
@@ -148,7 +148,6 @@ export default function RecurringArrangementForm() {
             value={endDate}
             minDate={minDate}
             maxDate={maxDate}
-            shouldDisableDate={shouldDisableDate} // Use the function here
             onChange={(newValue) => setEndDate(newValue)}
             renderInput={(params) => (
               <TextField {...params} fullWidth margin="normal" required />
@@ -180,7 +179,6 @@ export default function RecurringArrangementForm() {
               <MenuItem value={"AM"}>AM</MenuItem>
               <MenuItem value={"PM"}>PM</MenuItem>
               <MenuItem value={"FD"}>FD</MenuItem>
-
             </Select>
           </FormControl>
 
