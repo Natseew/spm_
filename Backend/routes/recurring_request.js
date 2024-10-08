@@ -118,5 +118,50 @@ router.delete('/:requestID', async (req, res) => {
     }
 });
 
+router.post('/approve/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+
+    try {
+        await client.query('BEGIN');
+
+        // Step 1: Update the recurring_request status to 'Approved'
+        const updateResult = await client.query(
+            `UPDATE recurring_request
+             SET status = 'Approved'
+             WHERE requestid = $1
+             RETURNING staff_id, wfh_dates, timeslot, request_reason;`,
+            [requestid]
+        );
+
+        // Check if the request was found
+        if (updateResult.rowCount === 0) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        const { status, staff_id, wfh_dates, timeslot, request_reason } = updateResult.rows[0];
+
+        if (status === 'Approved') {
+            return res.status(400).json({ message: 'Request has already been approved.' });
+        }
+
+        // Step 2: Insert into wfh_records for each date in wfh_dates
+        await client.query(
+            `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
+             SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Approved', $4, $5, CURRENT_DATE;`,
+            [staff_id, wfh_dates, timeslot, request_reason, requestid]
+        );
+
+        await client.query('COMMIT');
+
+        // Send a success response
+        res.status(200).json({ message: 'Request approved and WFH records created successfully.' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error approving request:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+
 
 module.exports = router;
