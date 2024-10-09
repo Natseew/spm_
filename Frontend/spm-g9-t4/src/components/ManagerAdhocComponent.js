@@ -42,8 +42,10 @@ const AdHocSchedule = () => {
 
                 const wfhData = await wfhResponse.json();
                 setAdhocData(wfhData); // Store ad hoc data in state
-                console.log(employeeData)
-
+                
+                console.log("Fetched Employee Data:",employeeData)
+                console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
+                console.log('Adhoc Data:', adhocData)
             } catch (error) {
                 console.error('Error during fetch operations:', error);
                 setError(error.message);
@@ -53,6 +55,12 @@ const AdHocSchedule = () => {
         };
         fetchEmployeeAndAdhocData();
     }, []); // Fetch once when component mounts
+
+    useEffect(() => {
+        if (adhocData.length > 0) {
+            console.log('Adhoc Data after update:', adhocData);
+        }
+    }, [adhocData]); // This will run every time adhocData is updated
 
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
@@ -89,8 +97,8 @@ const AdHocSchedule = () => {
     });
     
     // Helper function to get the staff name by staff ID
-    const getStaffName = (staff_id) => {
-        const employee = employeeData.find(item => item.staff_id === staff_id); // Check against the full employee data
+    const getStaffName = (id) => {
+        const employee = employeeData.find(item => item.staff_id === id); // Check against the full employee data
         return employee ? `${employee.staff_fname} ${employee.staff_lname}` : 'Unknown'; // Fixed property name here
     };
 
@@ -157,12 +165,12 @@ const AdHocSchedule = () => {
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
                         <tr key={item.req_id} className="text-center">
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{new Date(item.wfh_date).toLocaleDateString()}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.status}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">{new Date(item.wfh_date).toLocaleDateString()}</td>
+                            <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">
                                 <button 
                                     className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
                                     onClick={() => openModal(item)} // Open modal with item data
