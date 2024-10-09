@@ -77,50 +77,6 @@ router.post('/submit', async (req, res) => {
             console.log("There is overlap");
         }
 
-        // Get the reporting manager ID for the staff
-        const managerResult = await client.query(
-            `SELECT Reporting_Manager FROM Employee WHERE Staff_ID = $1`,
-            [staff_id]
-        );
-    
-        if (managerResult.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Staff ID not found.' });
-        }
-    
-        const reportingManagerId = managerResult.rows[0].reporting_manager;
-            // Check if approving this request would cause more than 50% of the team to be WFH
-        const totalTeamResult = await client.query(
-            `SELECT COUNT(*) AS total_team FROM Employee WHERE Reporting_Manager = $1 AND Staff_ID != $1`,
-            [reportingManagerId]
-        );
-        const totalTeam = parseInt(totalTeamResult.rows[0].total_team, 10) + 1;
-    
-        for (const date of wfh_dates) {
-            console.log(date); // Prints each date
-        }
-
-        const teamWfhResult = await client.query(
-            `
-            SELECT COUNT(*) AS team_wfh FROM wfh_records 
-            WHERE wfh_date = $1 AND status = 'Approved' AND staffID IN (
-            SELECT Staff_ID FROM Employee WHERE Reporting_Manager = $2 OR Staff_ID = $2
-            )
-            `,
-            [wfh_dates, reportingManagerId]
-        );
-        const teamWfh = parseInt(teamWfhResult.rows[0].team_wfh, 10);
-    
-        const newWfhCount = teamWfh + 1;
-        const wfhFraction = newWfhCount / totalTeam;
-    
-        if (wfhFraction > 0.5) {
-            await client.query('ROLLBACK');
-            return res.status(403).json({
-            message: 'WFH request denied. More than 50% of the team would be WFH on this date.',
-            });
-        }
-
         // Insert into recurring_request table
         const result = await client.query(
             `
