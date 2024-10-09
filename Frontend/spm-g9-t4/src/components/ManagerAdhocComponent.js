@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal'];
 
@@ -10,6 +11,8 @@ const AdHocSchedule = () => {
     const [employeeIds, setEmployeeIds] = useState([]);
     const [adhocData, setAdhocData] = useState([]);
     const [employeeData, setEmployeeData] = useState([]); // State to store employee data
+    const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
+    const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -23,7 +26,7 @@ const AdHocSchedule = () => {
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
                 setEmployeeIds(ids); // Store employee IDs in state
-
+                
                 // Step 2: Use these employee IDs to fetch WFH records
                 const wfhResponse = await fetch('http://localhost:4000/wfh_records/by-employee-ids', {
                     method: 'POST',
@@ -50,6 +53,16 @@ const AdHocSchedule = () => {
         };
         fetchEmployeeAndAdhocData();
     }, []); // Fetch once when component mounts
+
+    const openModal = (data) => {
+        setModalData(data); // Set the data to be displayed in the modal
+        setModalOpen(true); // Open the modal
+    };
+
+    const closeModal = () => {
+        setModalOpen(false); // Close the modal
+        setModalData({}); // Clear the modal data
+    };
 
     if (loading) {
         return <p>Loading...</p>; // Display loading message
@@ -78,8 +91,9 @@ const AdHocSchedule = () => {
     // Helper function to get the staff name by staff ID
     const getStaffName = (staff_id) => {
         const employee = employeeData.find(item => item.staff_id === staff_id); // Check against the full employee data
-        return employee ? `${employee.staff_fname} ${employee.staff_lname}` : 'Unknown';
+        return employee ? `${employee.staff_fname} ${employee.staff_lname}` : 'Unknown'; // Fixed property name here
     };
+
 
     // Action Handlers
     const handleAccept = async (reqId) => {
@@ -144,11 +158,17 @@ const AdHocSchedule = () => {
                         .map((item, index) => (
                         <tr key={item.req_id} className="text-center">
                             <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
+                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{new Date(item.wfh_date).toLocaleDateString()}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.status}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">
+                                <button 
+                                    className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
+                                    onClick={() => openModal(item)} // Open modal with item data
+                                >
+                                    View Details
+                                </button>
                                 {
                                     item.status === 'Pending' &&
                                     <>
@@ -181,8 +201,13 @@ const AdHocSchedule = () => {
                     ))}
                 </tbody>
             </table>
+            <AdhocModal 
+                isOpen={modalOpen} 
+                onClose={closeModal} 
+                data={modalData} // Data to be displayed in the modal
+            />
         </div>
-    );
-};
+        );
+    };
 
 export default AdHocSchedule;

@@ -48,48 +48,6 @@ export default function managerview() {
 return (
     <>
     <div class="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <form>
-            <h1>Filter by:</h1>
-            <div>
-                {/* Date Selector */}
-                {/* <select className="Date" id="date" name="date" onChange={handleDateChange}>
-                    <option value="" disabled selected>Select a date</option>
-                    {generateDateOptions()}
-                </select> */}
-                <input
-                    type="date"
-                    id="date"
-                    name="date"
-                    placeholder="Select a Date"
-                    value={selectedDate}
-                    onChange={handleDateChange}
-                    style={{paddingLeft: '30px' }}
-                />     
-            </div>
-
-            <div>
-                {/* Department Selector */}
-                <select id="department" name="department" onChange={handleDepartmentChange}>
-                    <option value="" disabled selected>Select a department</option>
-                    <option value="HR">HR</option>
-                    <option value="Solutioning">Solutioning</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Consultancy">Consultancy</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="IT">IT</option>
-                </select>
-            </div>
-        </form>
-
-    <div>
-        <p>Pinging data to frontend:</p>
-        <p>Selected Day: {dayOfWeek}</p>
-        <p>Selected Date: {selectedDate}</p>
-        <p>Selected Department: {selectedDepartment}</p>
-        {/* Display data based on selections */}
-        <p>Data from server:</p>
-    </div>
 
     <div Class="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
         <div>
