@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS wfh_records (
     wfh_date DATE NOT NULL,
     recurring BOOLEAN DEFAULT FALSE,
     timeslot VARCHAR(2) CHECK (timeslot IN ('AM', 'PM', 'FD')) NOT NULL,
-    status VARCHAR(10) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn')) NOT NULL,
+    status VARCHAR(25) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn', "Pending Withdrawal")) NOT NULL,
     request_reason TEXT,
     requestID INT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
