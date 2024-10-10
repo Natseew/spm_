@@ -30,4 +30,20 @@ router.get('/managers', async (req, res) => {
   }
 });
 
+// GET specific employee based on details
+router.post('/login', async (req, res) => {
+  try { 
+    console.log(req.body)
+    const result = await client.query(`
+      SELECT * FROM employee
+      WHERE email = $1
+	    AND staff_fname = $2
+    `,[req.body.email, req.body.password]);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 module.exports = router;
