@@ -13,4 +13,21 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET all distinct reporting managers with their names
+router.get('/managers', async (req, res) => {
+  try {
+      const query = `
+          SELECT DISTINCT e.Reporting_Manager AS Staff_ID, m.Staff_FName, m.Staff_LName
+          FROM employee e
+          JOIN employee m ON e.Reporting_Manager = m.Staff_ID
+          WHERE e.Reporting_Manager IS NOT NULL
+      `;
+      const result = await client.query(query);
+      res.status(200).json(result.rows);
+  } catch (error) {
+      console.error('Error fetching managers:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 module.exports = router;

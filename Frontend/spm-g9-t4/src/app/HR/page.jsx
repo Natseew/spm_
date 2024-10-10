@@ -43,7 +43,7 @@ const StaffListTable = ({ staffData, date }) => (
         <TableCell>Full Name</TableCell>
         <TableCell>Department</TableCell>
         <TableCell>Status</TableCell>
-        <TableCell>Reporting Manager ID</TableCell>
+        <TableCell>Reporting Manager</TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
@@ -53,15 +53,15 @@ const StaffListTable = ({ staffData, date }) => (
             <TableCell>{`${staff.staff_fname} ${staff.staff_lname}`}</TableCell>
             <TableCell>{staff.dept}</TableCell>
             <TableCell>{getStatusLabel(staff.schedule_status)}</TableCell>
-            {/* <TableCell>
+            <TableCell>
               {staff.reporting_manager ? (
-                <Link href={`/TeamSchedule?manager_id=${staff.reporting_manager}&date=${date}`} passHref>
+                <Link href="/TeamScheduleHR" passHref>
                   {staff.reporting_manager}
                 </Link>
               ) : (
                 'N/A'
               )}
-            </TableCell> */}
+            </TableCell>
           </TableRow>
         ))
       ) : (

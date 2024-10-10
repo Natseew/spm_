@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Grid, Typography, Box, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper } from '@mui/material';
+import { Grid, Typography, Box, FormControl, InputLabel, Select, MenuItem, TextField, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import Link from 'next/link';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -21,13 +22,24 @@ const StaffCountBox = ({ period, officeCount, homeCount }) => (
   </Paper>
 );
 
+const getStatusLabel = (scheduleStatus) => {
+  switch (scheduleStatus) {
+    case 'AM': return 'AM Leave';
+    case 'PM': return 'PM Leave';
+    case 'Full-Day': return 'Full Day Leave';
+    case 'Office':
+    default: return 'In Office';
+  }
+};
+
 const StaffListTable = ({ staffData }) => (
   <Table sx={{ marginTop: '20px' }}>
     <TableHead>
       <TableRow>
         <TableCell>Full Name</TableCell>
         <TableCell>Department</TableCell>
-        <TableCell>Schedule Status</TableCell>
+        <TableCell>Status</TableCell>
+        <TableCell>Reporting Manager ID</TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
@@ -36,51 +48,61 @@ const StaffListTable = ({ staffData }) => (
           <TableRow key={staff.staff_id}>
             <TableCell>{`${staff.staff_fname} ${staff.staff_lname}`}</TableCell>
             <TableCell>{staff.dept}</TableCell>
-            <TableCell>{staff.schedule_status}</TableCell>
+            <TableCell>{getStatusLabel(staff.schedule_status)}</TableCell>
+            <TableCell>
+              {staff.reporting_manager ? (
+                <Link href="/TeamSchedule" passHref>
+                  {staff.reporting_manager}
+                </Link>
+              ) : 'N/A'}
+            </TableCell>
           </TableRow>
         ))
       ) : (
         <TableRow>
-          <TableCell colSpan={3} align="center">No staff data available.</TableCell>
+          <TableCell colSpan={4} align="center">No staff data available.</TableCell>
         </TableRow>
       )}
     </TableBody>
   </Table>
 );
 
-const HRPage = () => {
-  const departments = ["Finance", "CEO", "HR", "Sales", "Consultancy", "Engineering", "IT", "Solutioning"];
-  const [department, setDepartment] = useState("");
+const ManagerIDPage = () => {
+  const [selectedManagerID, setSelectedManagerID] = useState("");
+  const [managers, setManagers] = useState([]);
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [staffData, setStaffData] = useState([]);
-  const [totalStaffCount, setTotalStaffCount] = useState(0);
 
   useEffect(() => {
-    const fetchStaffSchedule = async () => {
-      if (!department || !date) return;
-
+    const fetchManagers = async () => {
       try {
-        const formattedDate = dayjs(date).format('YYYY-MM-DD');
-        const response = await axios.get(`http://localhost:4000/schedule/${department}/${formattedDate}`);
-        
-        setStaffData(response.data.staff_schedules || []);
-        setTotalStaffCount(response.data.total_staff || 0);
+        const response = await axios.get('http://localhost:4000/employee/managers');
+        setManagers(response.data);
       } catch (error) {
-        console.error("Error fetching staff schedule:", error);
+        console.error("Error fetching managers:", error);
       }
     };
+    fetchManagers();
+  }, []);
 
-    fetchStaffSchedule();
-  }, [department, date]);
+  const fetchStaffSchedule = async () => {
+    if (!selectedManagerID || !date) return;
+
+    try {
+      const formattedDate = dayjs(date).format('YYYY-MM-DD');
+      const endpoint = `http://localhost:4000/wfh_records/team-schedule/${selectedManagerID}/${formattedDate}`;
+      const response = await axios.get(endpoint);
+      setStaffData(response.data.staff_schedules || []);
+    } catch (error) {
+      console.error("Error fetching staff schedule:", error);
+    }
+  };
 
   const calculateStaffCounts = () => {
-    // Calculate AM/PM In-Office and At-Home staff
     const amHomeStaff = staffData.filter(staff => staff.schedule_status === 'AM' || staff.schedule_status === 'Full-Day').length;
     const pmHomeStaff = staffData.filter(staff => staff.schedule_status === 'PM' || staff.schedule_status === 'Full-Day').length;
-    
-    const amOfficeStaff = totalStaffCount - amHomeStaff;
-    const pmOfficeStaff = totalStaffCount - pmHomeStaff;
-
+    const amOfficeStaff = staffData.filter(staff => staff.schedule_status === 'Office').length;
+    const pmOfficeStaff = staffData.filter(staff => staff.schedule_status === 'Office').length;
     return { amHomeStaff, amOfficeStaff, pmHomeStaff, pmOfficeStaff };
   };
 
@@ -88,15 +110,20 @@ const HRPage = () => {
 
   return (
     <Box sx={{ padding: '20px' }}>
-      <Box sx={{ marginBottom: '20px', width: '200px' }}>
-        <Select value={department} onChange={(e) => setDepartment(e.target.value)} fullWidth displayEmpty>
-          <MenuItem disabled value=""><em>Select Department</em></MenuItem>
-          {departments.map((dept) => (
-            <MenuItem key={dept} value={dept}>{dept}</MenuItem>
-          ))}
+        <FormControl fullWidth sx={{ marginBottom: '20px' }}>
+        <InputLabel>Manager</InputLabel>
+        <Select
+            value={selectedManagerID}
+            onChange={(e) => setSelectedManagerID(e.target.value)}
+            label="Manager"
+        >
+            {managers.map((manager) => (
+            <MenuItem key={manager.staff_id} value={manager.staff_id}>
+                {`${manager.staff_fname} ${manager.staff_lname} (${manager.staff_id})`}
+            </MenuItem>
+            ))}
         </Select>
-      </Box>
-
+        </FormControl>
       <Box sx={{ marginBottom: '20px', width: '200px' }}>
         <TextField
           label="Select Date"
@@ -107,6 +134,10 @@ const HRPage = () => {
           fullWidth
         />
       </Box>
+
+      <Button variant="contained" color="primary" onClick={fetchStaffSchedule} sx={{ marginBottom: '20px' }}>
+        Submit
+      </Button>
 
       <Grid container spacing={2}>
         <Grid item xs={6}>
@@ -122,4 +153,4 @@ const HRPage = () => {
   );
 };
 
-export default HRPage;
+export default ManagerIDPage;
