@@ -1,9 +1,8 @@
 "use client"
 
-import { LineAxisOutlined } from '@mui/icons-material'
 import React, {useState, useEffect, useRef} from 'react'
-import ReactDOM from 'react-dom'
-import Scheduler from "react-mui-scheduler"
+import dynamic from 'next/dynamic'
+// import Scheduler from "react-mui-scheduler"
 import axios from 'axios';
 import { uuid } from 'uuidv4';
 import dayjs from 'dayjs';  // For date formatting
@@ -25,6 +24,11 @@ export default function Page() {
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const eventsRef = useRef(events)
+
+  const Scheduler = dynamic(
+    () => import('react-mui-scheduler'),
+    { ssr: false }
+  )
 
   useEffect(()=>{
     try {
@@ -102,7 +106,7 @@ export default function Page() {
   //     <div>Loading</div>
   //   )
   // }
-  
+
   return (
     <Scheduler
       locale="en"
