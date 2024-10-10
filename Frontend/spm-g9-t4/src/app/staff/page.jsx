@@ -33,6 +33,7 @@ export default function Page() {
   useEffect(()=>{
     try {
       const fetchStaffSchedule = async () => {
+        console.log(window.sessionStorage.getItem("user"));
         const response = await axios.get(`http://localhost:4000/wfh_records/140918`);
         console.log("Response data:", response.data);
         let eventsArray = []

@@ -1,10 +1,13 @@
 "use client"
 
-import React, {useState, useEffect, useRef} from 'react'
+import React, {useState} from 'react'
 import axios from 'axios';
+import { useRouter } from 'next/navigation'
 
 
 export default function MyApp() {
+
+  const router = useRouter()
 
   const [formData, setFormData] = useState({
     email: "",
@@ -18,7 +21,20 @@ export default function MyApp() {
     e.preventDefault()
     await axios.post(`http://localhost:4000/employee/login`, formData ).then(response => {
       // Handle successful response
-      console.log(response.data);
+
+      window.sessionStorage.setItem("user", JSON.stringify(response.data[0]));
+      console.log(response.data[0])
+      if(response.data[0].role == "1"){
+        if(response.data[0].dept == "HR"){
+          router.push('/HR')
+        }else{
+          router.push('/staff')
+        }
+      }
+      else if(response.data[0].role == "2"){
+        router.push('/staff')
+      }
+
     })
     .catch(error => {
       // Handle error
