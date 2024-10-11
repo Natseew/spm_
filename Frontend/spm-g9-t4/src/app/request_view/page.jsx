@@ -219,8 +219,6 @@ export default function PendingRequests() {
               }}
               renderInput={(params) => <TextField {...params} fullWidth />}
             />
-
-
           </LocalizationProvider>
         </DialogContent>
         <DialogActions>
@@ -230,7 +228,6 @@ export default function PendingRequests() {
           </Button>
         </DialogActions>
       </Dialog>
-
     </>
   );
 }
@@ -262,7 +259,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {request.status !== "Withdrawn" && request.status !== "Rejected" && request.status !== "Pending Withdrawal" && (
+                  {["Pending", "Approved"].includes(request.status) && (
                     <>
                       <Button
                         variant="outlined"
@@ -272,15 +269,13 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                       >
                         Withdraw
                       </Button>
-                      {request.status !== "Pending Change" && (
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => onChange(request.recordid, request.status)}
-                        >
-                          Change
-                        </Button>
-                      )}
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => onChange(request.recordid, request.status)}
+                      >
+                        Change
+                      </Button>
                     </>
                   )}
                 </TableCell>
@@ -332,7 +327,7 @@ function RecurringRequestsTable({ requests, onWithdraw, onChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {request.status !== "Withdrawn" && request.status !== "Rejected" && request.status !== "Pending Withdrawal" && (
+                  {["Pending", "Approved"].includes(request.status) && (
                     <>
                       <Button
                         variant="outlined"
@@ -342,15 +337,13 @@ function RecurringRequestsTable({ requests, onWithdraw, onChange }) {
                       >
                         Withdraw
                       </Button>
-                      {request.status !== "Pending Change" && (
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => onChange(request.requestid, request.status)}
-                        >
-                          Change
-                        </Button>
-                      )}
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => onChange(request.requestid, request.status)}
+                      >
+                        Change
+                      </Button>
                     </>
                   )}
                 </TableCell>
