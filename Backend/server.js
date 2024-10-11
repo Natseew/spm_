@@ -6,12 +6,12 @@ const express = require('express');
 const cors = require('cors');
 
 const client = require('./databasepg'); // PostgreSQL client
-// const employeeRoutes = require('./routes/records'); 
+
 // Import Routes
-const employeeRoutes = require('./routes/employee'); // Import Employee
-const activitylogRoutes = require('./routes/activitylog'); // Import Employee
-const recurring_requestRoutes = require('./routes/recurring_request'); // Import Employee
-const wfh_recordsRoutes = require('./routes/wfh_records'); // Import Employee
+const employeeRoutes = require('./routes/employee'); 
+const activitylogRoutes = require('./routes/activitylog'); 
+const recurring_requestRoutes = require('./routes/recurring_request'); 
+const wfh_recordsRoutes = require('./routes/wfh_records'); 
 
 // Create express app
 const app = express();

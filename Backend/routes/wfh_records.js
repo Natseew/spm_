@@ -2,36 +2,132 @@ const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
 
+// Route to get all WFH records
 router.get('/', async (req, res) => {
-    try{
-        const result = await client.query(`
-            SELECT * FROM wfh_records
-        `);
-        console.log(result.rows)
-        res.status(200).json(result.rows)
-    }catch(error){
-        console.error('Error retreiving all wfh_records:', error);
+    try {
+        const result = await client.query('SELECT * FROM wfh_records');
+        console.log(result.rows);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error retrieving all wfh_records:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
 
-        //Get all approved wfh of employee
-router.get('/:staffid', async(req, res) => {
-    try{
-    const result = await client.query(`
-        SELECT * FROM wfh_records w
-        WHERE w.staffid = ${req.params.staffid}
-        AND w.status = 'Approved'
-    `);
-    console.log(result.rows)
-    res.status(200).json(result.rows)
-    }catch(error){
-
+// Route to get all approved WFH records for a specific employee
+router.get('/:staffid', async (req, res) => {
+    try {
+        const result = await client.query(
+            `
+            SELECT * FROM wfh_records
+            WHERE staffid = $1 AND status = 'Approved'
+            `, 
+            [req.params.staffid]
+        );
+        console.log(result.rows);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error retrieving approved WFH records for staff:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
 
+// Route to get approved staff schedule for a team based on Reporting Manager ID and date
+router.get('/team-schedule/:manager_id/:date', async (req, res) => {
+    const { manager_id, date } = req.params;
 
-// POST WFH ad-hoc request
+    try {
+        const scheduleResult = await client.query(
+            `
+            SELECT 
+                e.staff_id, 
+                e.staff_fname, 
+                e.staff_lname, 
+                e.dept, 
+                e.reporting_manager, 
+                COALESCE(wr.wfh_date, $2) AS wfh_date,
+                COALESCE(wr.timeslot, 'Office') AS timeslot,
+                COALESCE(wr.status, 'Office') AS status,
+                CASE 
+                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
+                    WHEN wr.timeslot = 'AM' THEN 'AM'
+                    WHEN wr.timeslot = 'PM' THEN 'PM'
+                    ELSE 'Office'
+                END AS schedule_status,
+                wr.recurring,
+                wr.request_reason,
+                wr.requestDate,
+                wr.reject_reason
+            FROM 
+                Employee e
+            LEFT JOIN 
+                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
+            WHERE 
+                e.reporting_manager = $1
+            `,
+            [manager_id, date]
+        );
+
+        res.status(200).json({
+            total_team_members: scheduleResult.rowCount,
+            staff_schedules: scheduleResult.rows
+        });
+
+    } catch (error) {
+        console.error('Error fetching approved team schedule:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+// Route to get staff schedule by department(s) and date
+router.get('/schedule/:departments/:date', async (req, res) => {
+    const { departments, date } = req.params;
+    const departmentList = departments.split(',');
+
+    try {
+        const scheduleResult = await client.query(
+            `
+            SELECT 
+                e.staff_id, 
+                e.staff_fname, 
+                e.staff_lname, 
+                e.dept, 
+                e.reporting_manager, 
+                COALESCE(wr.wfh_date, $2) AS wfh_date,
+                COALESCE(wr.timeslot, 'Office') AS timeslot,
+                COALESCE(wr.status, 'Office') AS status,
+                CASE 
+                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
+                    WHEN wr.timeslot = 'AM' THEN 'AM'
+                    WHEN wr.timeslot = 'PM' THEN 'PM'
+                    ELSE 'Office'
+                END AS schedule_status,
+                wr.recurring,
+                wr.request_reason,
+                wr.requestDate,
+                wr.reject_reason
+            FROM 
+                Employee e
+            LEFT JOIN 
+                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
+            WHERE 
+                e.dept = ANY($1::text[])
+            `,
+            [departmentList, date]
+        );
+
+        res.status(200).json({
+            total_staff: scheduleResult.rowCount,
+            staff_schedules: scheduleResult.rows
+        });
+
+    } catch (error) {
+        console.error('Error fetching staff schedule by department:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+// Route to submit a WFH ad-hoc request
 router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, reason } = req.body;
 
@@ -240,7 +336,7 @@ router.post('/withdraw_wfh', async (req, res) => {
 
 
 
-// Change an ad-hoc WFH request
+t
 // Change an ad-hoc WFH request
 router.post('/change_adhoc_wfh', async (req, res) => {
   const { recordID, new_date, reason } = req.body;
@@ -343,7 +439,6 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     res.status(500).json({ message: 'Internal server error.' });
   }
 });
-
 
 
 module.exports = router;
