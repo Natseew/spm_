@@ -44,8 +44,10 @@ const RecurringSchedule = () => {
 
                 const wfhData = await wfhResponse.json();
                 setRecurringData(wfhData); // Store ad hoc data in state
-                console.log(employeeData)
-
+                console.log("Fetched Employee Data:",employeeData)
+                console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
+                console.log('Recurring Data:', RecurringData)
+                
             } catch (error) {
                 console.error('Error during fetch operations:', error);
                 setError(error.message);
@@ -55,6 +57,13 @@ const RecurringSchedule = () => {
         };
         fetchEmployeeAndRecurringData();
     }, []); // Fetch once when component mounts
+
+    useEffect(() => {
+        if (RecurringData.length > 0) {
+            console.log('Recurring Data after update:', RecurringData);
+        }
+    }, [adhocData]); // This will run every time adhocData is updated
+
 
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
