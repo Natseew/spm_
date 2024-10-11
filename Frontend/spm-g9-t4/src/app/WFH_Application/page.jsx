@@ -1,3 +1,5 @@
+// ArrangementForm.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,6 +14,7 @@ import {
   FormControl,
   InputLabel,
   Alert,
+  Container,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -39,29 +42,30 @@ export default function ArrangementForm() {
 
   // Fetch approved & pending WFH dates on component mount
   useEffect(() => {
-    const fetchApprovedPendingDates = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}` // Use the new route
-        );
-        if (response.ok) {
-          const data = await response.json();
-          // Extract only the wfh_date field from the response
-          const dates = data.map((record) => ({
-            date: record.wfh_date,
-            status: record.status, // Save the status as well
-          }));
-          setApprovedPendingDates(dates); // Set the approved and pending WFH dates in state
-        } else {
-          console.error("Failed to fetch approved and pending dates");
-        }
-      } catch (error) {
-        console.error("Error fetching approved and pending dates:", error);
-      }
-    };
-
     fetchApprovedPendingDates();
   }, [staffId]);
+
+  // Function to fetch approved and pending dates
+  const fetchApprovedPendingDates = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // Extract only the wfh_date field from the response
+        const dates = data.map((record) => ({
+          date: record.wfh_date,
+          status: record.status, // Save the status as well
+        }));
+        setApprovedPendingDates(dates); // Set the approved and pending WFH dates in state
+      } else {
+        console.error("Failed to fetch approved and pending dates");
+      }
+    } catch (error) {
+      console.error("Error fetching approved and pending dates:", error);
+    }
+  };
 
   // Handles form submission
   const handleSubmit = async () => {
@@ -100,16 +104,18 @@ export default function ArrangementForm() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccessMessage("WFH request submitted successfully.");
+        setSuccessMessage(data.message || "WFH request submitted successfully.");
         // Reset form fields
         setWfhDate(null);
         setScheduleType("");
         setReason("");
+        // Refresh the approved and pending dates
+        fetchApprovedPendingDates();
       } else {
-        setErrorMessage(`Error: ${data.message}`);
+        setErrorMessage(data.message || "An error occurred. Please try again.");
       }
     } catch (error) {
-      setErrorMessage("An unexpected error occurred. Please try again later.");
+      setErrorMessage(`An unexpected error occurred: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -124,13 +130,9 @@ export default function ArrangementForm() {
     setSuccessMessage("");
   };
 
-  // Disable weekends and already approved/pending WFH dates
+  // Disable only weekends
   const shouldDisableDate = (date) => {
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const isApprovedOrPending = approvedPendingDates.some((wfh) =>
-      isSameDay(new Date(wfh.date), date)
-    );
-    return isWeekend || isApprovedOrPending;
+    return date.getDay() === 0 || date.getDay() === 6;
   };
 
   // Render custom day with color coding
@@ -142,7 +144,7 @@ export default function ArrangementForm() {
       (wfh) => isSameDay(new Date(wfh.date), day) && wfh.status === "Pending"
     );
 
-    const style = {};
+    let style = {};
     if (isApproved) {
       style.backgroundColor = "green";
       style.color = "white";
@@ -151,88 +153,116 @@ export default function ArrangementForm() {
       style.color = "white";
     }
 
-    return <PickersDay {...pickersDayProps} day={day} style={style} />;
+    return (
+      <PickersDay
+        {...pickersDayProps}
+        day={day}
+        style={style}
+        disabled={pickersDayProps.disabled || isApproved || isPending}
+      />
+    );
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: 600 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6" gutterBottom>
-            WFH Request Application
+      <Container maxWidth="sm">
+        {/* Welcome Message */}
+        <Typography variant="h6" align="left" sx={{ mt: 4 }}>
+          Welcome, {staffId}
+        </Typography>
+
+        <Paper elevation={3} sx={{ padding: 4, marginTop: 2 }}>
+          {/* Header */}
+          <Typography variant="h4" align="center" gutterBottom>
+            AdHoc WFH Request Application
           </Typography>
-          <Typography variant="body1" gutterBottom>
-            Staff ID: {staffId}
-          </Typography>
-        </Box>
 
-        {/* Display success or error messages */}
-        {successMessage && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {successMessage}
-          </Alert>
-        )}
-        {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {errorMessage}
-          </Alert>
-        )}
+          {/* Display success or error messages */}
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {successMessage}
+            </Alert>
+          )}
+          {errorMessage && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {errorMessage}
+            </Alert>
+          )}
 
-        <form noValidate autoComplete="off">
-          <DatePicker
-            label="WFH Date"
-            value={wfhDate}
-            onChange={(newValue) => setWfhDate(newValue)}
-            minDate={minDate} // 2 months back
-            maxDate={maxDate} // 3 months forward
-            shouldDisableDate={shouldDisableDate} // Disable weekends and approved/pending WFH dates
-            renderDay={renderDay} // Render the day with color coding
-            renderInput={(params) => (
-              <TextField {...params} fullWidth margin="normal" required />
-            )}
-          />
+          <form noValidate autoComplete="off">
+            <DatePicker
+              label="WFH Date"
+              value={wfhDate}
+              onChange={(newValue) => setWfhDate(newValue)}
+              minDate={minDate} // 2 months back
+              maxDate={maxDate} // 3 months forward
+              shouldDisableDate={shouldDisableDate} // Disable only weekends
+              renderDay={renderDay} // Render the day with color coding
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  margin="normal"
+                  required
+                  inputProps={{ ...params.inputProps, readOnly: true }} // Make input read-only
+                  onKeyDown={(e) => e.preventDefault()} // Prevent keyboard input
+                  onPaste={(e) => e.preventDefault()} // Disable paste
+                  onCopy={(e) => e.preventDefault()} // Disable copy
+                />
+              )}
+            />
 
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Schedule Type</InputLabel>
-            <Select
-              value={scheduleType}
-              onChange={(e) => setScheduleType(e.target.value)}
-              label="Schedule Type"
+            <FormControl fullWidth margin="normal" required>
+              <InputLabel>Schedule Type</InputLabel>
+              <Select
+                value={scheduleType}
+                onChange={(e) => setScheduleType(e.target.value)}
+                label="Schedule Type"
+              >
+                <MenuItem value="AM">AM</MenuItem>
+                <MenuItem value="PM">PM</MenuItem>
+                <MenuItem value="Full Day">Full Day</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              fullWidth
+              multiline
+              rows={4}
+              margin="normal"
+              required
+            />
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 2,
+                marginTop: 2,
+              }}
             >
-              <MenuItem value="AM">AM</MenuItem>
-              <MenuItem value="PM">PM</MenuItem>
-              <MenuItem value="Full Day">Full Day</MenuItem>
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            fullWidth
-            multiline
-            rows={4}
-            margin="normal"
-            required
-          />
-
-          <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginTop: 2 }}
-          >
-            <Button variant="outlined" color="secondary" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSubmit}
-              disabled={isSubmitDisabled}
-            >
-              {isSubmitting ? "Submitting..." : "Submit"}
-            </Button>
-          </Box>
-        </form>
-      </Paper>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+                disabled={isSubmitDisabled}
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            </Box>
+          </form>
+        </Paper>
+      </Container>
     </LocalizationProvider>
   );
 }

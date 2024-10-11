@@ -3,69 +3,7 @@ const router = express.Router();
 const client = require('../databasepg');
 
 
-// Update WFH_Request and WFH_Sessions DB after manager clicks "approve/reject" button
-router.post('/wfh_approval', async (req, res) => {
-  const { staff_id, req_id, sessions } = req.body;
 
-  if (!staff_id || !req_id || !Array.isArray(sessions) || sessions.length === 0) {
-    return res.status(400).json({ message: 'Staff ID, request ID, and sessions are required.' });
-  }
-
-  try {
-    // Update approval/rejection status for each session in WFH_Sessions
-    const sessionPromises = sessions.map(({ sched_date, approved, rejected }) => {
-      return client.query(
-        `
-        UPDATE WFH_Sessions
-        SET Approved = $1, Rejected = $2
-        WHERE Staff_ID = $3 AND Req_ID = $4 AND Sched_date = $5
-        RETURNING *;
-        `,
-        [approved, rejected, staff_id, req_id, sched_date]
-      );
-    });
-
-    // Wait for all session updates to complete
-    const sessionResults = await Promise.all(sessionPromises);
-
-    // Check if any sessions were updated
-    if (sessionResults.every(result => result.rowCount === 0)) {
-      return res.status(404).json({ message: 'No WFH sessions found for approval.' });
-    }
-
-    // Update the overall WFH_Request table based on session-level decisions
-    const overallApproved = sessions.every(session => session.approved === true);
-    const overallRejected = sessions.every(session => session.rejected === true);
-
-    await client.query(
-      `
-      UPDATE WFH_Request
-      SET Approved = $1, Rejected = $2
-      WHERE Req_ID = $3 AND Staff_ID = $4
-      RETURNING *;
-      `,
-      [overallApproved, overallRejected, req_id, staff_id]
-    );
-
-    // Insert into or update WFH_Backlog for tracking approvals/rejections
-    await client.query(
-      `
-      INSERT INTO WFH_Backlog (Req_ID, Staff_ID, Status, Updated_At)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (Req_ID, Staff_ID)
-      DO UPDATE SET
-        Status = EXCLUDED.Status,
-        Updated_At = NOW();
-      `,
-      [req_id, staff_id, overallApproved ? 'Approved' : 'Rejected']
-    );
-
-    res.status(200).json({ message: 'WFH request and sessions updated successfully.' });
-  } catch (error) {
-    console.error('Error during approval process:', error);
-    res.status(500).json({ message: 'Internal server error. ' + error.message });
-  }
-});
 
 // GET approved staff schedule for a team based on Reporting Manager & date
 router.get('/team-schedule/:manager_id/:date', async (req, res) => {
