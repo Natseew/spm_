@@ -28,7 +28,7 @@ router.get('/by-manager/:managerId', async (req, res) => {
     }
 });
 
-module.exports = router;
+
 // GET all distinct reporting managers with their names
 router.get('/managers', async (req, res) => {
   try {

@@ -6,34 +6,21 @@ import Link from 'next/link';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
-// Functional component for rendering a staff count box (AM or PM)
-const StaffCountBox = ({ period, officeCount, homeCount }) => {
-  return (
-    <Paper elevation={3} sx={{ padding: '20px', borderRadius: '10px', backgroundColor: '#f5f5f5' }}>
-      <Typography variant="h5" align="center">
-        {period}
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={6}>
-          <Typography variant="h6" align="center">
-            In Office
-          </Typography>
-          <Typography variant="h4" align="center">
-            {officeCount}
-          </Typography>
-        </Grid>
-        <Grid item xs={6}>
-          <Typography variant="h6" align="center">
-            At Home
-          </Typography>
-          <Typography variant="h4" align="center">
-            {homeCount}
-          </Typography>
-        </Grid>
+const StaffCountBox = ({ period, officeCount, homeCount }) => (
+  <Paper elevation={3} sx={{ padding: '20px', borderRadius: '10px', backgroundColor: '#f5f5f5' }}>
+    <Typography variant="h5" align="center">{period}</Typography>
+    <Grid container spacing={2}>
+      <Grid item xs={6}>
+        <Typography variant="h6" align="center">In Office</Typography>
+        <Typography variant="h4" align="center">{officeCount}</Typography>
       </Grid>
-    </Paper>
-  );
-};
+      <Grid item xs={6}>
+        <Typography variant="h6" align="center">At Home</Typography>
+        <Typography variant="h4" align="center">{homeCount}</Typography>
+      </Grid>
+    </Grid>
+  </Paper>
+);
 
 const getStatusLabel = (scheduleStatus) => {
   switch (scheduleStatus) {
@@ -138,16 +125,10 @@ const HRPage = () => {
       selectedSessions.PM && staff.schedule_status === 'Office'
     ).length;
 
-  const pmHomeStaff = staffData.filter(staff => staff.schedule_status === 'AM & PM' || staff.schedule_status === 'PM').length;
-  const pmOfficeStaff = staffData.filter(staff => staff.schedule_status === 'AM').length;
-
-  const handleDepartmentChange = (event) => {
-    setDepartment(event.target.value);
+    return { amHomeStaff, amOfficeStaff, pmHomeStaff, pmOfficeStaff };
   };
 
-  const handleDateChange = (event) => {
-    setDate(event.target.value);
-  };
+  const { amHomeStaff, amOfficeStaff, pmHomeStaff, pmOfficeStaff } = calculateStaffCounts();
 
   return (
     <Box sx={{ padding: '20px' }}>
@@ -216,11 +197,9 @@ const HRPage = () => {
       </Button>
 
       <Grid container spacing={2}>
-        {/* AM Section */}
         <Grid item xs={6}>
           <StaffCountBox period="AM" officeCount={amOfficeStaff} homeCount={amHomeStaff} />
         </Grid>
-        {/* PM Section */}
         <Grid item xs={6}>
           <StaffCountBox period="PM" officeCount={pmOfficeStaff} homeCount={pmHomeStaff} />
         </Grid>
@@ -229,4 +208,6 @@ const HRPage = () => {
       <StaffListTable staffData={staffData} date={date} />
     </Box>
   );
-}
+};
+
+export default HRPage;

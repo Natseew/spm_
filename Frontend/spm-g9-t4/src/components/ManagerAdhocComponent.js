@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal'];
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 
 const AdHocSchedule = () => {
     const [loading, setLoading] = useState(true);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import RecurringModal from './RecurringModal'; // Make sure to create or import the Modal component.
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal'];
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]); // State to store fetched ad hoc data
@@ -62,7 +62,7 @@ const RecurringSchedule = () => {
         if (RecurringData.length > 0) {
             console.log('Recurring Data after update:', RecurringData);
         }
-    }, [adhocData]); // This will run every time adhocData is updated
+    }, [RecurringData]); // This will run every time adhocData is updated
 
 
     const openModal = (data) => {
@@ -108,8 +108,9 @@ const RecurringSchedule = () => {
         }
         
         // Attempt to find the employee by their staff ID
-        const employee = employeeData.find(item => item.staff_id === staff_id);
+        const employee = employeeData.find(item => item.staffid === staff_id);
         
+        // Fix the keyword of .find() , console log to 
         // Log the result for debugging
         if (employee) {
             console.log(`Found employee: ${employee.staff_fname} ${employee.staff_lname}`);
