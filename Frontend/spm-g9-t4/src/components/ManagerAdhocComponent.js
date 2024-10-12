@@ -129,8 +129,27 @@ const AdHocSchedule = () => {
     };
 
     const handleCancel = async (reqId) => {
-        // Logic to cancel the accepted request
+        // Logic to cancel the accepted request (Withdraw Adhoc)
         console.log(`Canceling request with ID: ${reqId}`);
+        try {
+            const response = await fetch(`http://localhost:4000/wfh_records/withdraw/${reqId}`, {
+                method: 'PUT', // Using PUT to indicate an update to the status
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to cancel the request');
+            }
+    
+            const data = await response.json();
+            console.log('Successfully canceled:', data);
+            // Optionally, refresh your state or update the UI to reflect the changes
+        } catch (error) {
+            console.error('Error canceling request:', error);
+            // Optionally, show a message to the user
+        }
     };
 
 
@@ -216,7 +235,7 @@ const AdHocSchedule = () => {
                                     item.status === 'Approved' &&
                                     <button 
                                         className="bg-yellow-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleCancel(item.req_id)} // Call cancel handler for accepted requests
+                                        onClick={() => handleCancel(item.recordid)} // Call cancel handler for accepted requests
                                     >
                                         Cancel
                                     </button>

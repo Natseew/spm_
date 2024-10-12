@@ -271,10 +271,10 @@ router.put('/withdraw/:recordid', async (req, res) => {
   const { recordid } = req.params;
 
   try {
-      // Update the status of the record to 'withdrawn'
+      // Update the status of the record to 'Withdrawn'
       const result = await client.query(`
           UPDATE wfh_records
-          SET status = 'withdrawn'
+          SET status = 'Withdrawn'
           WHERE recordid = $1
           RETURNING *
       `, [recordid]);

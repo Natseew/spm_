@@ -244,6 +244,48 @@ router.post('/approve/:requestid', async (req, res) => {
     }
 });
 
+// withdraw entire recurring request
+router.put('/withdraw_entire/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+  
+    try {
+        // Update the status of the record to 'Withdrawn'
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Withdrawn'
+            WHERE requestid = $1
+            RETURNING *
+        `, [requestid]);
+  
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Record not found' });
+        }
 
+        const result2 = await client.query(
+            `UPDATE wfh_records
+             SET status = 'Withdrawn'
+             WHERE requestid = $1
+             RETURNING *;`,
+            [requestid]
+        );
+  
+        if (result2.rowCount === 0) {
+            return res.status(404).json({ message: 'Record not found' });
+        }
+  
+        await client.query(
+          `
+          INSERT INTO activitylog (requestid, activity)
+          VALUES ($1, 'Recurring Request Withdrawn');
+          `,
+          [requestid]
+        );
+  
+        res.status(200).json({ message: 'Record withdrawn successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error withdrawing record:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+  });
 
 module.exports = router;
