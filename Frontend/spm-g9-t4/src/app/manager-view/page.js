@@ -1,13 +1,12 @@
 // Mark this component as a Client Component
 "use client";
 
-
+// import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import ManagerAdhocComponent from "@/components/ManagerAdhocComponent";
 // import ManagerRecurringComponent from "@/components/ManagerRecurringComponent";
 import ToggleView from "@/components/ToggleViewComponent";
-import ManagerViewComponent from "@/components/ManagerViewComponent";
 
 export default function managerview() {
     const [selectedDate, setSelectedDate] = useState(""); // State to track the selected date
@@ -47,9 +46,9 @@ export default function managerview() {
 
 return (
     <>
-    <div class="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+    <div className="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
 
-    <div Class="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
+    <div className="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
         <div>
             {/* Uncomment for Calendar Component
             <div>
@@ -57,11 +56,10 @@ return (
             </div> */}
             
 
-            <div class="overflow-x-auto">
+            <div className="overflow-x-auto">
                 <ToggleView/>
                 {/* <ManagerAdhocComponent/> */}
                 {/* <ManagerRecurringComponent/> */}
-                {/* <ManagerViewComponent/> */}
             </div>
         </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import RecurringModal from './RecurringModal'; // Make sure to create or import the Modal component.
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
+const employeeNameid = {} // Object to store staff_id and their corresponding full names
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]); // State to store fetched ad hoc data
@@ -29,6 +30,14 @@ const RecurringSchedule = () => {
                 setEmployeeIds(ids); // Store employee IDs in state
                 console.log(ids)
 
+                // Create employeeNameid mapping
+                employeeData.forEach(emp => {
+                    employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`; // Map staff_id to full name
+                    });
+                    
+                    // Log the employeeNameid for verification
+                    console.log("Employee ID to Name Mapping:", employeeNameid);
+    
                 // Step 2: Use these employee IDs to fetch WFH records
                 const wfhResponse = await fetch('http://localhost:4000/recurring_request/by-employee-ids', {
                     method: 'POST',
@@ -100,25 +109,13 @@ const RecurringSchedule = () => {
         return item.status === selectedStatus && dateMatches; // Both status and date match
     });
     
-    const getStaffName = (staff_id) => {
-        // Check if employeeData is empty
-        if (employeeData.length === 0) {
-            console.log('Employee data is empty');
-            return 'Unknown'; // Prevent errors when employeeData is not yet loaded
-        }
-        
-        // Attempt to find the employee by their staff ID
-        const employee = employeeData.find(item => item.staffid === staff_id);
-        
-        // Fix the keyword of .find() , console log to 
-        // Log the result for debugging
-        if (employee) {
-            console.log(`Found employee: ${employee.staff_fname} ${employee.staff_lname}`);
-            return `${employee.staff_fname} ${employee.staff_lname}`;
-        } else {
-            console.log(`No employee found for staff ID: ${staff_id}`);
-            return 'Unknown';
-        }
+    const getStaffName = (id) => {
+        // Use the employeeNameid dictionary to retrieve the full name
+        const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
+    
+        // Optionally log the name for debugging purposes
+        console.log(name); // Log the retrieved name
+        return name; // Return either found name or 'Unknown'
     };
 
     // Action Handlers
@@ -182,7 +179,7 @@ const RecurringSchedule = () => {
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
                         <tr key={item.req_id} className="text-center">
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestID}</td>
+                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
                             <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.wfh_dates}</td>
                             <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
