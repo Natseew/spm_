@@ -166,4 +166,27 @@ router.post('/by-employee-ids', async (req, res) => {
     }
 });
 
+router.put('/withdraw/:recordid', async (req, res) => {
+  const { recordid } = req.params;
+
+  try {
+      // Update the status of the record to 'withdrawn'
+      const result = await client.query(`
+          UPDATE wfh_records
+          SET status = 'withdrawn'
+          WHERE recordid = $1
+          RETURNING *
+      `, [recordid]);
+
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'Record not found' });
+      }
+
+      res.status(200).json({ message: 'Record withdrawn successfully', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error withdrawing record:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 module.exports = router;
