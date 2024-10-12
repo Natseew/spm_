@@ -47,10 +47,6 @@ router.post('/submit', async (req, res) => {
         }
     }
 
-    if (wfh_dates == []){
-         
-    }
-
     try {
         // Fetch existing dates from recurring_request and wfh_records tables
         const existingDatesResult = await client.query(`
@@ -77,8 +73,13 @@ router.post('/submit', async (req, res) => {
             console.log('No overlaps found.');
         }
         if (overlaps) {
-            return res.status(409).json({ message: `The following requested WFH dates overlap with existing dates` });
             console.log("There is overlap");
+            return res.status(409).json({ message: `The following requested WFH dates overlap with existing dates` });
+        }
+
+        if (wfh_dates.length === 0){
+            console.log("Actual WFH dates is empty");
+            return res.status(409).json({ message: 'Your start date cannot be after your end date/the day you selected is not in the date range'});
         }
 
         // Insert into recurring_request table

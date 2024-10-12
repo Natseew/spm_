@@ -21,7 +21,10 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { addMonths, subMonths } from "date-fns";
 
 export default function RecurringArrangementForm() {
-  const [staff_id, setStaffId] = useState('');
+  const [staff_id, setStaffId] = useState(() => {
+    const user = window.sessionStorage.getItem("user");
+    return user ? JSON.parse(user).staff_id : null; // Parse and extract staff_id
+  });
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [dayOfWeek, setDayOfWeek] = useState('');
@@ -34,6 +37,8 @@ export default function RecurringArrangementForm() {
   const today = new Date(); // Current date
   const minDate = subMonths(today, 2); // 2 months back
   const maxDate = addMonths(today, 3); // 3 months in front
+  console.log(window.sessionStorage.getItem("user"));
+  console.log(staff_id);
 
   const handleCancel = () => {
     setStaffId('');
@@ -123,14 +128,14 @@ export default function RecurringArrangementForm() {
         </Typography>
 
         <form noValidate autoComplete="off">
-          <TextField
+          {/* <TextField
             label="Staff ID"
             value={staff_id}
             onChange={(e) => setStaffId(e.target.value)}
             fullWidth
             margin="normal"
             required
-          />
+          /> */}
 
           <DatePicker
             label="Start Date"
