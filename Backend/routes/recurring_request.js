@@ -49,23 +49,30 @@ router.post('/submit', async (req, res) => {
 
     try {
         // Fetch existing dates from recurring_request and wfh_records tables
-        const existingDatesResult = await client.query(`
-            SELECT unnest(wfh_dates) AS date FROM recurring_request WHERE staff_id = $1
-            UNION ALL
-            SELECT wfh_date FROM wfh_records WHERE staffid = $1`,
+        // const existingDatesResult = await client.query(`
+        //     SELECT unnest(wfh_dates) AS date FROM recurring_request WHERE staff_id = $1
+        //     UNION ALL
+        //     SELECT wfh_date FROM wfh_records WHERE staffid = $1`,
+        //     [staff_id]
+        // );
+
+        const existingDatesResult = await client.query(
+            `SELECT wfh_date 
+             FROM wfh_records 
+             WHERE staffid = $1 
+             AND status IN ('Approved', 'Pending', 'Pending Change', 'Pending Withdrawal');`,
             [staff_id]
         );
 
         // Convert existing dates to a Set
         const existingDates = new Set(existingDatesResult.rows.map(row => {
-            return row.date.toISOString ? row.date.toLocaleDateString('en-CA').split('T')[0] : row.date; // Convert to string format if necessary
+            return row.wfh_date.toISOString ? row.wfh_date.toLocaleDateString('en-CA').split('T')[0] : row.date; // Convert to string format if necessary
         }));
         
         console.log('Existing Dates:', Array.from(existingDates)); // Debugging: Log existing dates
         console.log('Calculated wfh_dates:', wfh_dates); // Debugging: Log calculated wfh_dates
 
         // Check for overlaps
-
         const overlaps = wfh_dates.some(date => existingDates.has(date));
         if (overlaps) {
             console.log('One or more requested WFH dates overlap with existing dates.');
@@ -90,6 +97,23 @@ router.post('/submit', async (req, res) => {
             RETURNING requestID;
             `,
             [staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates]
+        );
+
+        const request_id = result.rows[0].requestid;
+        console.log('Inserted Request ID:', request_id);
+
+        await client.query(
+            `
+            INSERT INTO activitylog (requestid, activity)
+            VALUES ($1, 'New Recurring Request');
+            `,
+            [request_id]
+        );
+
+        await client.query(
+            `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
+             SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Pending', $4, $5, CURRENT_DATE;`,
+            [staff_id, wfh_dates, timeslot, request_reason, request_id]
         );
 
         const requestID = result.rows[0].requestID;
@@ -183,12 +207,31 @@ router.post('/approve/:requestid', async (req, res) => {
             return res.status(400).json({ message: 'Request has already been approved.' });
         }
 
-        // Step 2: Insert into wfh_records for each date in wfh_dates
+        // Adding this part to update all entries with request_id == id in recurring request table
         await client.query(
-            `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
-             SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Approved', $4, $5, CURRENT_DATE;`,
-            [staff_id, wfh_dates, timeslot, request_reason, requestid]
+            `
+            UPDATE wfh_records
+            SET status = 'Approved'
+            WHERE requestID = $1;
+            `,
+            [requestid]
         );
+
+        await client.query(
+            `
+            INSERT INTO activitylog (requestid, activity)
+            VALUES ($1, 'Approved Recurring Request');
+            `,
+            [requestid]
+        );
+
+        // Removed because functionality is transferred to when request is made
+        // //Step 2: Insert into wfh_records for each date in wfh_dates
+        // await client.query(
+        //     `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
+        //      SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Approved', $4, $5, CURRENT_DATE;`,
+        //     [staff_id, wfh_dates, timeslot, request_reason, requestid]
+        // );
 
         await client.query('COMMIT');
 

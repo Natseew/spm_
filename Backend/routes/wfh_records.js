@@ -75,7 +75,7 @@ router.get('/team-schedule/:manager_id/:date', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
       }
   });
-  
+
 // New route to get WFH records by an array of employee IDs
 router.post('/by-employee-ids', async (req, res) => {
     try {
@@ -282,6 +282,14 @@ router.put('/withdraw/:recordid', async (req, res) => {
       if (result.rowCount === 0) {
           return res.status(404).json({ message: 'Record not found' });
       }
+
+      await client.query(
+        `
+        INSERT INTO activitylog (recordid, activity)
+        VALUES ($1, 'Record Withdrawn');
+        `,
+        [recordid]
+      );
 
       res.status(200).json({ message: 'Record withdrawn successfully', record: result.rows[0] });
   } catch (error) {
