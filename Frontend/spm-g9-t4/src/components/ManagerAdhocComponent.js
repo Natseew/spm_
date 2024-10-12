@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
+const employeeNameid = {} // Object to store staff_id and their corresponding full names
 
 const AdHocSchedule = () => {
     const [loading, setLoading] = useState(true);
@@ -14,12 +15,13 @@ const AdHocSchedule = () => {
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
 
+
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
         const fetchEmployeeAndAdhocData = async () => {
             try {
                 // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch('http://localhost:4000/employee/by-manager/130002'); // Replace with actual managerId
+                const idResponse = await fetch('http://localhost:4000/employee/by-manager/140894'); // Replace with actual managerId
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
@@ -27,6 +29,14 @@ const AdHocSchedule = () => {
                 const ids = employeeData.map(emp => emp.staff_id);
                 setEmployeeIds(ids); // Store employee IDs in state
                 
+                // Create employeeNameid mapping
+                employeeData.forEach(emp => {
+                employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`; // Map staff_id to full name
+                });
+                
+                // Log the employeeNameid for verification
+                console.log("Employee ID to Name Mapping:", employeeNameid);
+
                 // Step 2: Use these employee IDs to fetch WFH records
                 const wfhResponse = await fetch('http://localhost:4000/wfh_records/by-employee-ids', {
                     method: 'POST',
@@ -44,8 +54,8 @@ const AdHocSchedule = () => {
                 setAdhocData(wfhData); // Store ad hoc data in state
                 
                 console.log("Fetched Employee Data:",employeeData)
-                console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
-                console.log('Adhoc Data:', adhocData)
+
+
             } catch (error) {
                 console.error('Error during fetch operations:', error);
                 setError(error.message);
@@ -95,13 +105,17 @@ const AdHocSchedule = () => {
         const dateMatches = selectedDate ? new Date(item.wfh_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
         return item.status === selectedStatus && dateMatches; // Both status and date match
     });
-    
-    // Helper function to get the staff name by staff ID
-    const getStaffName = (id) => {
-        const employee = employeeData.find(item => item.staff_id === id); // Check against the full employee data
-        return employee ? `${employee.staff_fname} ${employee.staff_lname}` : 'Unknown'; // Fixed property name here
-    };
 
+    const getStaffName = (id) => {
+        // Use the employeeNameid dictionary to retrieve the full name
+        const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
+    
+        // Optionally log the name for debugging purposes
+        console.log(name); // Log the retrieved name
+        return name; // Return either found name or 'Unknown'
+    };
+    
+    
 
     // Action Handlers
     const handleAccept = async (reqId) => {
@@ -153,10 +167,12 @@ const AdHocSchedule = () => {
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
+                        <th className="py-2 px-4 border-b border-gray-300">StaffID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
                         <th className="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
                         <th className="py-2 px-4 border-b border-gray-300">Status</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Reason</th>
                         <th className="py-2 px-4 border-b border-gray-300">Actions</th>
                     </tr>
                 </thead>
@@ -164,12 +180,14 @@ const AdHocSchedule = () => {
                         {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
-                        <tr key={item.req_id} className="text-center">
+                        <tr key={item.req_id || index} className="text-center">
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staffid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
                             <td className="py-2 px-4 border-b border-gray-300">{new Date(item.wfh_date).toLocaleDateString()}</td>
                             <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
                             <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
+                            <td className="py-2 px-4 border-b border-gray-200">{item.request_reason}</td>
                             <td className="py-2 px-4 border-b border-gray-300">
                                 <button 
                                     className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
