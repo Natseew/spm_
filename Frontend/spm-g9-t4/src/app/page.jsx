@@ -1,14 +1,49 @@
+"use client"
+
+import React, {useState} from 'react'
+import axios from 'axios';
+import { useRouter } from 'next/navigation'
+
+
 export default function MyApp() {
+
+  const router = useRouter()
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  })
+
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const handleSubmit = async (e)=>{
+    e.preventDefault()
+    await axios.post(`http://localhost:4000/employee/login`, formData ).then(response => {
+      // Handle successful response
+
+      window.sessionStorage.setItem("user", JSON.stringify(response.data[0]));
+      console.log(response.data[0])
+      if(response.data[0].role == "1"){
+        if(response.data[0].dept == "HR"){
+          router.push('/HR')
+        }else{
+          router.push('/staff')
+        }
+      }
+      else if(response.data[0].role == "2"){
+        router.push('/staff')
+      }
+
+    })
+    .catch(error => {
+      // Handle error
+      console.error(error);
+    });
+  }
+
     return (
         <>
-        {/*
-          This example requires updating your template:
-  
-          ```
-          <html class="h-full bg-white">
-          <body class="h-full">
-          ```
-        */}
         <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
           <div className="sm:mx-auto sm:w-full sm:max-w-sm">
             <img
@@ -22,7 +57,7 @@ export default function MyApp() {
           </div>
   
           <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-            <form action="#" method="POST" className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
                   Email address
@@ -34,6 +69,8 @@ export default function MyApp() {
                     type="email"
                     required
                     autoComplete="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
                 </div>
@@ -56,6 +93,8 @@ export default function MyApp() {
                     name="password"
                     type="password"
                     required
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
                     autoComplete="current-password"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
