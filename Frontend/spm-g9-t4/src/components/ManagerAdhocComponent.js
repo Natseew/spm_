@@ -167,7 +167,7 @@ const AdHocSchedule = () => {
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
-                        <th className="py-2 px-4 border-b border-gray-300">StaffID</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
                         <th className="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
@@ -180,7 +180,7 @@ const AdHocSchedule = () => {
                         {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
-                        <tr key={item.req_id || index} className="text-center">
+                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors ">
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staffid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
