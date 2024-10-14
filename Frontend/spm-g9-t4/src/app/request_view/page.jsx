@@ -23,6 +23,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { useRouter } from 'next/navigation'; 
 
 export default function PendingRequests() {
   const [adhocRequests, setAdhocRequests] = useState([]);
@@ -31,7 +32,31 @@ export default function PendingRequests() {
   const [selectedDate, setSelectedDate] = useState(null); // Selected date for changing WFH request
   const [selectedRecordId, setSelectedRecordId] = useState(null); // Track which request is being changed
   const [openChangeDialog, setOpenChangeDialog] = useState(false); // Dialog visibility state
-  const staffId = "140001"; // Replace with dynamic staff ID if available
+  // const staffId = "140001"; // Replace with dynamic staff ID if available
+  const router = useRouter(); // Initialize the router
+
+  // Retrieve the user data from sessionStorage
+  const [user, setUser] = useState(null);
+  const [staffId, setStaffId] = useState(null);
+
+   // **Use useEffect to access window.sessionStorage on the client side**
+   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
+      setUser(storedUser);
+      setStaffId(storedUser ? storedUser.staff_id : null);
+      console.log("User data:", storedUser);
+      console.log(storedUser.staff_id);
+    }
+  }, []);
+  
+  //Handle the case where staffId is not available (user not logged in)
+  useEffect(() => {
+    if (staffId !== null) {
+      console.log("Updated staffId:", staffId);
+    }
+  }, [staffId]);
+
 
   // Fetch ad-hoc requests from the backend
   useEffect(() => {

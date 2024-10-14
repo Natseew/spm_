@@ -34,6 +34,11 @@ export default function MyApp() {
       else if(response.data[0].role == "2"){
         router.push('/staff')
       }
+      else if (response.data[0].role == "3") {
+    
+        router.push('/staff'); 
+      }
+
 
     })
     .catch(error => {
