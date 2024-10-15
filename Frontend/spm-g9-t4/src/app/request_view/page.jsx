@@ -257,8 +257,17 @@ export default function PendingRequests() {
   );
 }
 
+
 // Component to display Ad-Hoc Requests Table
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
+  // Get today's date and calculate 2 weeks forward and backward
+  const today = new Date();
+  const twoWeeksBack = new Date();
+  const twoWeeksForward = new Date();
+  twoWeeksBack.setDate(today.getDate() - 14);  // 2 weeks backward
+  twoWeeksForward.setDate(today.getDate() + 14);  // 2 weeks forward
+  
+
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
@@ -275,37 +284,43 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
         </TableHead>
         <TableBody>
           {requests.length > 0 ? (
-            requests.map((request) => (
-              <TableRow key={request.recordid}>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.recordid}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.wfh_date ? new Date(request.wfh_date).toLocaleDateString() : "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "AM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "PM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {["Pending", "Approved"].includes(request.status) && (
-                    <>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => onWithdraw(request.recordid, request.status, false)}
-                        sx={{ marginRight: 1 }}
-                      >
-                        Withdraw
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => onChange(request.recordid, request.status)}
-                      >
-                        Change
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+            requests.map((request) => {
+              const wfhDate = new Date(request.wfh_date); // Convert the WFH date to a Date object
+              const isWithinTwoWeeks =
+                wfhDate >= twoWeeksBack && wfhDate <= twoWeeksForward; // Check if WFH date is within 2 weeks
+
+              return (
+                <TableRow key={request.recordid}>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.recordid}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.wfh_date ? new Date(request.wfh_date).toLocaleDateString() : "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "AM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "PM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                    {["Pending", "Approved"].includes(request.status) && isWithinTwoWeeks && (
+                      <>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => onWithdraw(request.recordid, request.status, false)}
+                          sx={{ marginRight: 1 }}
+                        >
+                          Withdraw
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => onChange(request.recordid, request.status)}
+                        >
+                          Change
+                        </Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow>
               <TableCell colSpan={7} sx={{ textAlign: "center" }}>
@@ -318,6 +333,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
+
 
 // Component to display Recurring Requests Table (Similar structure, with few differences)
 function RecurringRequestsTable({ requests, onWithdraw, onChange }) {
