@@ -32,7 +32,7 @@ export default function PendingRequests() {
   const [selectedDate, setSelectedDate] = useState(null); // Selected date for changing WFH request
   const [selectedRecordId, setSelectedRecordId] = useState(null); // Track which request is being changed
   const [openChangeDialog, setOpenChangeDialog] = useState(false); // Dialog visibility state
-  // const staffId = "140001"; // Replace with dynamic staff ID if available
+  // const staffId = "140001"; // Replace with dynamic staff ID 
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -128,7 +128,7 @@ export default function PendingRequests() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recordID: id, reason }), // Include the reason in the request body
+        body: JSON.stringify({ recordID: id, reason, staff_id: staffId }), // Include the reason in the request body
       });
 
       if (response.ok) {
@@ -180,7 +180,7 @@ export default function PendingRequests() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ recordID: selectedRecordId, new_date: selectedDate, reason }),
+          body: JSON.stringify({ recordID: selectedRecordId, new_date: selectedDate, reason,staff_id: staffId  }),
         });
 
         if (response.ok) {

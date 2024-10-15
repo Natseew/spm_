@@ -271,7 +271,7 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
 
 // Withdraw an ad-hoc WFH request
 router.post('/withdraw_wfh', async (req, res) => {
-  const { recordID, reason } = req.body;
+  const { recordID, reason,staff_id} = req.body;
 
   try {
     // Start a transaction to ensure atomicity
@@ -310,10 +310,17 @@ router.post('/withdraw_wfh', async (req, res) => {
     }
 
     // 3. Insert a new row into the activity log to log the withdrawal along with the reason
+
+    const activityLog = {
+      Staff_id: staff_id, 
+      Action: newStatus,
+      Reason: reason,
+    };
+
     await client.query(
       `INSERT INTO activitylog (recordID, activity) 
        VALUES ($1, $2)`,
-      [recordID, `Withdrawn - ${reason || 'No reason provided'}`]
+       [recordID, JSON.stringify(activityLog)] // Convert the activity log to a JSON string
     );
 
     // Commit the transaction
@@ -336,10 +343,10 @@ router.post('/withdraw_wfh', async (req, res) => {
 
 
 
-t
+
 // Change an ad-hoc WFH request
 router.post('/change_adhoc_wfh', async (req, res) => {
-  const { recordID, new_date, reason } = req.body;
+  const { recordID, new_date, reason,staff_id } = req.body;
 
   try {
     // Start a transaction to ensure atomicity
@@ -412,14 +419,18 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     const formattedNewDateString = formattedNewDate.toISOString().split('T')[0]; // New WFH Date
 
     // 3. Insert a new row into the activity log to log the change along with the reason and old/new wfh_date
-    const activityMessage = currentStatus === "Approved"
-      ? `Pending Change - ${reason || 'No reason provided'} (Old WFH Date: ${formattedCurrentWfhDate}, New WFH Date: ${formattedNewDateString})`
-      : `Changed - ${reason || 'No reason provided'} (Old WFH Date: ${formattedCurrentWfhDate}, New WFH Date: ${formattedNewDateString})`;
+    const activityLog = {
+      Staff_id: staff_id, // Log the staff_id as the actor
+      Action: newStatus === "Pending Change" ? "Pending Change" : "Changed",
+      Reason: reason,
+      CurrentWFHDate: formattedCurrentWfhDate,
+      NewWFHDate: formattedNewDateString,
+    };
 
     await client.query(
       `INSERT INTO activitylog (recordID, activity) 
        VALUES ($1, $2)`,
-      [recordID, activityMessage]
+      [recordID, JSON.stringify(activityLog)] // Store the activity log as a JSON string
     );
 
     // Commit the transaction
