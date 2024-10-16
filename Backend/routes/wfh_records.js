@@ -334,9 +334,6 @@ router.post('/withdraw_wfh', async (req, res) => {
   }
 });
 
-
-
-t
 // Change an ad-hoc WFH request
 router.post('/change_adhoc_wfh', async (req, res) => {
   const { recordID, new_date, reason } = req.body;
