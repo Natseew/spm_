@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.17' # Specify your Node.js version
+
+      - name: Install dependencies
+        working-directory: Frontend/spm-g9-t4
+        run: npm install
+
+      - name: Build Next.js application
+        working-directory: Frontend/spm-g9-t4
+        run: npm run build
+
+      - name: Start Next.js application
+        working-directory: Frontend/spm-g9-t4
+        run: npm start &
+        env:
+          NODE_ENV: development
+
+      - name: Wait for Next.js to be ready
+        run: npx wait-on http://localhost:3000
+
+      - name: Run Cypress tests
+        working-directory: Frontend/spm-g9-t4
+        run: npx cypress run
+        env:
+          CYPRESS_BASE_URL: http://localhost:3000
