@@ -23,15 +23,12 @@ export default function MyApp() {
       // Handle successful response
 
       window.sessionStorage.setItem("user", JSON.stringify(response.data[0]));
-      console.log(response.data[0])
       if(response.data[0].role == "1"){
-        if(response.data[0].dept == "HR"){
-          router.push('/HR')
-        }else{
-          router.push('/staff')
-        }
+        router.push('/HR')
       }
       else if(response.data[0].role == "2"){
+        router.push('/staff')
+      }else{
         router.push('/staff')
       }
 
