@@ -71,8 +71,8 @@ const RecurringSchedule = () => {
         if (RecurringData.length > 0) {
             console.log('Recurring Data after update:', RecurringData);
         }
-    }, [RecurringData]); // This will run every time adhocData is updated
-
+    }, [RecurringData]); // RecurringData is now included as a dependency
+    
 
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal

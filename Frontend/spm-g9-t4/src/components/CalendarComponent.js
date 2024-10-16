@@ -9,12 +9,13 @@ import dayGridPlugin from '@fullcalendar/daygrid';
     
 // }
 
-const CalendarComponent = () => {
-    const events = [
-    { title: 'Meeting', start: '2024-09-20', end: '2024-09-20' },
-    { title: 'Conference', start: '2024-09-25' },
-    // Add more events as needed
-    ];
+const CalendarComponent = ({ events }) => {
+    const formattedEvents = events.map(item => ({
+        title: item.request_reason,
+        start: new Date(item.wfh_date).toISOString().split('T')[0], // Adjust the format if needed
+        end: new Date(item.wfh_date).toISOString().split('T')[0], // If your event durations are single-day
+    }));
+
 
     return (
     <div className="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
@@ -22,7 +23,7 @@ const CalendarComponent = () => {
         <FullCalendar
         plugins={[dayGridPlugin]}
         initialView="dayGridMonth"
-        events={events}
+        events={formattedEvents} // Use formatted events
         />
     </div>
     );

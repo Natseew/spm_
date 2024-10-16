@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
+import CalendarComponent from "@/components/CalendarComponent";
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
@@ -135,7 +136,11 @@ const AdHocSchedule = () => {
 
 
     return (
+        
         <div>
+                <div>
+                    <CalendarComponent events={adhocData} />
+                </div>
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
