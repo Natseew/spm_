@@ -10,7 +10,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #000000;
   }
 }
 
@@ -24,4 +24,13 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+header {
+  background-color: #3f51b5; /* MUI primary color */
+  color: #fff; /* Text color */
+  padding: 16px; /* Padding around the text */
+  font-size: 24px; /* Font size */
+  text-align: center; /* Center the text */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Shadow effect */
 }

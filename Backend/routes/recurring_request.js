@@ -160,10 +160,10 @@ router.post('/approve/:requestid', async (req, res) => {
         // Step 1: Update the recurring_request status to 'Approved'
         const updateResult = await client.query(
             `UPDATE recurring_request
-             SET status = 'Approved'
-             WHERE requestid = $1
-             RETURNING staff_id, wfh_dates, timeslot, request_reason;`,
-            [requestid]
+            SET status = 'Approved'
+            WHERE requestid = $1
+            RETURNING staff_id, wfh_dates, timeslot, request_reason;`,
+        [requestid]
         );
         // Check if the request was found
         if (updateResult.rowCount === 0) {
