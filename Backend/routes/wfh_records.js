@@ -437,5 +437,30 @@ router.post('/change_adhoc_wfh', async (req, res) => {
   }
 });
 
+// retrieve all recurring dates
+router.get('/recurring_dates', async (req, res) => {
+  try {
+    const result = await client.query(`
+      SELECT 
+        rr.requestID,
+        rr.staffID,
+        rr.recurring,
+        rr.request_reason,
+        rr.requestDate,
+        wr.wfh_date
+      FROM 
+        wfh_recurring_request rr
+      JOIN 
+        wfh_records wr ON rr.requestID = wr.requestID
+      WHERE 
+        rr.recurring = true
+    `);
+    console.log(result.rows);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching recurring dates:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
 
 module.exports = router;
