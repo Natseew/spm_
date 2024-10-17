@@ -4,13 +4,6 @@ const client = require('../databasepg');
 
 
 
-
-
-
-
-
-
-
 router.get('/wfh_requests/:staff_id', async (req, res) => {
   const { staff_id, status } = req.params;
 
