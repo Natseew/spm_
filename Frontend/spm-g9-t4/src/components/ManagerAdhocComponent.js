@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
 import CalendarComponent from "@/components/CalendarComponent";
+import EmailSending from "@/components/CalendarComponent"
+
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
@@ -15,7 +17,6 @@ const AdHocSchedule = () => {
     const [employeeData, setEmployeeData] = useState([]); // State to store employee data
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
-
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -67,6 +68,7 @@ const AdHocSchedule = () => {
         fetchEmployeeAndAdhocData();
     }, []); // Fetch once when component mounts
 
+    
     useEffect(() => {
         if (adhocData.length > 0) {
             console.log('Adhoc Data after update:', adhocData);
@@ -112,17 +114,44 @@ const AdHocSchedule = () => {
         const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
     
         // Optionally log the name for debugging purposes
-        console.log(name); // Log the retrieved name
+        // console.log(name); // Log the retrieved name
         return name; // Return either found name or 'Unknown'
     };
     
     
+// Action Handlers
+const handleAccept = async (employeeID) => {
+    // Logic to accept the request
+    console.log(`Accepting request with ID: ${employeeID}`);
+    try {
+        // Send a PATCH request to update the status to "accepted"
+        const response = await fetch(`http://localhost:4000/accept/${employeeID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
 
-    // Action Handlers
-    const handleAccept = async (reqId) => {
-        // Logic to accept the request
-        console.log(`Accepting request with ID: ${reqId}`);
-    };
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // Optionally, update the state to reflect the changes in your UI
+        // setAdhocData((prevData) =>
+        //     prevData.map(item =>
+        //         item.staffid === employeeID ? { ...item, status: 'accepted' } : item
+        //     )
+        // );
+
+    } catch (error) {
+        console.error('Error during status update:', error);
+        // Optional: Handle error in UI or state
+    }
+};
+
 
     const handleReject = async (reqId) => {
         // Logic to reject the request
@@ -141,6 +170,7 @@ const AdHocSchedule = () => {
                 <div>
                     <CalendarComponent events={adhocData} />
                 </div>
+
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
@@ -205,13 +235,13 @@ const AdHocSchedule = () => {
                                     <>
                                         <button 
                                             className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                            onClick={() => handleAccept(item.req_id)} // Call accept handler
+                                            onClick={() => handleAccept(item.staffid)} // Call accept handler
                                         >
                                             Accept
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => handleReject(item.req_id)} // Call reject handler
+                                            onClick={() => handleReject(item.staffid)} // Call reject handler
                                         >
                                             Reject
                                         </button>
@@ -221,7 +251,7 @@ const AdHocSchedule = () => {
                                     item.status === 'Approved' &&
                                     <button 
                                         className="bg-yellow-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleCancel(item.req_id)} // Call cancel handler for accepted requests
+                                        onClick={() => handleCancel(item.staffid)} // Call cancel handler for accepted requests
                                     >
                                         Cancel
                                     </button>

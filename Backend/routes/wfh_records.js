@@ -53,4 +53,54 @@ router.post('/by-employee-ids', async (req, res) => {
     }
 });
 
+// Accepted Update
+// Update the status of a WFH record to "accepted" for a specific employee
+router.patch('/accept/:staffid', async (req, res) => {
+
+    try {
+        const { staffid } = req.params;
+
+        // Update the status to "accepted"
+        const result = await client.query(
+            'UPDATE wfh_records SET status = $1 WHERE staffid = $2 RETURNING *',
+            ['Approved', staffid]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'No records found for the given staff ID.' });
+        }
+
+        console.log('Updated record:', result.rows[0]);
+        res.status(200).json({ message: 'Status updated to accepted.', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating status:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+// Rejected Update
+// Update the status of a WFH record to "rejected" for a specific employee
+router.patch('/reject/:staffid', async (req, res) => {
+    try {
+        const { staffid } = req.params;
+
+        // Update the status to "rejected"
+        const result = await client.query(
+            'UPDATE wfh_records SET status = $1 WHERE staffid = $2 RETURNING *',
+            ['Rejected', staffid]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'No records found for the given staff ID.' });
+        }
+
+        console.log('Updated record:', result.rows[0]);
+        res.status(200).json({ message: 'Status updated to rejected.', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating status:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+
 module.exports = router;
