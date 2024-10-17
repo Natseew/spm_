@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper, Button } from '@mui/material';
+import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper, Button, Alert } from '@mui/material';
 import Link from 'next/link';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -36,7 +36,7 @@ const getStatusLabel = (scheduleStatus) => {
   }
 };
 
-const StaffListTable = ({ staffData, date }) => (
+const StaffListTable = ({ staffData }) => (
   <Table sx={{ marginTop: '20px' }}>
     <TableHead>
       <TableRow>
@@ -79,6 +79,7 @@ const HRPage = () => {
   const [selectedSessions, setSelectedSessions] = useState({ AM: true, PM: true });
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [staffData, setStaffData] = useState([]);
+  const [error, setError] = useState('');
 
   const handleDepartmentChange = (event) => {
     const { value, checked } = event.target;
@@ -93,20 +94,30 @@ const HRPage = () => {
   };
 
   const fetchStaffSchedule = async () => {
-    if (selectedDepartments.length === 0 || !date) return;
-
+    const errors = [];
+    if (!selectedSessions.AM && !selectedSessions.PM) {
+      errors.push('Please select at least one session (AM or PM).');
+    }
+    if (selectedDepartments.length === 0) {
+      errors.push('Please select at least one department.');
+    }
+    if (errors.length > 0) {
+      setError(errors.join(' ')); // Note the space between errors for concatenation
+      return;
+    }
+    setError(''); // Clear any existing error if all checks pass
+  
     try {
       const formattedDate = dayjs(date).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
       const response = await axios.get(`http://localhost:4000/wfh_records/schedule/${departmentsParam}/${formattedDate}`);
-
-      console.log("Frontend Response:", response.data);
-
       setStaffData(response.data.staff_schedules || []);
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
+      setError('Error fetching staff schedule');
     }
   };
+  
 
   const calculateStaffCounts = () => {
     const amHomeStaff = staffData.filter(staff => 
@@ -132,6 +143,15 @@ const HRPage = () => {
 
   return (
     <Box sx={{ padding: '20px' }}>
+      {error && (
+        <Alert severity="error" sx={{ marginBottom: '20px' }}>
+          {error.split('.').map((msg, index) => (
+            <div key={index}>{msg.trim()}.</div>
+          ))}
+        </Alert>
+      )}
+
+
       <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
         <Typography variant="h6" sx={{ marginBottom: '10px' }}>SESSION</Typography>
         <FormControlLabel
@@ -205,7 +225,7 @@ const HRPage = () => {
         </Grid>
       </Grid>
 
-      <StaffListTable staffData={staffData} date={date} />
+      <StaffListTable staffData={staffData} />
     </Box>
   );
 };

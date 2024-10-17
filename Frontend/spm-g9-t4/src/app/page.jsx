@@ -3,6 +3,9 @@
 import React, {useState} from 'react'
 import axios from 'axios';
 import { useRouter } from 'next/navigation'
+import Snackbar, { SnackbarCloseReason } from '@mui/material/Snackbar';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 
 
 export default function MyApp() {
@@ -16,6 +19,19 @@ export default function MyApp() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [open, setOpen] = React.useState(false);
+  const [message, setMessage] = React.useState("");
+  const [snackColor, setSnackColor] = React.useState("");
+
+  const snackBar = (message, snackColor) => {
+    setMessage(message)
+    setSnackColor(snackColor)
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
 
   const handleSubmit = async (e)=>{
     e.preventDefault()
@@ -23,22 +39,23 @@ export default function MyApp() {
       // Handle successful response
 
       window.sessionStorage.setItem("user", JSON.stringify(response.data[0]));
-      console.log(response.data[0])
       if(response.data[0].role == "1"){
-        if(response.data[0].dept == "HR"){
-          router.push('/HR')
-        }else{
-          router.push('/staff')
-        }
+        router.push('/HR')
+        snackBar("Success", "green");
       }
       else if(response.data[0].role == "2"){
         router.push('/staff')
+        snackBar("Success", "green");
+      }else if(response.data[0].role == "3"){
+        router.push('/staff')
+        snackBar("Success", "green");
       }
 
     })
     .catch(error => {
       // Handle error
       console.error(error);
+      snackBar("Invalid Credentials", "red");
     });
   }
 
@@ -110,7 +127,19 @@ export default function MyApp() {
                 </button>
               </div>
             </form>
-  
+            <Snackbar
+              class="error-message"
+              ContentProps={{
+                sx: {
+                  background: snackColor
+                }
+              }}
+              open={open}
+              autoHideDuration={6000}
+              onClose={handleClose}
+              message={message}
+            />
+              
             <p className="mt-10 text-center text-sm text-gray-500">
               Not a member?{' '}
               <a href="#" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">

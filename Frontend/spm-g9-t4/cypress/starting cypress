@@ -1,0 +1,6 @@
+1. Navigate to spm-g9-t4
+2. npm install 
+3. npm run dev
+4. npx cypress open
+5. Add in your testcase in vscode under cypress>e2e folder
+6. Ensure you have started Frontend (npm run dev) & Backend (node server.js)
