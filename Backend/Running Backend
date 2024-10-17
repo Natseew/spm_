@@ -4,3 +4,4 @@
 4. Type "node server.js"
 5. To test out the get/post request : Go to Postman and type in "localhost:4000/"
 5.2 Alternatively make a get/post request from the frontend
+5.3 Testing...
