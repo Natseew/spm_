@@ -77,7 +77,7 @@ router.patch('/accept/:recordID', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
-
+})
 
 // Updating status to Approved.
 // try {
