@@ -153,23 +153,22 @@ const handleAccept = async (recordID) => {
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
 
-        // Update the state or refresh the data here
+        // Update the state
         setAdhocData(prevData => 
             prevData.map(item => 
                 item.recordid === recordID ? { ...item, status: 'Approved' } : item
             )
         );
 
-        // Set notification message
         setNotification('Request accepted successfully!');
-        setTimeout(() => setNotification(''), 3000); // Clear notification after 3 seconds
-
+        setTimeout(() => setNotification(''), 3000);
     } catch (error) {
         console.error('Error during status update:', error);
         setNotification(`Error accepting request: ${error.message}`);
-        setTimeout(() => setNotification(''), 3000); // Clear notification after 3 seconds
+        setTimeout(() => setNotification(''), 3000);
     }
 };
+
 
 
 const handleReject = async (reqId, reason) => {
@@ -195,6 +194,9 @@ const handleReject = async (reqId, reason) => {
                 item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
             )
         );
+
+        setNotification('Request rejected!');
+        setTimeout(() => setNotification(''), 3000);
     } catch (error) {
         console.error('Error during rejection update:', error);
     }
