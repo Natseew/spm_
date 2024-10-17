@@ -23,6 +23,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { useRouter } from 'next/navigation'; 
 
 export default function PendingRequests() {
   const [adhocRequests, setAdhocRequests] = useState([]);
@@ -31,7 +32,31 @@ export default function PendingRequests() {
   const [selectedDate, setSelectedDate] = useState(null); // Selected date for changing WFH request
   const [selectedRecordId, setSelectedRecordId] = useState(null); // Track which request is being changed
   const [openChangeDialog, setOpenChangeDialog] = useState(false); // Dialog visibility state
-  const staffId = "140001"; // Replace with dynamic staff ID if available
+  // const staffId = "140001"; // Replace with dynamic staff ID 
+  const router = useRouter(); // Initialize the router
+
+  // Retrieve the user data from sessionStorage
+  const [user, setUser] = useState(null);
+  const [staffId, setStaffId] = useState(null);
+
+   // **Use useEffect to access window.sessionStorage on the client side**
+   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
+      setUser(storedUser);
+      setStaffId(storedUser ? storedUser.staff_id : null);
+      console.log("User data:", storedUser);
+      console.log(storedUser.staff_id);
+    }
+  }, []);
+  
+  //Handle the case where staffId is not available (user not logged in)
+  useEffect(() => {
+    if (staffId !== null) {
+      console.log("Updated staffId:", staffId);
+    }
+  }, [staffId]);
+
 
   // Fetch ad-hoc requests from the backend
   useEffect(() => {
@@ -54,6 +79,8 @@ export default function PendingRequests() {
     fetchAdhocRequests();
   }, [staffId]);
 
+
+  // Testing  
   // Fetch recurring requests from the endpoint and filter by staff_id
   useEffect(() => {
     const fetchRecurringRequests = async () => {
@@ -103,7 +130,7 @@ export default function PendingRequests() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recordID: id, reason }), // Include the reason in the request body
+        body: JSON.stringify({ recordID: id, reason, staff_id: staffId }), // Include the reason in the request body
       });
 
       if (response.ok) {
@@ -155,7 +182,7 @@ export default function PendingRequests() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ recordID: selectedRecordId, new_date: selectedDate, reason }),
+          body: JSON.stringify({ recordID: selectedRecordId, new_date: selectedDate, reason,staff_id: staffId  }),
         });
 
         if (response.ok) {
@@ -232,8 +259,17 @@ export default function PendingRequests() {
   );
 }
 
+
 // Component to display Ad-Hoc Requests Table
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
+  // Get today's date and calculate 2 weeks forward and backward
+  const today = new Date();
+  const twoWeeksBack = new Date();
+  const twoWeeksForward = new Date();
+  twoWeeksBack.setDate(today.getDate() - 14);  // 2 weeks backward
+  twoWeeksForward.setDate(today.getDate() + 14);  // 2 weeks forward
+  
+
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
@@ -250,37 +286,43 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
         </TableHead>
         <TableBody>
           {requests.length > 0 ? (
-            requests.map((request) => (
-              <TableRow key={request.recordid}>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.recordid}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.wfh_date ? new Date(request.wfh_date).toLocaleDateString() : "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "AM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "PM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
-                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {["Pending", "Approved"].includes(request.status) && (
-                    <>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => onWithdraw(request.recordid, request.status, false)}
-                        sx={{ marginRight: 1 }}
-                      >
-                        Withdraw
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => onChange(request.recordid, request.status)}
-                      >
-                        Change
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+            requests.map((request) => {
+              const wfhDate = new Date(request.wfh_date); // Convert the WFH date to a Date object
+              const isWithinTwoWeeks =
+                wfhDate >= twoWeeksBack && wfhDate <= twoWeeksForward; // Check if WFH date is within 2 weeks
+
+              return (
+                <TableRow key={request.recordid}>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.recordid}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.wfh_date ? new Date(request.wfh_date).toLocaleDateString() : "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "AM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "PM" || request.timeslot === "FD" ? "✓" : ""}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status || "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                    {["Pending", "Approved"].includes(request.status) && isWithinTwoWeeks && (
+                      <>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => onWithdraw(request.recordid, request.status, false)}
+                          sx={{ marginRight: 1 }}
+                        >
+                          Withdraw
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => onChange(request.recordid, request.status)}
+                        >
+                          Change
+                        </Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow>
               <TableCell colSpan={7} sx={{ textAlign: "center" }}>
@@ -293,6 +335,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
+
 
 // Component to display Recurring Requests Table (Similar structure, with few differences)
 function RecurringRequestsTable({ requests, onWithdraw, onChange }) {
