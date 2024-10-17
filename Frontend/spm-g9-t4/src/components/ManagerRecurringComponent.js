@@ -71,8 +71,8 @@ const RecurringSchedule = () => {
         if (RecurringData.length > 0) {
             console.log('Recurring Data after update:', RecurringData);
         }
-    }, [RecurringData]); // This will run every time adhocData is updated
-
+    }, [RecurringData]); // RecurringData is now included as a dependency
+    
 
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
@@ -117,6 +117,44 @@ const RecurringSchedule = () => {
         console.log(name); // Log the retrieved name
         return name; // Return either found name or 'Unknown'
     };
+
+
+// Function to process and organize dates
+const formatDatesFromObject = (dateArray) => {
+    // Check if the input is an array
+    if (!Array.isArray(dateArray)) {
+        throw new Error("Invalid input. Please provide an array of date strings.");
+    }
+
+    // Initialize an array to hold formatted dates
+    const formattedDates = [];
+
+    // Loop through the date array
+    for (const date of dateArray) {
+        // Convert the string to a Date object and format it
+        const formatted_date = new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        
+        // Push the formatted date to the result array
+        formattedDates.push(formatted_date);
+        formattedDates.push(" ");
+
+    }
+
+    // Return the formatted dates
+    return formattedDates;
+};
+
+const FormatDateToDayofweek= (num) => {
+    const dayofweek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    const match_num = num - 1
+
+return dayofweek[match_num]
+}
+
 
     // Action Handlers
     const handleAccept = async (reqId) => {
@@ -167,8 +205,11 @@ const RecurringSchedule = () => {
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Dates</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Start Date</th>
+                        <th className="py-2 px-4 border-b border-gray-300">End Date</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Day of Week</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
                         <th className="py-2 px-4 border-b border-gray-300">Status</th>
                         <th className="py-2 px-4 border-b border-gray-300">Actions</th>
@@ -178,13 +219,17 @@ const RecurringSchedule = () => {
                         {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
-                        <tr key={item.req_id} className="text-center">
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
-                            <td className="hover:bg-green-100 transition-colors py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.wfh_dates}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">{item.status}</td>
-                            <td className="hover:bg-blue-100 transition-colors py-2 px-4 border-b border-gray-300">
+                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors ">
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{new Date(item.start_date).toLocaleDateString()}</td> 
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{new Date(item.end_date).toLocaleDateString()}</td>
+                            {/* <td className="py-2 px-4 border-b border-gray-300" >{formatDatesFromObject(item.wfh_dates)}</td> */}
+                            <td className="py-2 px-4 border-b border-gray-300" >{FormatDateToDayofweek(item.day_of_week)}</td>
+                            <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">
                                 <button 
                                     className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
                                     onClick={() => openModal(item)} // Open modal with item data

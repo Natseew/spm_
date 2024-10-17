@@ -1,26 +1,22 @@
 // Mark this component as a Client Component
 "use client";
 
-// import CalendarComponent from "@/components/CalendarComponent";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-// import ManagerAdhocComponent from "@/components/ManagerAdhocComponent";
-// import ManagerRecurringComponent from "@/components/ManagerRecurringComponent";
 import ToggleView from "@/components/ToggleViewComponent";
 
-export default function managerview() {
+export default function ManagerView() { // Rename to start with an uppercase letter
     const [selectedDate, setSelectedDate] = useState(""); // State to track the selected date
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [dayOfWeek, setDayOfWeek] = useState("");
+
     
-
     function getDayName(date) {
-    if (isNaN(date.getTime())) {
-      return 'Invalid Date'; // Handle invalid date scenario
-    }
-
-    const options = { weekday: 'long' };
-    return date.toLocaleDateString(undefined, options); // Example result: 'Monday'
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date'; // Handle invalid date scenario
+        }
+        const options = { weekday: 'long' };
+        return date.toLocaleDateString(undefined, options); // Example result: 'Monday'
     }
 
     // Function to handle date selection change
@@ -44,27 +40,19 @@ export default function managerview() {
         }
     }, [selectedDate]);
 
-return (
-    <>
-    <div className="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-
-    <div className="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
-        <div>
-            {/* Uncomment for Calendar Component
-            <div>
-                    <CalendarComponent/>
-            </div> */}
-            
-
-            <div className="overflow-x-auto">
-                <ToggleView/>
-                {/* <ManagerAdhocComponent/> */}
-                {/* <ManagerRecurringComponent/> */}
+    return (
+        <>
+            <div className="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+                <div className="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
+                    
+                        <div className="overflow-x-auto">
+                            <ToggleView/>
+                            {/* <ManagerAdhocComponent/> */}
+                            {/* <ManagerRecurringComponent/> */}
+                        </div>
+                    
+                </div>
             </div>
-        </div>
-    </div>
-    </div>
-
-</>
-);
+        </>
+    );
 }

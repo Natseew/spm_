@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
+import CalendarComponent from "@/components/CalendarComponent";
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
@@ -154,7 +155,11 @@ const AdHocSchedule = () => {
 
 
     return (
+        
         <div>
+                <div>
+                    <CalendarComponent events={adhocData} />
+                </div>
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
@@ -186,7 +191,7 @@ const AdHocSchedule = () => {
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
-                        <th className="py-2 px-4 border-b border-gray-300">StaffID</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
                         <th className="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
@@ -199,7 +204,7 @@ const AdHocSchedule = () => {
                         {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
-                        <tr key={item.req_id || index} className="text-center">
+                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors ">
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.recordid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staffid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staffid)}</td>
