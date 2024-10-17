@@ -33,8 +33,8 @@ export default function Page() {
   useEffect(()=>{
     try {
       const fetchStaffSchedule = async () => {
-        console.log(window.sessionStorage.getItem("user"));
-        const response = await axios.get(`http://localhost:4000/wfh_records/140918`);
+        const user = JSON.parse(window.sessionStorage.getItem("user"))
+        const response = await axios.get(`http://localhost:4000/wfh_records/${user.staff_id}`);
         console.log("Response data:", response.data);
         let eventsArray = []
         for(let item of response.data){
@@ -46,7 +46,7 @@ export default function Page() {
             color: "#099ce5",
             startHour: "08:00 AM",
             endHour: "06:00 PM",
-            date: dayjs(item.sched_date).format('YYYY-MM-DD'),
+            date: dayjs(item.wfh_date).format('YYYY-MM-DD'),
             createdAt: new Date(),
             createdBy: "Admin"
           }
