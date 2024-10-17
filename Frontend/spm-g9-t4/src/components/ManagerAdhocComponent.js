@@ -7,6 +7,8 @@ import Notification from './Notification'; // Import your Notification component
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
+const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
+
 
 const AdHocSchedule = () => {
     const [loading, setLoading] = useState(true);
@@ -21,13 +23,13 @@ const AdHocSchedule = () => {
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
-
+    
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
         const fetchEmployeeAndAdhocData = async () => {
             try {
                 // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch('http://localhost:4000/employee/by-manager/130002'); // Replace with actual managerId
+                const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`); // Replace with actual managerId
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
