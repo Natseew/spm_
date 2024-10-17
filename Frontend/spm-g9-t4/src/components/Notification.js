@@ -14,7 +14,7 @@ const styles = {
         position: 'fixed',
         top: '20px',
         right: '20px',
-        backgroundColor: '#4caf50', // Green background
+        backgroundColor: 'grey', // Green background
         color: 'white',
         padding: '10px 20px',
         borderRadius: '5px',
