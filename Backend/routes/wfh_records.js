@@ -474,4 +474,40 @@ router.get('/recurring_dates', async (req, res) => {
   }
 });
 
+//Approve Change
+router.put('/approve_change/:recordid', async (req, res) => {
+  const { recordid, staff_id } = req.params; // Get the record ID from the URL params
+
+  try {
+    // Update the status in the wfh_records table
+    const result = await client.query(
+      `UPDATE wfh_records 
+       SET status = 'Approved' 
+       WHERE recordid = $1 AND status = 'Pending Change'`,
+      [recordid]
+    );
+
+    const activityLog = {
+      Staff_id: staff_id, // Log the staff_id as the actor
+      Action: "Approve Change",
+    };
+
+    await client.query(
+      `INSERT INTO activitylog (recordID, activity) 
+       VALUES ($1, $2)`,
+      [recordid, JSON.stringify(activityLog)] // Store the activity log as a JSON string
+    );
+
+    if (result.rowCount === 0) {
+      // No rows were updated, which means the status was not "Pending Change"
+      return res.status(404).json({ message: 'Record not found or status is not Pending Change.' });
+    }
+
+    res.status(200).json({ message: 'Status updated to Approved.' });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 module.exports = router;
