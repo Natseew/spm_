@@ -299,6 +299,8 @@ const handleRejectOpen = (data) => {
                                         </button>
                                     </>
                                 }
+
+
                                 {
                                     item.status === 'Approved' &&
                                     <button 
@@ -309,6 +311,31 @@ const handleRejectOpen = (data) => {
                                     </button>
                                 }
                                 {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
+
+                                {item.status === 'Pending Change' && (
+                                <>
+                                    <button 
+                                        className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAccept(item.recordid)} // Accept button for Pending Change
+                                    >
+                                        Accept
+                                    </button>
+                                    <button 
+                                        className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => openRejectModal(item)} // Reject button for Pending Change
+                                    >
+                                        Reject
+                                    </button>
+                                    </>
+                                )}
+                                {item.status === 'Pending Withdrawal' && (
+                                    <button 
+                                        className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAccept(item.recordid)} // Accept button for Pending Withdrawal
+                                    >
+                                        Accept
+                                    </button>
+                                )}
                             </td>
                         </tr>
                     ))}
