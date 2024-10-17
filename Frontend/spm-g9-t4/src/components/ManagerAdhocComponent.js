@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
 import CalendarComponent from "@/components/CalendarComponent";
-import EmailSending from "@/components/CalendarComponent"
+import HandleRejectModal from './HandleRejectModal';
+import Notification from './Notification'; // Import your Notification component
 
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
@@ -17,13 +18,16 @@ const AdHocSchedule = () => {
     const [employeeData, setEmployeeData] = useState([]); // State to store employee data
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectData, setRejectData] = useState(null);
+    const [notification, setNotification] = useState(''); // State for notification message
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
         const fetchEmployeeAndAdhocData = async () => {
             try {
                 // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch('http://localhost:4000/employee/by-manager/140894'); // Replace with actual managerId
+                const idResponse = await fetch('http://localhost:4000/employee/by-manager/130002'); // Replace with actual managerId
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
@@ -75,6 +79,17 @@ const AdHocSchedule = () => {
         }
     }, [adhocData]); // This will run every time adhocData is updated
 
+    // Modals Opening and Closing
+    const openRejectModal = (data) => {
+        setRejectData(data);
+        setRejectModalOpen(true);
+    };
+    
+    const closeRejectModal = () => {
+        setRejectModalOpen(false);
+        setRejectData(null);
+    };
+
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
         setModalOpen(true); // Open the modal
@@ -84,6 +99,7 @@ const AdHocSchedule = () => {
         setModalOpen(false); // Close the modal
         setModalData({}); // Clear the modal data
     };
+
 
     if (loading) {
         return <p>Loading...</p>; // Display loading message
@@ -120,12 +136,10 @@ const AdHocSchedule = () => {
     
     
 // Action Handlers
-const handleAccept = async (employeeID) => {
-    // Logic to accept the request
-    console.log(`Accepting request with ID: ${employeeID}`);
+const handleAccept = async (recordID) => {
+    console.log(`Accepting request with ID: ${recordID}`);
     try {
-        // Send a PATCH request to update the status to "accepted"
-        const response = await fetch(`http://localhost:4000/accept/${employeeID}`, {
+        const response = await fetch(`http://localhost:4000/wfh_records/accept/${recordID}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -139,37 +153,71 @@ const handleAccept = async (employeeID) => {
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
 
-        // Optionally, update the state to reflect the changes in your UI
-        // setAdhocData((prevData) =>
-        //     prevData.map(item =>
-        //         item.staffid === employeeID ? { ...item, status: 'accepted' } : item
-        //     )
-        // );
+        // Update the state or refresh the data here
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === recordID ? { ...item, status: 'Approved' } : item
+            )
+        );
+
+        // Set notification message
+        setNotification('Request accepted successfully!');
+        setTimeout(() => setNotification(''), 3000); // Clear notification after 3 seconds
 
     } catch (error) {
         console.error('Error during status update:', error);
-        // Optional: Handle error in UI or state
+        setNotification(`Error accepting request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000); // Clear notification after 3 seconds
     }
 };
 
 
-    const handleReject = async (reqId) => {
-        // Logic to reject the request
-        console.log(`Rejecting request with ID: ${reqId}`);
-    };
+const handleReject = async (reqId, reason) => {
+    console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+    try {
+        const response = await fetch(`http://localhost:4000/wfh_records/reject/${reqId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason }), // Send the reason in the request body
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error rejecting request: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Rejection recorded successfully:', updatedData);
+        
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+            )
+        );
+    } catch (error) {
+        console.error('Error during rejection update:', error);
+    }
+};
+
+// Handling modal for reject action
+const handleRejectOpen = (data) => {
+    openRejectModal(data);
+};
 
     const handleCancel = async (reqId) => {
         // Logic to cancel the accepted request
         console.log(`Canceling request with ID: ${reqId}`);
     };
 
-
     return (
         
         <div>
-                <div>
-                    <CalendarComponent events={adhocData} />
-                </div>
+            {notification && <Notification message={notification} onClose={() => setNotification('')} />}
+
+        {/* <div>
+                <CalendarComponent events={adhocData} />
+            </div> */}
 
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
@@ -207,7 +255,9 @@ const handleAccept = async (employeeID) => {
                         <th className="py-2 px-4 border-b border-gray-300">Scheduled Dates</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
                         <th className="py-2 px-4 border-b border-gray-300">Status</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Reason</th>
+                        <th className="py-2 px-4 border-b border-gray-300">
+                            {selectedStatus === 'Rejected' ? 'Rejection Reason' : 'Reason'}
+                        </th>                        
                         <th className="py-2 px-4 border-b border-gray-300">Actions</th>
                     </tr>
                 </thead>
@@ -222,7 +272,9 @@ const handleAccept = async (employeeID) => {
                             <td className="py-2 px-4 border-b border-gray-300">{new Date(item.wfh_date).toLocaleDateString()}</td>
                             <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
                             <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
-                            <td className="py-2 px-4 border-b border-gray-200">{item.request_reason}</td>
+                            <td className="py-2 px-4 border-b border-gray-200">
+                                {item.status === 'Rejected' ? item.reject_reason : item.request_reason}
+                            </td>                            
                             <td className="py-2 px-4 border-b border-gray-300">
                                 <button 
                                     className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
@@ -235,13 +287,13 @@ const handleAccept = async (employeeID) => {
                                     <>
                                         <button 
                                             className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                            onClick={() => handleAccept(item.staffid)} // Call accept handler
+                                            onClick={() => handleAccept(item.recordid)} // Call accept handler
                                         >
                                             Accept
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => handleReject(item.staffid)} // Call reject handler
+                                            onClick={() => openRejectModal(item)} // Open rejection modal with data
                                         >
                                             Reject
                                         </button>
@@ -267,6 +319,14 @@ const handleAccept = async (employeeID) => {
                 onClose={closeModal} 
                 data={modalData} // Data to be displayed in the modal
             />
+
+            <HandleRejectModal 
+                isOpen={rejectModalOpen} 
+                onClose={closeRejectModal} 
+                onReject={handleReject} // Pass OnReject as the function to call
+                data={rejectData} // Pass the relevant data to the modal
+            />
+
         </div>
         );
     };

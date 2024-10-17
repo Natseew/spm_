@@ -54,50 +54,69 @@ router.post('/by-employee-ids', async (req, res) => {
 });
 
 // Accepted Update
-// Update the status of a WFH record to "accepted" for a specific employee
-router.patch('/accept/:staffid', async (req, res) => {
+// Update the status of a WFH record to "Approved" for a specific record ID
+router.patch('/accept/:recordID', async (req, res) => {
+    const { recordID } = req.params; // Use recordID from the route parameters
+   router.patch('/reject/:id', async (req, res) => {
+    const { id } = req.params; // Extract the ID from request parameters
+    const { reason } = req.body; // Extract the reason from the request body
 
     try {
-        const { staffid } = req.params;
-
-        // Update the status to "accepted"
         const result = await client.query(
-            'UPDATE wfh_records SET status = $1 WHERE staffid = $2 RETURNING *',
-            ['Approved', staffid]
+            'UPDATE wfh_records SET status = $1, reject_reason = $2 WHERE recordID = $3 RETURNING *',
+            ['Rejected', reason, id]
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'No records found for the given staff ID.' });
+            return res.status(404).json({ message: 'No records found for the given record ID.' });
+        }
+
+        res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
+    } catch (error) {
+        console.error('Update error:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+    try {
+        // Update the status to "Approved"
+        const result = await client.query(
+            'UPDATE wfh_records SET status = $1 WHERE recordID = $2 RETURNING *',
+            ['Approved', recordID] // Pass the new status and recordID
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'No records found for the given record ID.' });
         }
 
         console.log('Updated record:', result.rows[0]);
-        res.status(200).json({ message: 'Status updated to accepted.', record: result.rows[0] });
+        res.status(200).json({ message: 'Status updated to approved.', record: result.rows[0] });
     } catch (error) {
         console.error('Error updating status:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
 
-// Rejected Update
-// Update the status of a WFH record to "rejected" for a specific employee
-router.patch('/reject/:staffid', async (req, res) => {
-    try {
-        const { staffid } = req.params;
 
-        // Update the status to "rejected"
+// Reject Update
+// Update the status of a WFH record to "Rejected" and set the reject reason for a specific employee
+router.patch('/reject/:id', async (req, res) => {
+    const { id } = req.params; // Extract the ID from request parameters
+    const { reason } = req.body; // Extract the reason from the request body
+
+    try {
         const result = await client.query(
-            'UPDATE wfh_records SET status = $1 WHERE staffid = $2 RETURNING *',
-            ['Rejected', staffid]
+            'UPDATE wfh_records SET status = $1, reject_reason = $2 WHERE recordid = $3 RETURNING *',
+            ['Rejected', reason, id]
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'No records found for the given staff ID.' });
+            return res.status(404).json({ message: 'No records found for the given record ID.' });
         }
 
-        console.log('Updated record:', result.rows[0]);
-        res.status(200).json({ message: 'Status updated to rejected.', record: result.rows[0] });
+        res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
     } catch (error) {
-        console.error('Error updating status:', error);
+        console.error('Update error:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
