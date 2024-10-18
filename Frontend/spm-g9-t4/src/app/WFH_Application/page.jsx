@@ -49,7 +49,7 @@ export default function ArrangementForm() {
   const fetchApprovedPendingDates = async () => {
     try {
       const response = await fetch(
-        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+        `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -91,7 +91,7 @@ export default function ArrangementForm() {
 
     try {
       const response = await fetch(
-        "http://localhost:4000/wfh_records/wfh_adhoc_request",
+        `${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_adhoc_request`,
         {
           method: "POST",
           headers: {

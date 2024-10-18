@@ -76,7 +76,7 @@ const ManagerIDPage = () => {
   useEffect(() => {
     const fetchManagers = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/employee/managers');
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}employee/managers`);
         setManagers(response.data);
       } catch (error) {
         console.error("Error fetching managers:", error);

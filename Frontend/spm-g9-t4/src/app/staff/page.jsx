@@ -34,7 +34,7 @@ export default function Page() {
     try {
       const fetchStaffSchedule = async () => {
         const user = JSON.parse(window.sessionStorage.getItem("user"))
-        const response = await axios.get(`http://localhost:4000/wfh_records/${user.staff_id}`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/${user.staff_id}`);
         console.log("Response data:", response.data);
         let eventsArray = []
         for(let item of response.data){
