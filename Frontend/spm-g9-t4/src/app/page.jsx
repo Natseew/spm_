@@ -50,6 +50,11 @@ export default function MyApp() {
         router.push('/staff')
         snackBar("Success", "green");
       }
+      else if (response.data[0].role == "3") {
+    
+        router.push('/staff'); 
+      }
+
 
     })
     .catch(error => {

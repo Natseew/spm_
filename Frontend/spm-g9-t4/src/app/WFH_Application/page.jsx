@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { DatePicker, PickersDay } from "@mui/x-date-pickers";
+import { DatePicker } from "@mui/x-date-pickers"; // Removed PickersDay import
 import { addMonths, subMonths, isSameDay } from "date-fns";
 
 export default function ArrangementForm() {
@@ -130,37 +130,13 @@ export default function ArrangementForm() {
     setSuccessMessage("");
   };
 
-  // Disable only weekends
+  // Disable weekends and already approved/pending WFH dates
   const shouldDisableDate = (date) => {
-    return date.getDay() === 0 || date.getDay() === 6;
-  };
-
-  // Render custom day with color coding
-  const renderDay = (day, selectedDate, pickersDayProps) => {
-    const isApproved = approvedPendingDates.some(
-      (wfh) => isSameDay(new Date(wfh.date), day) && wfh.status === "Approved"
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isApprovedOrPending = approvedPendingDates.some((wfh) =>
+      isSameDay(new Date(wfh.date), date)
     );
-    const isPending = approvedPendingDates.some(
-      (wfh) => isSameDay(new Date(wfh.date), day) && wfh.status === "Pending"
-    );
-
-    let style = {};
-    if (isApproved) {
-      style.backgroundColor = "green";
-      style.color = "white";
-    } else if (isPending) {
-      style.backgroundColor = "orange";
-      style.color = "white";
-    }
-
-    return (
-      <PickersDay
-        {...pickersDayProps}
-        day={day}
-        style={style}
-        disabled={pickersDayProps.disabled || isApproved || isPending}
-      />
-    );
+    return isWeekend || isApprovedOrPending;
   };
 
   return (
@@ -196,21 +172,21 @@ export default function ArrangementForm() {
               onChange={(newValue) => setWfhDate(newValue)}
               minDate={minDate} // 2 months back
               maxDate={maxDate} // 3 months forward
-              shouldDisableDate={shouldDisableDate} // Disable only weekends
-              renderDay={renderDay} // Render the day with color coding
+              shouldDisableDate={shouldDisableDate} // Disable weekends and approved/pending WFH dates
               renderInput={(params) => (
                 <TextField
                   {...params}
                   fullWidth
                   margin="normal"
                   required
-                  inputProps={{ ...params.inputProps, readOnly: true }} // Make input read-only
+                  inputProps={{ ...params.inputProps, readOnly: true }} // Make input read-only to prevent manual typing
                   onKeyDown={(e) => e.preventDefault()} // Prevent keyboard input
                   onPaste={(e) => e.preventDefault()} // Disable paste
                   onCopy={(e) => e.preventDefault()} // Disable copy
                 />
               )}
             />
+
 
             <FormControl fullWidth margin="normal" required>
               <InputLabel>Schedule Type</InputLabel>
