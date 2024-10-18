@@ -110,7 +110,7 @@ const HRPage = () => {
     try {
       const formattedDate = dayjs(date).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
-      const response = await axios.get(`http://localhost:4000/wfh_records/schedule/${departmentsParam}/${formattedDate}`);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedDate}`);
       setStaffData(response.data.staff_schedules || []);
     } catch (error) {
       console.error("Error fetching staff schedule:", error);

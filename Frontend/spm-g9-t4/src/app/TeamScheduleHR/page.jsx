@@ -76,7 +76,7 @@ const ManagerIDPage = () => {
   useEffect(() => {
     const fetchManagers = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/employee/managers');
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}employee/managers`);
         setManagers(response.data);
       } catch (error) {
         console.error("Error fetching managers:", error);
@@ -90,7 +90,7 @@ const ManagerIDPage = () => {
 
     try {
       const formattedDate = dayjs(date).format('YYYY-MM-DD');
-      const endpoint = `http://localhost:4000/wfh_records/team-schedule/${selectedManagerID}/${formattedDate}`;
+      const endpoint = `${process.env.NEXT_PUBLIC_API_URL}wfh_records/team-schedule/${selectedManagerID}/${formattedDate}`;
       const response = await axios.get(endpoint);
       setStaffData(response.data.staff_schedules || []);
     } catch (error) {
