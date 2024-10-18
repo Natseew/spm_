@@ -28,6 +28,14 @@ const ToggleView = () => {
                     </button>
                 </div>
                 
+                {/* <div className="overflow-x-auto">
+                    {activeView === 'adhoc' ? (
+                        <ManagerRecurringComponent />
+                    ) : (
+                        <ManagerAdhocComponent />
+                    )}
+                </div> */}
+
                 <div className="overflow-x-auto">
                     {activeView === 'adhoc' ? (
                         <ManagerAdhocComponent />

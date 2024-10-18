@@ -42,17 +42,15 @@ export default function ManagerView() { // Rename to start with an uppercase let
 
     return (
         <>
-            <div className="flex bg-white min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-                <div className="Display flex min-h-full flex-1 flex-col bg-white px-6 py-12 lg:px-8">
-                    
-                        <div className="overflow-x-auto">
-                            <ToggleView/>
-                            {/* <ManagerAdhocComponent/> */}
-                            {/* <ManagerRecurringComponent/> */}
-                        </div>
-                    
+        <div className="flex flex-col bg-white min-h-screen justify-center px-6 py-12 lg:px-8">  {/* Changed min-h-full to min-h-screen */}
+            <div className="flex flex-col flex-1 bg-white px-6 py-12 lg:px-8 overflow-hidden">  {/* flex-1 ensures it takes remaining space */}
+                <div className="overflow-x-auto flex-grow">  {/* flex-grow to fill the available space */}
+                    <ToggleView/>
+                    {/* <ManagerAdhocComponent/> */}
+                    {/* <ManagerRecurringComponent/> */}
                 </div>
             </div>
-        </>
+        </div>
+    </>
     );
 }

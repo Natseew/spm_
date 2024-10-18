@@ -92,6 +92,61 @@ router.patch('/reject/:id', async (req, res) => {
 });
 
 
+// Pending Withdrawal (Accept) of WFH request
+router.patch('/acceptwithdrawal/:recordID', async (req, res) => {
+  const { recordID } = req.params; // Extract the record ID from request parameters
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+          ['Withdrawn', recordID] // Update the status to 'Withdrawn'
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Status updated to Withdrawn.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+// Cancelling Accepted Request
+router.patch('/cancel/:recordID', async (req, res) => {
+  const { recordID } = req.params; // Extract the record ID from request parameters
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+          ['Rejected', recordID] // Update the status to 'Withdrawn'
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Status updated to Rejected.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
+// // Pending Withdrawal (Reject) of WFH request
+// router.patch('/rejectwithdrawal/:recordID', async (req, res) => {
+//   const { recordID } = req.params;
+//   try {
+//       const result = await client.query(
+//           'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+//           ['Withdrawn', recordID]
+//       );
+//       if (result.rowCount === 0) {
+//           return res.status(404).json({ message: 'No records found for the given record ID.' });
+//       }
+//       res.status(200).json({ message: 'Status updated to Withdrawn.', record: result.rows[0] });
+//   } catch (error) {
+//       console.error('Error updating status:', error);
+//       res.status(500).json({ message: 'Internal server error. ' + error.message });
+//   }
+// });
+
 // Route to submit a WFH ad-hoc request
 router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, reason } = req.body;

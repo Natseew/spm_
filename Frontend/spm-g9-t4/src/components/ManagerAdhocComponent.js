@@ -171,7 +171,7 @@ const handleAccept = async (recordID) => {
     }
 };
 
-
+// Handle Rejection Button
 
 const handleReject = async (reqId, reason) => {
     console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
@@ -204,15 +204,115 @@ const handleReject = async (reqId, reason) => {
     }
 };
 
+// Handle Accept Withdrawal
+const handleAcceptWithdraw = async (recordID) => {
+    console.log(`Accepting request with ID: ${recordID}`);
+    try {
+        const response = await fetch(`http://localhost:4000/wfh_records/acceptwithdrawal/${recordID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // Update the state
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === recordID ? { ...item, status: 'Pending Withdrawal' } : item
+            )
+        );
+
+        setNotification('Withdrawal accepted successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error accepting request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
+
+
+
+// Handle Reject Withdrawal
+// const handleRejectWithdraw = async (reqId, reason) => {
+//     console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+//     try {
+//         const response = await fetch(`http://localhost:4000/wfh_records/rejectwithdrawal/${reqId}`, {
+//             method: 'PATCH',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({ reason }), // Send the reason in the request body
+//         });
+
+//         if (!response.ok) {
+//             throw new Error(`Error rejecting request: ${response.status}`);
+//         }
+
+//         const updatedData = await response.json();
+//         console.log('Withdrawal Revoked recorded successfully:', updatedData);
+        
+//         setAdhocData(prevData => 
+//             prevData.map(item => 
+//                 item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+//             )
+//         );
+
+//         setNotification('Request rejected!');
+//         setTimeout(() => setNotification(''), 3000);
+//     } catch (error) {
+//         console.error('Error during rejection update:', error);
+//     }
+// };
+
+
 // Handling modal for reject action
 const handleRejectOpen = (data) => {
     openRejectModal(data);
 };
 
-    const handleCancel = async (reqId) => {
-        // Logic to cancel the accepted request
-        console.log(`Canceling request with ID: ${reqId}`);
-    };
+// Handle Cancelling Request
+const handleCancel = async (recordID) => {
+    console.log(`Accepting request with ID: ${recordID}`);
+    try {
+        const response = await fetch(`http://localhost:4000/wfh_records/cancel/${recordID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // Optionally update the state if you want more control over the UI
+        // You can still leave this here if you want:
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === recordID ? { ...item, status: 'Cancelled' } : item
+            )
+        );
+
+        setNotification('Cancelled request successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error accepting request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
 
     return (
         
@@ -286,6 +386,7 @@ const handleRejectOpen = (data) => {
                                 >
                                     View Details
                                 </button>
+                                {/* Pending */}
                                 {
                                     item.status === 'Pending' &&
                                     <>
@@ -309,13 +410,14 @@ const handleRejectOpen = (data) => {
                                     item.status === 'Approved' &&
                                     <button 
                                         className="bg-yellow-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleCancel(item.staffid)} // Call cancel handler for accepted requests
+                                        onClick={() => handleCancel(item.recordid)} // Call cancel handler for accepted requests
                                     >
                                         Cancel
                                     </button>
                                 }
                                 {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
 
+                                {/* Pending Change */}
                                 {item.status === 'Pending Change' && (
                                 <>
                                     <button 
@@ -332,13 +434,23 @@ const handleRejectOpen = (data) => {
                                     </button>
                                     </>
                                 )}
+
+                                {/* Pending Withdrawal */}
                                 {item.status === 'Pending Withdrawal' && (
-                                    <button 
-                                        className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                        onClick={() => handleAccept(item.recordid)} // Accept button for Pending Withdrawal
-                                    >
-                                        Accept
-                                    </button>
+                                    <>
+                                        <button 
+                                            className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                            onClick={() => handleAcceptWithdraw(item.recordid)} // Accept button for Pending Withdrawal
+                                        >
+                                            Accept
+                                        </button>
+                                        {/* <button 
+                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                            onClick={() => openRejectModal(item)} // Reject button for Pending Withdrawal
+                                        >
+                                            Reject
+                                        </button> */}
+                                    </>
                                 )}
                             </td>
                         </tr>
