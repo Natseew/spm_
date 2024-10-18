@@ -18,31 +18,31 @@ const ToggleView = () => {
                         className={`py-2 px-4 mr-2 ${activeView === 'adhoc' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} 
                         onClick={() => handleToggle('adhoc')}
                     >
-                        Ad Hoc Schedule
+                        Recurring Schedule
                     </button>
                     <button 
                         className={`py-2 px-4 ${activeView === 'recurring' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} 
                         onClick={() => handleToggle('recurring')}
                     >
-                        Recurring Schedule
+                        Ad Hoc Schedule
                     </button>
                 </div>
                 
-                {/* <div className="overflow-x-auto">
-                    {activeView === 'adhoc' ? (
-                        <ManagerRecurringComponent />
-                    ) : (
-                        <ManagerAdhocComponent />
-                    )}
-                </div> */}
-
                 <div className="overflow-x-auto">
                     {activeView === 'adhoc' ? (
+                        <ManagerRecurringComponent />
+                    ) : (
+                        <ManagerAdhocComponent />
+                    )}
+                </div>
+
+                {/* <div className="overflow-x-auto">
+                    {activeView === 'adhoc' ? (
                         <ManagerAdhocComponent />
                     ) : (
                         <ManagerRecurringComponent />
                     )}
-                </div>
+                </div> */}
             </div>
         </div>
     );
