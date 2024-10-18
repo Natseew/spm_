@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import RecurringModal from './RecurringModal'; // Make sure to create or import the Modal component.
-import HandleRejectModal from './HandleRejectModal';
+import HandleReccuringRejectModal from './HandleReccuringRejectModal'; // Changed to the correct component name
 import Notification from './Notification'; // Import your Notification component
 
 
@@ -9,16 +9,17 @@ const employeeNameid = {} // Object to store staff_id and their corresponding fu
 const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
 
 const RecurringSchedule = () => {
-    const [RecurringData, setRecurringData] = useState([]); // State to store fetched ad hoc data
-    const [loading, setLoading] = useState(true); // State to track loading status
-    const [error, setError] = useState(null); // State to capture any error messages
-    const [employeeData, setEmployeeData] = useState([]); // State to store employee data
-    const [selectedDate, setSelectedDate] = useState("");
-    const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
+    const [RecurringData, setRecurringData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [employeeIds, setEmployeeIds] = useState([]);
-    const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
-    const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
-
+    const [modalOpen, setModalOpen] = useState(false);
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [modalData, setModalData] = useState(null);
+    const [someData, setSomeData] = useState(null);
+    const [modalDates, setModalDates] = useState([]); // For storing dates for the rejection modal
+    const [selectedDate, setSelectedDate] = useState(""); 
+    const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -88,6 +89,28 @@ const RecurringSchedule = () => {
         setModalData({}); // Clear the modal data
     };
 
+    const extractUniqueDates = (data) => {
+        const dates = new Set();
+        data.forEach((item) => {
+            if (item.wfh_dates) {
+                item.wfh_dates.forEach(date => dates.add(date)); // Assuming wfh_dates is an array
+            }
+        });
+        return Array.from(dates);
+    };
+
+    const openRejectModal = (data) => {
+        setSomeData(data); // Set the request data
+        setModalDates(data.wfh_dates || []); // Get specific request dates
+        setRejectModalOpen(true); // Open the rejection modal
+    };
+
+    const closeRejectModal = () => {
+        setRejectModalOpen(false);
+        setSomeData(null);
+        setModalDates([]);
+    };
+    
     if (loading) {
         return <p>Loading...</p>; // Display loading message
     }
@@ -166,15 +189,18 @@ return dayofweek[match_num]
         console.log(`Accepting request with ID: ${reqId}`);
     };
 
-    const handleReject = async (reqId) => {
-        // Logic to reject the request
-        console.log(`Rejecting request with ID: ${reqId}`);
+    const handleReject = async (recordId, reason, dates) => {
+        console.log(`Rejecting request with ID: ${recordId}, Reason: ${reason}, Dates: ${dates}`);
+        // Logic to handle rejection
+        closeRejectModal(); 
     };
+
 
     const handleCancel = async (reqId) => {
         // Logic to cancel the accepted request
         console.log(`Canceling request with ID: ${reqId}`);
     };
+
 
     return (
         <div>
@@ -251,7 +277,7 @@ return dayofweek[match_num]
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => handleReject(item.req_id)} // Call reject handler
+                                            onClick={() => openRejectModal(item)} // Open reject modal
                                         >
                                             Reject
                                         </button>
@@ -276,6 +302,14 @@ return dayofweek[match_num]
                 isOpen={modalOpen} 
                 onClose={closeModal} 
                 data={modalData} // Data to be displayed in the modal
+            />
+
+            <HandleReccuringRejectModal 
+                isOpen={rejectModalOpen} 
+                onClose={closeRejectModal}
+                onReject={handleReject}
+                data={someData} 
+                dates={modalDates} // Only the selected request's dates
             />
         </div>
         );

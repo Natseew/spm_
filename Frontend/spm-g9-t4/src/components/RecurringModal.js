@@ -1,7 +1,6 @@
 import React from 'react';
 const RecurringModal = ({ isOpen, onClose, data }) => {
 
-
 // Function to process and organize dates
 const formatDatesFromObject = (dateArray) => {
     // Check if the input is an array
@@ -14,21 +13,28 @@ const formatDatesFromObject = (dateArray) => {
 
     // Loop through the date array
     for (const date of dateArray) {
-        // Convert the string to a Date object and format it
-        const formatted_date = new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
+        // Convert the string to a Date object
+        const dateObject = new Date(date);
+        
+        // Check for valid date
+        if (isNaN(dateObject)) {
+            throw new Error(`Invalid date: ${date}`);
+        }
+        
+        // Format the date as DD/MM/YYYY
+        const day = String(dateObject.getDate()).padStart(2, '0'); // Get day and pad with zeros if needed
+        const month = String(dateObject.getMonth() + 1).padStart(2, '0'); // Get month (0-indexed) and pad with zeros
+        const year = dateObject.getFullYear(); // Get full year
+        
+        // Combine in DD/MM/YYYY format
+        const formatted_date = `${day}/${month}/${year} `;
         
         // Push the formatted date to the result array
         formattedDates.push(formatted_date);
-        formattedDates.push(" ");
-
     }
 
     // Return the formatted dates
-    return formattedDates;
+    return formattedDates; // Make sure to return formatted dates, not 'f'
 };
 
 const FormatDateToDayofweek= (num) => {
