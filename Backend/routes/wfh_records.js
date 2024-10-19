@@ -32,6 +32,7 @@ router.get('/:staffid', async (req, res) => {
     }
 });
 
+
 // Route to get approved staff schedule for a team based on Reporting Manager ID and date
 router.get('/team-schedule/:manager_id/:date', async (req, res) => {
     const { manager_id, date } = req.params;
@@ -267,8 +268,6 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
 
 
 
-
-
 // Withdraw an ad-hoc WFH request
 router.post('/withdraw_wfh', async (req, res) => {
   const { recordID, reason,staff_id} = req.body;
@@ -474,4 +473,103 @@ router.get('/recurring_dates', async (req, res) => {
   }
 });
 
+
+// New route to get WFH records by an array of employee IDs
+router.post('/by-employee-ids', async (req, res) => {
+  try {
+      const { employeeIds } = req.body;
+
+      // Validate input
+      if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+          return res.status(400).json({ message: 'Invalid input. Must provide an array of employee IDs.' });
+      }
+
+      // Create placeholders for the SQL query
+      const placeholders = employeeIds.map((_, index) => `$${index + 1}`).join(', ');
+      const query = `SELECT * FROM wfh_records WHERE staffid IN (${placeholders})`;
+
+      // Execute the query
+      const result = await client.query(query, employeeIds);
+      console.log(result.rows);
+      res.status(200).json(result.rows);
+  } catch (error) {
+      console.error('Error retrieving WFH records by employee IDs:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
+// Accept WFH request
+router.patch('/accept/:recordID', async (req, res) => {
+  const { recordID } = req.params;
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+          ['Approved', recordID]
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Status updated to approved.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+// Reject WFH request
+router.patch('/reject/:id', async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1, reject_reason = $2 WHERE recordid = $3 RETURNING *',
+          ['Rejected', reason, id]
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Update error:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
+// Pending Withdrawal (Accept) of WFH request
+router.patch('/acceptwithdrawal/:recordID', async (req, res) => {
+  const { recordID } = req.params; // Extract the record ID from request parameters
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+          ['Withdrawn', recordID] // Update the status to 'Withdrawn'
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Status updated to Withdrawn.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+// Cancelling Accepted Request
+router.patch('/cancel/:recordID', async (req, res) => {
+  const { recordID } = req.params; // Extract the record ID from request parameters
+  try {
+      const result = await client.query(
+          'UPDATE wfh_records SET status = $1 WHERE recordid = $2 RETURNING *',
+          ['Rejected', recordID] // Update the status to 'Withdrawn'
+      );
+      if (result.rowCount === 0) {
+          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      }
+      res.status(200).json({ message: 'Status updated to Rejected.', record: result.rows[0] });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
 module.exports = router;
