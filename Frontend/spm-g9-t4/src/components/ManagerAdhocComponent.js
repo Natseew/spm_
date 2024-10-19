@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
-import CalendarComponent from "@/components/CalendarComponent";
+// import CalendarComponent from "@/components/CalendarComponent";
 import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
 
