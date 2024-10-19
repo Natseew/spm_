@@ -73,11 +73,9 @@ const RecurringSchedule = () => {
     }, []); // Fetch once when component mounts
 
     useEffect(() => {
-        if (RecurringData.length > 0) {
-            console.log('Recurring Data after update:', RecurringData);
-        }
-    }, [RecurringData]); // RecurringData is now included as a dependency
-    
+        console.log('Recurring Data after update:', RecurringData);
+    }, [RecurringData]); // Monitor RecurringData changes
+
 
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
