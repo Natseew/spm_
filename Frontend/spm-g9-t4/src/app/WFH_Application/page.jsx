@@ -1,4 +1,7 @@
-// // ArrangementForm.jsx
+export default function MyApp() {
+}
+
+// ArrangementForm.jsx
 
 // "use client";
 
