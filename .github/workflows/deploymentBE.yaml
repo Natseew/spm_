@@ -22,6 +22,7 @@ jobs:
         run: |
           ssh -i "SPM-Backend.pem" -o StrictHostKeyChecking=no ubuntu@ec2-3-104-64-250.ap-southeast-2.compute.amazonaws.com << 'EOF'
             cd spm_
+            git reset --hard
             git pull origin main  # Pull latest changes
             cd Backend
             npm install  # Install dependencies
