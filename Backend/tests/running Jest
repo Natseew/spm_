@@ -1,0 +1,20 @@
+Running Jest 
+
+1. Navigate to Backend folder
+2. npm install 
+- jest: For writing the test cases.
+- supertest: To make HTTP requests to your Express endpoints during testing.
+
+
+Creating Jest test case
+1. Go into backend routes
+2. Go into tests folder
+3. Add your test cases to the following JS files 
+- activitylog.test.js
+- employee.test.js
+- recurring_requests.test.js
+- wfh_records.test.js 
+
+How to run test case
+1. Go into backend folder
+2. npm test

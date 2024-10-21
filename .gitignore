@@ -1,2 +1,4 @@
-.env
+Backend/.env
 Backend/node_modules/
+Frontend/spm-g9-t4/node_modules/
+Frontend/spm-g9-t4/.env
