@@ -153,6 +153,8 @@ router.post('/by-employee-ids', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
+
+
 router.post('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
     try {
@@ -205,50 +207,44 @@ router.post('/approve/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
+
+
 // withdraw entire recurring request
-router.put('/withdraw_entire/:requestid', async (req, res) => {
-    const { requestid } = req.params;
+// Reject a recurring request
+router.patch('/reject/:requestid', async (req, res) => {
+    const { requestid } = req.params; // Extract request ID from the URL
+    const { reason } = req.body; // Extract reason from the request body
   
     try {
-        // Update the status of the record to 'Withdrawn'
+        // Update the status of the recurring request to 'Rejected' and set the rejection reason
         const result = await client.query(`
             UPDATE recurring_request
-            SET status = 'Withdrawn'
-            WHERE requestid = $1
-            RETURNING *
-        `, [requestid]);
-  
+            SET status = 'Rejected', reject_reason = $1
+            WHERE requestid = $2
+            RETURNING *;`,
+            [reason, requestid]
+        );
+
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Record not found' });
+            return res.status(404).json({ message: 'Request not found' });
         }
-        const result2 = await client.query(
-            `UPDATE wfh_records
-             SET status = 'Withdrawn'
-             WHERE requestid = $1
-             RETURNING *;`,
+
+        // Log the rejection action (optional)
+        await client.query(
+            `INSERT INTO activitylog (requestid, activity)
+            VALUES ($1, 'Rejected Recurring Request: ${reason}');`,
             [requestid]
         );
-  
-        if (result2.rowCount === 0) {
-            return res.status(404).json({ message: 'Record not found' });
-        }
-  
-        await client.query(
-          `
-          INSERT INTO activitylog (requestid, activity)
-          VALUES ($1, 'Recurring Request Withdrawn');
-          `,
-          [requestid]
-        );
-  
-        res.status(200).json({ message: 'Record withdrawn successfully', record: result.rows[0] });
+
+        // Return success response
+        res.status(200).json({ message: 'Recurring request rejected successfully', record: result.rows[0] });
     } catch (error) {
-        console.error('Error withdrawing record:', error);
+        console.error('Error rejecting recurring request:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
-  });
-  
-  
+});
+
+
 //Withdraw recurring request
 // Withdraw a date from a recurring WFH request
 router.post('/withdraw_recurring_wfh', async (req, res) => {
@@ -327,6 +323,39 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
       res.status(500).json({ message: 'Internal server error.' });
     }
   });
+
+// Reject a recurring request
+router.post('/reject/:requestID', async (req, res) => {
+    const { requestID } = req.params;
+    const { reason } = req.body; // Get the rejection reason from the request body
   
-  
+    try {
+        // Update the status of the recurring_request table to "Rejected"
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Rejected', reject_reason = $1
+            WHERE requestid = $2
+            RETURNING *;`,
+            [reason, requestID]
+        );
+
+        // Check if any rows were updated
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Request not found.' });
+        }
+
+        // Additional logging activity if needed
+        await client.query(
+            `INSERT INTO activitylog (requestid, activity)
+             VALUES ($1, 'Rejected Recurring Request: ${reason}');`,
+            [requestID]
+        );
+
+        res.status(200).json({ message: 'Recurring request rejected successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error rejecting recurring request:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
 module.exports = router;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import RecurringModal from './RecurringModal'; // Make sure to create or import the Modal component.
 import HandleReccuringRejectModal from './HandleReccuringRejectModal'; // Changed to the correct component name
 import Notification from './Notification'; // Import your Notification component
+import ModifyRecurringRequestModal from './ModifyRecurringRequestModal'; // Import the new modal component
 
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
@@ -15,11 +16,13 @@ const RecurringSchedule = () => {
     const [employeeIds, setEmployeeIds] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [modifyModalOpen, setModifyModalOpen] = useState(false); // State for the modify modal
     const [modalData, setModalData] = useState(null);
+    const [modalDates, setModalDates] = useState([]);
     const [someData, setSomeData] = useState(null);
-    const [modalDates, setModalDates] = useState([]); // For storing dates for the rejection modal
-    const [selectedDate, setSelectedDate] = useState(""); 
+    const [modifyData, setModifyData] = useState(null); // State for modification data
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
+    const [selectedDate, setSelectedDate] = useState(""); 
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -98,10 +101,12 @@ const RecurringSchedule = () => {
     };
 
     const openRejectModal = (data) => {
+        console.log("Opening reject modal with data:", data); // Debugging line
         setSomeData(data); // Set the request data
         setModalDates(data.wfh_dates || []); // Get specific request dates
         setRejectModalOpen(true); // Open the rejection modal
     };
+    
 
     const closeRejectModal = () => {
         setRejectModalOpen(false);
@@ -109,6 +114,13 @@ const RecurringSchedule = () => {
         setModalDates([]);
     };
     
+    const openModifyModal = (data) => {
+        console.log("Opening modify modal with data:", data);
+        setModifyData(data); // Set the request data to be modified
+        setModifyModalOpen(true); // Open the modify modal
+    };
+
+
     if (loading) {
         return <p>Loading...</p>; // Display loading message
     }
@@ -144,34 +156,34 @@ const RecurringSchedule = () => {
     };
 
 
-// Function to process and organize dates
-const formatDatesFromObject = (dateArray) => {
-    // Check if the input is an array
-    if (!Array.isArray(dateArray)) {
-        throw new Error("Invalid input. Please provide an array of date strings.");
-    }
+// // Function to process and organize dates
+// const formatDatesFromObject = (dateArray) => {
+//     // Check if the input is an array
+//     if (!Array.isArray(dateArray)) {
+//         throw new Error("Invalid input. Please provide an array of date strings.");
+//     }
 
-    // Initialize an array to hold formatted dates
-    const formattedDates = [];
+//     // Initialize an array to hold formatted dates
+//     const formattedDates = [];
 
-    // Loop through the date array
-    for (const date of dateArray) {
-        // Convert the string to a Date object and format it
-        const formatted_date = new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
+//     // Loop through the date array
+//     for (const date of dateArray) {
+//         // Convert the string to a Date object and format it
+//         const formatted_date = new Date(date).toLocaleDateString('en-US', {
+//             year: 'numeric',
+//             month: '2-digit',
+//             day: '2-digit'
+//         });
         
-        // Push the formatted date to the result array
-        formattedDates.push(formatted_date);
-        formattedDates.push(" ");
+//         // Push the formatted date to the result array
+//         formattedDates.push(formatted_date);
+//         formattedDates.push(" ");
 
-    }
+//     }
 
-    // Return the formatted dates
-    return formattedDates;
-};
+//     // Return the formatted dates
+//     return formattedDates;
+// };
 
 const FormatDateToDayofweek= (num) => {
     const dayofweek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
@@ -187,18 +199,88 @@ return dayofweek[match_num]
         console.log(`Accepting request with ID: ${reqId}`);
     };
 
-    const handleReject = async (recordId, reason, dates) => {
-        console.log(`Rejecting request with ID: ${recordId}, Reason: ${reason}, Dates: ${dates}`);
-        // Logic to handle rejection
-        closeRejectModal(); 
+    // Handle Reject
+    const handleReject = async (requestId, reason) => {
+        console.log('Request ID:', requestId); 
+        console.log('Rejection Reason:', reason);
+
+        try {
+            const response = await fetch(`/recurring_request/reject/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ reason }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error rejecting the request: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log(result.message);
+            setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+        } catch (error) {
+            console.error('Error handling rejection:', error);
+        }
+    };
+    
+
+    const handleCancel = async (requestId) => {
+        console.log(`Canceling request with ID: ${requestId}`);
+        // API call or logic to cancel the request
+        try {
+            const response = await fetch(`/recurring_request/withdraw_entire/${requestId}`, {
+                method: 'PUT',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to cancel the request.');
+            }
+
+            const result = await response.json();
+            console.log(result.message);
+            setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+        } catch (error) {
+            console.error('Error canceling request:', error);
+        }
     };
 
+    // Handle Modify
+    const handleModify = async (requestId, updatedData) => {
+        console.log('Modifying request with ID:', requestId);
+        console.log('Updated Data:', updatedData);
 
-    const handleCancel = async (reqId) => {
-        // Logic to cancel the accepted request
-        console.log(`Canceling request with ID: ${reqId}`);
+        try {
+            const response = await fetch(`/recurring_request/modify/${requestId}`, {
+                method: 'PATCH', // Use PATCH for updating the existing resource
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedData), // Send the updated data as JSON
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error modifying the request: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log(result.message); // Log success message
+
+            // Update state to reflect the modified request
+            setRecurringData(prevData => 
+                prevData.map(req => 
+                    req.requestid === requestId ? { ...req, ...updatedData } : req
+                )
+            );
+
+            // Close the modification modal
+            setModifyModalOpen(false);
+        } catch (error) {
+            console.error('Error handling modification:', error);
+        }
     };
-
+    
 
     return (
         <div>
@@ -269,13 +351,13 @@ return dayofweek[match_num]
                                     <>
                                         <button 
                                             className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                            onClick={() => handleAccept(item.req_id)} // Call accept handler
+                                            onClick={() => handleAccept(item.requestid)} // Call accept handler
                                         >
                                             Accept
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item)} // Open reject modal
+                                            onClick={() => openRejectModal(item.requestid)} // Open reject modal
                                         >
                                             Reject
                                         </button>
@@ -283,12 +365,20 @@ return dayofweek[match_num]
                                 }
                                 {
                                     item.status === 'Approved' &&
-                                    <button 
-                                        className="bg-yellow-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleCancel(item.req_id)} // Call cancel handler for accepted requests
-                                    >
-                                        Cancel
-                                    </button>
+                                    <>
+                                        <button 
+                                            className="bg-yellow-500 text-white px-2 py-1 rounded mr-2" 
+                                            onClick={() => openModifyModal(item)} // Open modify modal
+                                        >
+                                            Modify
+                                        </button>
+                                        <button 
+                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                            onClick={() => handleCancel(item.requestid)} // Call cancel handler
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
                                 }
                                 {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
                             </td>
@@ -305,9 +395,15 @@ return dayofweek[match_num]
             <HandleReccuringRejectModal 
                 isOpen={rejectModalOpen} 
                 onClose={closeRejectModal}
-                onReject={handleReject}
+                onReject={handleReject} // Connect to new handle reject function
                 data={someData} 
-                dates={modalDates} // Only the selected request's dates
+                dates={modalDates} 
+            />
+            <ModifyRecurringRequestModal 
+                isOpen={modifyModalOpen} 
+                onClose={() => setModifyModalOpen(false)} // Method to close the modal
+                onModify={handleModify} // Function to handle updates
+                data={modifyData} // Data to be modified
             />
         </div>
         );
