@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -34,7 +34,7 @@ jobs:
         run: npm start &
         env:
           NODE_ENV: development
-          NEXT_PUBLIC_API_URL: http://localhost:4000/
+          NEXT_PUBLIC_API_URL: https://3.104.64.250.nip.io/
 
       - name: Wait for Next.js to be ready
         run: npx wait-on http://localhost:3000
