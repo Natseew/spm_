@@ -46,6 +46,21 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// GET employees by reporting manager 
+router.get('/by-manager/:managerId', async (req, res) => {
+  try {
+      const managerId = req.params.managerId;
+      const result = await client.query(
+          'SELECT * FROM employee WHERE reporting_manager = $1',
+          [managerId]
+      );
+      res.status(200).json(result.rows);
+  } catch (error) {
+      console.error('Error retrieving employees by reporting manager:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
 // Define your map_team_hierarchy function
 async function map_team_hierarchy(manager_id, client) {
   const team = [];
