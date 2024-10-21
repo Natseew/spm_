@@ -11,7 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+  env:
+    NEXT_PUBLIC_API_URL: http://localhost:4000/
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
