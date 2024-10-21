@@ -15,12 +15,12 @@ jobs:
 
       - name: Set up SSH
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" > SPM-Backend.pem
           chmod 600 private_key.pem
 
       - name: Deploy to EC2
         run: |
-          ssh -i "private_key.pem" ubuntu@ec2-3-104-64-250.ap-southeast-2.compute.amazonaws.com << 'EOF'
+          ssh -i "SPM-Backend.pem" ubuntu@ec2-3-104-64-250.ap-southeast-2.compute.amazonaws.com << 'EOF'
             git pull origin main  # Pull latest changes
             cd /spm_/Backend
             npm install  # Install dependencies
