@@ -1,20 +1,31 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TextField, Paper, Button, Alert } from '@mui/material';
+import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, Paper, Button, Alert, CircularProgress, MenuItem, Select } from '@mui/material';
 import Link from 'next/link';
 import axios from 'axios';
+import { DateRange } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 import dayjs from 'dayjs';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'; 
 
-const StaffCountBox = ({ period, officeCount, homeCount }) => (
+dayjs.extend(isSameOrBefore);
+
+// Define StaffCountBox component
+const StaffCountBox = ({ officeCount, homeCount, totalEmployees }) => (
   <Paper elevation={3} sx={{ padding: '20px', borderRadius: '10px', backgroundColor: '#f5f5f5' }}>
-    <Typography variant="h5" align="center">{period}</Typography>
+    <Typography variant="h5" align="center">Staff Count for Selected Date</Typography>
     <Grid container spacing={2}>
-      <Grid item xs={6}>
+      <Grid item xs={4}>
+        <Typography variant="h6" align="center">Total Employees</Typography>
+        <Typography variant="h4" align="center">{totalEmployees}</Typography>
+      </Grid>
+      <Grid item xs={4}>
         <Typography variant="h6" align="center">In Office</Typography>
         <Typography variant="h4" align="center">{officeCount}</Typography>
       </Grid>
-      <Grid item xs={6}>
+      <Grid item xs={4}>
         <Typography variant="h6" align="center">At Home</Typography>
         <Typography variant="h4" align="center">{homeCount}</Typography>
       </Grid>
@@ -22,6 +33,7 @@ const StaffCountBox = ({ period, officeCount, homeCount }) => (
   </Paper>
 );
 
+// Get status label based on schedule status
 const getStatusLabel = (scheduleStatus) => {
   switch (scheduleStatus) {
     case 'AM':
@@ -36,51 +48,62 @@ const getStatusLabel = (scheduleStatus) => {
   }
 };
 
-const StaffListTable = ({ staffData }) => (
-  <Table sx={{ marginTop: '20px' }}>
-    <TableHead>
-      <TableRow>
-        <TableCell>Full Name</TableCell>
-        <TableCell>Department</TableCell>
-        <TableCell>Status</TableCell>
-        <TableCell>Reporting Manager</TableCell>
-      </TableRow>
-    </TableHead>
-    <TableBody>
-      {staffData.length > 0 ? (
-        staffData.map((staff) => (
-          <TableRow key={staff.staff_id}>
-            <TableCell>{`${staff.staff_fname} ${staff.staff_lname}`}</TableCell>
-            <TableCell>{staff.dept}</TableCell>
-            <TableCell>{getStatusLabel(staff.schedule_status)}</TableCell>
-            <TableCell>
-              {staff.reporting_manager ? (
-                <Link href="/TeamScheduleHR" passHref>
-                  {staff.reporting_manager}
-                </Link>
-              ) : (
-                'N/A'
-              )}
-            </TableCell>
+// Component to render the list of staff for a selected date
+const StaffListTable = ({ staffDataForDate }) => {
+  return (
+    <Box>
+      <Typography variant="h6" sx={{ marginBottom: '10px' }}>Staff List</Typography>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Full Name</TableCell>
+            <TableCell>Department</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Reporting Manager</TableCell>
           </TableRow>
-        ))
-      ) : (
-        <TableRow>
-          <TableCell colSpan={4} align="center">No staff data available.</TableCell>
-        </TableRow>
-      )}
-    </TableBody>
-  </Table>
-);
+        </TableHead>
+        <TableBody>
+          {staffDataForDate && staffDataForDate.length > 0 ? (
+            staffDataForDate.map((staff) => (
+              <TableRow key={staff.staff_id}>
+                <TableCell>{`${staff.staff_fname} ${staff.staff_lname}`}</TableCell>
+                <TableCell>{staff.dept}</TableCell>
+                <TableCell>{getStatusLabel(staff.schedule_status)}</TableCell>
+                <TableCell>
+                  {staff.reporting_manager ? (
+                    <Link href="/TeamScheduleHR" passHref>
+                      {staff.reporting_manager}
+                    </Link>
+                  ) : (
+                    'N/A'
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} align="center">No staff data available for this date.</TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+};
 
+// Component for the HR page
 const HRPage = () => {
   const departments = ["Finance", "CEO", "HR", "Sales", "Consultancy", "Engineering", "IT", "Solutioning"];
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [selectedSessions, setSelectedSessions] = useState({ AM: true, PM: true });
-  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [staffData, setStaffData] = useState([]);
+  const [dateRange, setDateRange] = useState([{ startDate: new Date(), endDate: new Date(), key: 'selection' }]);
+  const [staffSchedules, setStaffSchedules] = useState({}); // Now holding staff data grouped by date from the backend
+  const [employeeCount, setEmployeeCount] = useState([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(""); // This will hold the selected date string
 
+  // Handle department checkbox change
   const handleDepartmentChange = (event) => {
     const { value, checked } = event.target;
     setSelectedDepartments((prev) =>
@@ -88,58 +111,60 @@ const HRPage = () => {
     );
   };
 
+  // Handle session change (AM/PM)
   const handleSessionChange = (event) => {
     const { name, checked } = event.target;
     setSelectedSessions((prev) => ({ ...prev, [name]: checked }));
   };
 
+  // Fetch staff schedule from the backend
   const fetchStaffSchedule = async () => {
-    const errors = [];
-    if (!selectedSessions.AM && !selectedSessions.PM) {
-      errors.push('Please select at least one session (AM or PM).');
-    }
-    if (selectedDepartments.length === 0) {
-      errors.push('Please select at least one department.');
-    }
-    if (errors.length > 0) {
-      setError(errors.join(' ')); // Note the space between errors for concatenation
-      return;
-    }
-    setError(''); // Clear any existing error if all checks pass
-  
     try {
-      const formattedDate = dayjs(date).format('YYYY-MM-DD');
+      setLoading(true);
+      const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
+      const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedDate}`);
-      setStaffData(response.data.staff_schedules || []);
+
+      // Fetch the staff schedules from the backend
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedStartDate}/${formattedEndDate}`);
+      
+      const schedules = response.data.staff_schedules || {};
+      const employeeCount = response.data.total_employees || [];
+
+      setEmployeeCount(employeeCount);
+      setStaffSchedules(schedules);
+
+      const availableDates = Object.keys(schedules);
+      if (availableDates.length > 0) {
+        setSelectedDate(availableDates[0]); // Set the first available date by default
+      }
+
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
       setError('Error fetching staff schedule');
+    } finally {
+      setLoading(false);
     }
   };
-  
 
-  const calculateStaffCounts = () => {
-    const amHomeStaff = staffData.filter(staff => 
-      selectedSessions.AM && (staff.schedule_status === 'AM' || staff.schedule_status === 'Full-Day')
-    ).length;
+  const calculateStaffCounts = (selectedDate) => {
+    const filteredData = staffSchedules[selectedDate] || [];
 
-    const pmHomeStaff = staffData.filter(staff => 
-      selectedSessions.PM && (staff.schedule_status === 'PM' || staff.schedule_status === 'Full-Day')
-    ).length;
+    const homeStaff = filteredData.filter(staff => staff.schedule_status !== 'Office').length;
+    const officeStaff = filteredData.filter(staff => staff.schedule_status === 'Office').length;
 
-    const amOfficeStaff = staffData.filter(staff => 
-      selectedSessions.AM && staff.schedule_status === 'Office'
-    ).length;
+    const totalEmployeeCount = employeeCount
+      .filter(entry => selectedDepartments.includes(entry.dept))
+      .reduce((sum, entry) => sum + parseInt(entry.total_employees, 10), 0);
 
-    const pmOfficeStaff = staffData.filter(staff => 
-      selectedSessions.PM && staff.schedule_status === 'Office'
-    ).length;
-
-    return { amHomeStaff, amOfficeStaff, pmHomeStaff, pmOfficeStaff };
+    return {
+      officeStaff,
+      homeStaff,
+      totalEmployeeCount,
+    };
   };
 
-  const { amHomeStaff, amOfficeStaff, pmHomeStaff, pmOfficeStaff } = calculateStaffCounts();
+  const { officeStaff, homeStaff, totalEmployeeCount } = calculateStaffCounts(selectedDate);
 
   return (
     <Box sx={{ padding: '20px' }}>
@@ -150,7 +175,6 @@ const HRPage = () => {
           ))}
         </Alert>
       )}
-
 
       <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
         <Typography variant="h6" sx={{ marginBottom: '10px' }}>SESSION</Typography>
@@ -196,16 +220,10 @@ const HRPage = () => {
         ))}
       </Paper>
 
-      <Box sx={{ marginBottom: '20px', width: '200px' }}>
-        <TextField
-          label="Select Date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-        />
-      </Box>
+      <DateRange
+        ranges={dateRange}
+        onChange={(ranges) => setDateRange([ranges.selection])}
+      />
 
       <Button 
         variant="contained" 
@@ -213,19 +231,30 @@ const HRPage = () => {
         onClick={fetchStaffSchedule}
         sx={{ marginBottom: '20px' }}
       >
-        Submit
+        {loading ? <CircularProgress size={24} /> : 'Submit'}
       </Button>
 
-      <Grid container spacing={2}>
-        <Grid item xs={6}>
-          <StaffCountBox period="AM" officeCount={amOfficeStaff} homeCount={amHomeStaff} />
-        </Grid>
-        <Grid item xs={6}>
-          <StaffCountBox period="PM" officeCount={pmOfficeStaff} homeCount={pmHomeStaff} />
-        </Grid>
-      </Grid>
+      <Box sx={{ marginBottom: '20px', width: '200px' }}>
+        <Typography variant="h6" sx={{ marginBottom: '10px' }}>Filter by Date</Typography>
+        <Select
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          fullWidth
+        >
+          {Object.keys(staffSchedules).map(date => (
+            <MenuItem key={date} value={date}>
+              {date}
+            </MenuItem>
+          ))}
+        </Select>
+      </Box>
 
-      <StaffListTable staffData={staffData} />
+      {!loading && (
+        <>
+          <StaffCountBox officeCount={officeStaff} homeCount={homeStaff} totalEmployees={totalEmployeeCount} />
+          <StaffListTable staffDataForDate={staffSchedules[selectedDate]} />
+        </>
+      )}
     </Box>
   );
 };

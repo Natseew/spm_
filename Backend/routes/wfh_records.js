@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
+const dayjs = require('dayjs');
+const isSameOrBefore = require('dayjs/plugin/isSameOrBefore'); 
+dayjs.extend(isSameOrBefore);
+// Import the map_team_hierarchy function from employee.js
+const map_team_hierarchy = require('../routes/employee').map_team_hierarchy;
 
 // Route to get all WFH records
 router.get('/', async (req, res) => {
@@ -36,97 +41,288 @@ router.get('/:staffid', async (req, res) => {
 // Route to get approved staff schedule for a team based on Reporting Manager ID and date
 router.get('/team-schedule/:manager_id/:date', async (req, res) => {
     const { manager_id, date } = req.params;
+})
 
-    try {
-        const scheduleResult = await client.query(
-            `
-            SELECT 
-                e.staff_id, 
-                e.staff_fname, 
-                e.staff_lname, 
-                e.dept, 
-                e.reporting_manager, 
-                COALESCE(wr.wfh_date, $2) AS wfh_date,
-                COALESCE(wr.timeslot, 'Office') AS timeslot,
-                COALESCE(wr.status, 'Office') AS status,
-                CASE 
-                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
-                    WHEN wr.timeslot = 'AM' THEN 'AM'
-                    WHEN wr.timeslot = 'PM' THEN 'PM'
-                    ELSE 'Office'
-                END AS schedule_status,
-                wr.recurring,
-                wr.request_reason,
-                wr.requestDate,
-                wr.reject_reason
-            FROM 
-                Employee e
-            LEFT JOIN 
-                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
-            WHERE 
-                e.reporting_manager = $1
-            `,
-            [manager_id, date]
-        );
+// Helper function to generate a list of dates between two given dates
+const generateDateRange = (startDate, endDate) => {
+  const dates = [];
+  let currentDate = dayjs(startDate);
+  const end = dayjs(endDate);
 
-        res.status(200).json({
-            total_team_members: scheduleResult.rowCount,
-            staff_schedules: scheduleResult.rows
-        });
+  while (currentDate.isSameOrBefore(end)) {
+    dates.push(currentDate.format('YYYY-MM-DD'));
+    currentDate = currentDate.add(1, 'day');
+  }
+  return dates;
+};
 
-    } catch (error) {
-        console.error('Error fetching approved team schedule:', error);
-        res.status(500).json({ message: 'Internal server error. ' + error.message });
+// Helper function to flatten the team hierarchy into a list of staff IDs
+const flattenHierarchy = (team) => {
+  let ids = [];
+  for (const member of team) {
+    ids.push(member.staff_id); // Correctly capture the staff_id
+    if (member.subordinates && member.subordinates.length > 0) {
+      ids = ids.concat(flattenHierarchy(member.subordinates)); // Recursively flatten subordinates
     }
+  }
+  return ids;
+};
+
+// Route to get approved staff schedule for a team based on Reporting Manager ID and date range
+router.get('/team-schedule/:manager_id/:start_date/:end_date', async (req, res) => {
+  const { manager_id, start_date, end_date } = req.params;
+
+  try {
+    console.log('Fetching team schedule for manager:', manager_id);
+    console.log('Date range:', start_date, 'to', end_date);
+
+    // Step 1: Generate the date range
+    const dateRange = generateDateRange(start_date, end_date);
+    console.log('Generated date range:', dateRange);
+
+    const scheduleByDate = {};
+    dateRange.forEach(date => {
+      scheduleByDate[date] = [];  // Initialize each date with an empty array
+    });
+
+    // Step 2: Use map_team_hierarchy to get the full team hierarchy under the manager
+    const fullTeamHierarchy = await map_team_hierarchy(manager_id, client);
+    console.log('Full team hierarchy:', JSON.stringify(fullTeamHierarchy, null, 2));  // Add detailed logging
+
+    // Flatten the hierarchy to get all staff IDs
+    const allStaffIDs = flattenHierarchy(fullTeamHierarchy);
+    console.log('All staff IDs:', allStaffIDs);
+
+    if (allStaffIDs.length === 0) {
+      console.log('No staff IDs found for this manager.');
+      return res.status(200).json({
+        total_team_members: 0,
+        team_schedule: scheduleByDate
+      });
+    }
+
+    // Step 3: Query to get all employees in the flattened hierarchy
+    const employeesResult = await client.query(
+      `SELECT staff_id, staff_fname, staff_lname, dept, reporting_manager
+       FROM employee
+       WHERE staff_id = ANY($1::int[])`,
+      [allStaffIDs]
+    );
+    const employees = employeesResult.rows;
+    console.log('Fetched employees:', employees.length); // Log number of employees fetched
+
+    if (employees.length === 0) {
+      console.log('No employees found for the provided staff IDs.');
+    }
+
+    // Step 4: Query to get WFH records within the date range for the employees
+    const wfhRecordsResult = await client.query(
+      `SELECT staffid, wfh_date, timeslot, status, recurring, request_reason, requestdate, reject_reason
+       FROM wfh_records
+       WHERE wfh_date BETWEEN $2 AND $3
+       AND status = 'Approved'
+       AND staffid = ANY($1::int[])`,
+      [allStaffIDs, start_date, end_date]
+    );
+    const wfhRecords = wfhRecordsResult.rows;
+    console.log('Fetched WFH records:', wfhRecords.length); // Log number of WFH records fetched
+
+    if (wfhRecords.length === 0) {
+      console.log('No WFH records found for the employees within the provided date range.');
+    }
+
+    // Step 5: Build a map of WFH records keyed by staffID and wfh_date
+    const wfhMap = wfhRecords.reduce((acc, record) => {
+      const dateKey = dayjs(record.wfh_date).format('YYYY-MM-DD');
+      if (!acc[record.staffid]) {
+        acc[record.staffid] = {};
+      }
+      acc[record.staffid][dateKey] = record; // Store WFH data by staffID and date
+      return acc;
+    }, {});
+
+    // Step 6: Loop through employees and assign them to each date in the date range
+    employees.forEach(employee => {
+      const staffID = employee.staff_id;
+
+      dateRange.forEach(date => {
+        if (wfhMap[staffID] && wfhMap[staffID][date]) {
+          // If WFH record exists for this date, use that record
+          const record = wfhMap[staffID][date];
+          scheduleByDate[date].push({
+            staff_id: employee.staff_id,
+            staff_fname: employee.staff_fname,
+            staff_lname: employee.staff_lname,
+            dept: employee.dept,
+            reporting_manager: employee.reporting_manager,
+            wfh_date: record.wfh_date,
+            schedule_status: record.timeslot === 'FD' ? 'Full-Day' : record.timeslot,
+            status: record.status,
+            recurring: record.recurring,
+            request_reason: record.request_reason,
+            requestDate: record.requestDate,
+            reject_reason: record.reject_reason
+          });
+        } else {
+          // Default status to 'In Office' when no WFH record exists
+          scheduleByDate[date].push({
+            staff_id: employee.staff_id,
+            staff_fname: employee.staff_fname,
+            staff_lname: employee.staff_lname,
+            dept: employee.dept,
+            reporting_manager: employee.reporting_manager,
+            wfh_date: null, // No WFH record, so wfh_date is null
+            schedule_status: 'Office',
+            status: 'Office',
+            recurring: null,
+            request_reason: null,
+            requestDate: null,
+            reject_reason: null
+          });
+        }
+      });
+    });
+
+    // Step 7: Return the team schedule grouped by date
+    res.status(200).json({
+      total_team_members: employees.length,
+      team_schedule: scheduleByDate // Grouped by date
+    });
+
+  } catch (error) {
+    console.error('Error fetching team schedule by manager:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
 });
 
-// Route to get staff schedule by department(s) and date
-router.get('/schedule/:departments/:date', async (req, res) => {
-    const { departments, date } = req.params;
-    const departmentList = departments.split(',');
 
-    try {
-        const scheduleResult = await client.query(
-            `
-            SELECT 
-                e.staff_id, 
-                e.staff_fname, 
-                e.staff_lname, 
-                e.dept, 
-                e.reporting_manager, 
-                COALESCE(wr.wfh_date, $2) AS wfh_date,
-                COALESCE(wr.timeslot, 'Office') AS timeslot,
-                COALESCE(wr.status, 'Office') AS status,
-                CASE 
-                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
-                    WHEN wr.timeslot = 'AM' THEN 'AM'
-                    WHEN wr.timeslot = 'PM' THEN 'PM'
-                    ELSE 'Office'
-                END AS schedule_status,
-                wr.recurring,
-                wr.request_reason,
-                wr.requestDate,
-                wr.reject_reason
-            FROM 
-                Employee e
-            LEFT JOIN 
-                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
-            WHERE 
-                e.dept = ANY($1::text[])
-            `,
-            [departmentList, date]
-        );
 
-        res.status(200).json({
-            total_staff: scheduleResult.rowCount,
-            staff_schedules: scheduleResult.rows
-        });
 
-    } catch (error) {
-        console.error('Error fetching staff schedule by department:', error);
-        res.status(500).json({ message: 'Internal server error. ' + error.message });
-    }
+// Route to get staff schedule by department(s) and date range
+router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
+  const { departments, start_date, end_date } = req.params;
+  const departmentList = departments.split(',');
+
+  try {
+    console.log('Fetching schedule for departments:', departmentList);
+    console.log('Date range:', start_date, 'to', end_date);
+
+    // Step 1: Initialize a dictionary with all unique dates between start_date and end_date
+    const dateRange = generateDateRange(start_date, end_date);
+    console.log('Generated date range:', dateRange); // Log date range to ensure it is correct
+    const scheduleByDate = {};
+    dateRange.forEach(date => {
+      scheduleByDate[date] = [];  // Initialize each date with an empty array
+    });
+
+    // Step 2: Query to get all employees in the selected departments
+    const employeesResult = await client.query(
+      `SELECT staff_id, staff_fname, staff_lname, dept, reporting_manager
+       FROM employee
+       WHERE dept = ANY($1::text[])`,
+      [departmentList]
+    );
+    const employees = employeesResult.rows;
+    console.log('Fetched employees:', employees.length); // Log number of employees fetched
+
+    // Step 3: Query to get WFH records within the date range for employees in the departments
+    const wfhRecordsResult = await client.query(
+      `SELECT staffid, wfh_date, timeslot, status, recurring, request_reason, requestdate, reject_reason
+       FROM wfh_records
+       WHERE wfh_date BETWEEN $2 AND $3
+       AND status = 'Approved'
+       AND staffid IN (SELECT staff_id FROM employee WHERE dept = ANY($1::text[]))`,
+      [departmentList, start_date, end_date]
+    );
+    const wfhRecords = wfhRecordsResult.rows;
+    console.log('Fetched WFH records:', wfhRecords.length); // Log number of WFH records fetched
+
+    // Step 4: Build a map of WFH records keyed by staffID and wfh_date
+    const wfhMap = wfhRecords.reduce((acc, record) => {
+      const dateKey = dayjs(record.wfh_date).format('YYYY-MM-DD');
+      if (!acc[record.staffid]) {
+        acc[record.staffid] = {};
+      }
+      acc[record.staffid][dateKey] = record; // Store WFH data by staffID and date
+      return acc;
+    }, {});
+    
+    // Log the constructed WFH map for staff_id 140918 (for debugging purposes)
+    console.log('wfhMap for 140918:', wfhMap[140918]);  // Log this to verify the entry for staff_id: 140918
+
+    // Step 5: Loop through employees and assign them to each date in the date range
+    employees.forEach(employee => {
+      const staffID = employee.staff_id;
+
+      dateRange.forEach(date => {
+        if (wfhMap[staffID] && wfhMap[staffID][date]) {
+          // If WFH record exists for this date, use that record
+          const record = wfhMap[staffID][date];
+          scheduleByDate[date].push({
+            staff_id: employee.staff_id,
+            staff_fname: employee.staff_fname,
+            staff_lname: employee.staff_lname,
+            dept: employee.dept,
+            reporting_manager: employee.reporting_manager,
+            wfh_date: record.wfh_date,
+            schedule_status: record.timeslot === 'FD' ? 'Full-Day' : record.timeslot,
+            status: record.status,
+            recurring: record.recurring,
+            request_reason: record.request_reason,
+            requestDate: record.requestDate,
+            reject_reason: record.reject_reason
+          });
+        } else {
+          // If no WFH record exists, assign status as 'In Office'
+          scheduleByDate[date].push({
+            staff_id: employee.staff_id,
+            staff_fname: employee.staff_fname,
+            staff_lname: employee.staff_lname,
+            dept: employee.dept,
+            reporting_manager: employee.reporting_manager,
+            wfh_date: null, // No WFH record, so wfh_date is null
+            schedule_status: 'Office',
+            status: 'Office',
+            recurring: null,
+            request_reason: null,
+            requestDate: null,
+            reject_reason: null
+          });
+        }
+      });
+    });
+
+    // Step 6: Query to count total employees in selected departments
+    const employeeCountResult = await client.query(
+      `SELECT dept, COUNT(*) AS total_employees 
+       FROM employee
+       WHERE dept = ANY($1::text[])
+       GROUP BY dept`,
+      [departmentList]
+    );
+
+    console.log('Total employee count per department:', employeeCountResult.rows);
+
+    // Step 7: Return the final response with schedules nested by date
+    res.status(200).json({
+      total_staff: employees.length,
+      staff_schedules: scheduleByDate, // Grouped by date
+      total_employees: employeeCountResult.rows, // Count of employees in each department
+      selected_start_date: start_date,
+      selected_end_date: end_date
+    });
+    
+    // Log the final schedule by date for 2024-09-06
+    console.log('Final schedule for 2024-09-06:', scheduleByDate['2024-09-06']);  // Log this to verify the schedule for that date
+
+  } catch (error) {
+    console.error('Error fetching staff schedule by department:', error);
+    res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
 });
+
+
+
 
 // Route to submit a WFH ad-hoc request
 router.post('/wfh_adhoc_request', async (req, res) => {
@@ -572,4 +768,5 @@ router.patch('/cancel/:recordID', async (req, res) => {
       res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
+
 module.exports = router;
