@@ -34,6 +34,7 @@ jobs:
         run: npm start &
         env:
           NODE_ENV: development
+          NEXT_PUBLIC_API_URL: https://3.104.64.250.nip.io/
 
       - name: Wait for Next.js to be ready
         run: npx wait-on http://localhost:3000

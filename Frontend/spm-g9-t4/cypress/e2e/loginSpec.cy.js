@@ -11,7 +11,7 @@ describe('Login Page', () => {
     const password = 'Sophia';
 
     // Mocking the API response
-    cy.intercept('POST', 'http://localhost:4000/employee/login', {
+    cy.intercept('POST', `${process.env.NEXT_PUBLIC_API_URL}employee/login`, {
       statusCode: 200,
       body: [
         {
@@ -40,7 +40,7 @@ describe('Login Page', () => {
     const password = 'Kumari';
 
     // Mocking the API response
-    cy.intercept('POST', 'http://localhost:4000/employee/login', {
+    cy.intercept('POST', `${process.env.NEXT_PUBLIC_API_URL}employee/login`, {
       statusCode: 200,
       body: [
         {
@@ -68,7 +68,7 @@ describe('Login Page', () => {
     const password = 'wrongpassword';
 
     // Mocking the API response for error
-    cy.intercept('POST', 'http://localhost:4000/employee/login', {
+    cy.intercept('POST', `${process.env.NEXT_PUBLIC_API_URL}employee/login`, {
       statusCode: 401,
       body: { message: 'Invalid credentials' },
     }).as('loginRequest');
