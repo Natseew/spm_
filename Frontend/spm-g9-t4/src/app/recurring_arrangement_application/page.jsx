@@ -247,6 +247,7 @@ const RecurringArrangementPage = () => {
           <label>Start Date</label>
           <DatePicker
             selected={startDate}
+            placeholderText='Start Date'
             onChange={(date) => setStartDate(date)}
             className="date-picker"
             dateFormat="yyyy/MM/dd"
@@ -266,6 +267,7 @@ const RecurringArrangementPage = () => {
           <label>End Date</label>
           <DatePicker
             selected={endDate}
+            placeholderText='End Date'
             onChange={(date) => setEndDate(date)}
             className="date-picker"
             dateFormat="yyyy/MM/dd"
