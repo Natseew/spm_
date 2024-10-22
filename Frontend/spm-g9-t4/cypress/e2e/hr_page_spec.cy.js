@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 
 describe('HRPage Component', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/HR');
+    cy.visit('https://spm-one.vercel.app/HR');
   });
 
   it('should load the page and display the correct elements', () => {
