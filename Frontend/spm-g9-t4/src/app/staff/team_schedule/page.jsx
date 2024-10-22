@@ -19,7 +19,7 @@ const [staffData, setStaffData] = useState([]);
     console.log(user)
     try {
       const formattedDate = dayjs(date).format('YYYY-MM-DD');
-      const endpoint = `http://localhost:4000/wfh_records/team-schedule/${user.staff_id}/${formattedDate}`;
+      const endpoint = `${process.env.NEXT_PUBLIC_API_URL}wfh_records/team-schedule/${user.staff_id}/${formattedDate}`;
       const response = await axios.get(endpoint);
       setStaffData(response.data.staff_schedules || []);
     } catch (error) {

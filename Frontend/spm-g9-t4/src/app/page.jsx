@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Snackbar, { SnackbarCloseReason } from '@mui/material/Snackbar';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
+require('dotenv').config();
 
 
 export default function MyApp() {
@@ -35,7 +36,8 @@ export default function MyApp() {
 
   const handleSubmit = async (e)=>{
     e.preventDefault()
-    await axios.post(`http://localhost:4000/employee/login`, formData ).then(response => {
+    console.log(process.env.NEXT_PUBLIC_API_URL)
+    await axios.post(`${process.env.NEXT_PUBLIC_API_URL}employee/login`, formData ).then(response => {
       // Handle successful response
 
       window.sessionStorage.setItem("user", JSON.stringify(response.data[0]));
