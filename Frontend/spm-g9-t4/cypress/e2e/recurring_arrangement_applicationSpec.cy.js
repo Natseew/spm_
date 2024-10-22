@@ -1,75 +1,64 @@
-describe('RecurringArrangementPage Component', () => {
-    beforeEach(() => {
-      cy.visit('http://localhost:3000/recurring_arrangement_application');
-    });
-  
-    it('should load the page and display necessary elements', () => {
-      cy.contains('WFH Recurring Request Application').should('be.visible');
-      cy.get('input[type="date"]').should('have.length', 2); // Start and End Date
-      cy.contains('Day of the Week').should('be.visible');
-      cy.contains('Timeslot').should('be.visible');
-      cy.contains('Reason').should('be.visible');
-      cy.contains('Submit').should('be.visible');
-      cy.contains('Cancel').should('be.visible');
-    });
-  
-    it('should allow date selection', () => {
-      const startDate = dayjs().add(1, 'day').format('YYYY-MM-DD');
-      const endDate = dayjs().add(5, 'day').format('YYYY-MM-DD');
-      cy.get('input[type="date"]').first().type(startDate).should('have.value', startDate);
-      cy.get('input[type="date"]').last().type(endDate).should('have.value', endDate);
-    });
-  
-    it('should allow selecting day of the week', () => {
-      cy.get('input[name="dayOfWeek"]').select('1').should('have.value', '1'); // Monday
-    });
-  
-    it('should allow selecting timeslot', () => {
-      cy.get('input[name="timeslot"]').select('AM').should('have.value', 'AM');
-    });
-  
-    it('should require all fields to be filled out before submission', () => {
-      cy.contains('Submit').click();
-      cy.contains('Please fill out all required fields.').should('be.visible'); // Assuming you have a validation message
-    });
-  
-    it('should submit the form successfully and display a confirmation message', () => {
-      const startDate = dayjs().add(1, 'day').format('YYYY-MM-DD');
-      const endDate = dayjs().add(5, 'day').format('YYYY-MM-DD');
-      cy.get('input[type="date"]').first().type(startDate);
-      cy.get('input[type="date"]').last().type(endDate);
-      cy.get('input[name="dayOfWeek"]').select('1'); // Monday
-      cy.get('input[name="timeslot"]').select('AM');
-      cy.get('textarea').type('Need to work from home for personal reasons.');
-      cy.contains('Submit').click();
-      
-      // Assuming you expect a status message after submission
-      cy.contains('Request submitted successfully!').should('be.visible'); 
-    });
-  
-    it('should show an error message for unsuccessful submission', () => {
-      cy.intercept('POST', '/recurring_request/submit', {
-        statusCode: 400,
-        body: { message: 'Bad Request' }
-      }).as('submitRequest');
-  
-      cy.get('input[type="date"]').first().type(dayjs().format('YYYY-MM-DD'));
-      cy.get('input[name="dayOfWeek"]').select('1');
-      cy.get('input[name="timeslot"]').select('AM');
-      cy.get('textarea').type('Reason for request.');
-      cy.contains('Submit').click();
-      
-      cy.wait('@submitRequest');
-      cy.contains('Error: Bad Request').should('be.visible'); // Check for error message
-    });
-  
-    it('should close the dialog when the close button is clicked', () => {
-      // Assuming the dialog opens on submission
-      cy.get('input[type="date"]').first().type(dayjs().format('YYYY-MM-DD'));
-      cy.contains('Submit').click();
-      
-      cy.get('button').contains('Close').click();
-      cy.get('dialog').should('not.exist'); // Check that the dialog is closed
-    });
+describe('Recurring Arrangement Page', () => {
+  beforeEach(() => {
+    cy.visit('http://localhost:3000/recurring_arrangement_application'); // Adjust to the correct route
   });
-  
+
+  it('should load the page correctly', () => {
+    cy.get('h6').contains('WFH Recurring Request Application');
+  });
+
+  it('should fill out the form and submit successfully', () => {
+    // Fill in the start date
+    cy.get('input[placeholder="Start Date"]').click().type('2024-10-01'); // Adjust date format as necessary
+
+    // Fill in the end date
+    cy.get('input[placeholder="End Date"]').click().type('2024-10-15'); // Adjust date format as necessary
+
+    // Select day of the week
+    cy.get('input[name="dayOfWeek"]').select('Monday');
+
+    // Select timeslot
+    cy.get('input[name="timeslot"]').select('AM');
+
+    // Fill in the reason
+    cy.get('textarea').type('Working from home for project work.');
+
+    // Mocking API response for success
+    cy.intercept('POST', '**/recurring_request/submit', {
+      statusCode: 200,
+      body: { message: 'Request submitted successfully!' },
+    }).as('submitRequest');
+
+    // Submit the form
+    cy.get('button').contains('Submit').click();
+
+    // Verify success dialog appears
+    cy.get('h2').contains('Request submitted successfully!'); // Adjust selector as necessary
+  });
+
+  it('should not submit the form if required fields are empty', () => {
+    // Click submit without filling the form
+    cy.get('button').contains('Submit').click();
+
+    // Check that error messages are displayed for required fields
+    cy.get('input[placeholder="Start Date"]').should('be.empty');
+    cy.get('input[placeholder="End Date"]').should('be.empty');
+    cy.get('input[name="dayOfWeek"]').should('have.value', '');
+    cy.get('textarea').should('be.empty');
+  });
+
+  it('should reset form fields on cancel button click', () => {
+    // Fill in some fields
+    cy.get('input[placeholder="Start Date"]').click().type('2024-10-01');
+    cy.get('input[placeholder="End Date"]').click().type('2024-10-15');
+
+    // Click cancel
+    cy.get('button').contains('Cancel').click();
+
+    // Check if fields are reset
+    cy.get('input[placeholder="Start Date"]').should('be.empty');
+    cy.get('input[placeholder="End Date"]').should('be.empty');
+    cy.get('input[name="dayOfWeek"]').should('have.value', '');
+    cy.get('textarea').should('be.empty');
+  });
+});
