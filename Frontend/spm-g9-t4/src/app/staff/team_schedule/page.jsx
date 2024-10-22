@@ -1,27 +1,36 @@
 "use client"
 
 import React, {useState, useEffect, useRef} from 'react'
-import { Grid, Typography, Box, FormControl, InputLabel, Select, MenuItem, TextField, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Box, Paper} from '@mui/material';
+import { BounceLoader } from 'react-spinners';
+import { DateRange } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { DataGrid } from '@mui/x-data-grid';
 
 export default function Page() {
-
-const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
 const [staffData, setStaffData] = useState([]);
+const [dateRange, setDateRange] = useState([{ startDate: new Date(), endDate: new Date(), key: 'selection' }]);
+const [loading, setLoading] = useState(true)
 
   useEffect(()=>{
     fetchStaffSchedule()
-  },[date]);
+  },[dateRange]);
 
   const fetchStaffSchedule = async () => {
+    setLoading(true)
     const user = JSON.parse(window.sessionStorage.getItem("user"))
     try {
-      const formattedDate = dayjs(date).format('YYYY-MM-DD');
-      const endpoint = `${process.env.NEXT_PUBLIC_API_URL}wfh_records/team-schedule/${user.reporting_manager}/${formattedDate}`;
+      const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
+      const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
+      console.log(formattedStartDate, formattedEndDate)
+      const endpoint = `${process.env.NEXT_PUBLIC_API_URL}wfh_records/team-schedule-v2/${user.reporting_manager}/${formattedStartDate}/${formattedEndDate}`;
       const response = await axios.get(endpoint);
+      console.log(response.data)
       setStaffData(response.data.staff_schedules || []);
+      setLoading(false)
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
     }
@@ -45,7 +54,7 @@ const [staffData, setStaffData] = useState([]);
       field: 'wfh_date',
       headerName: 'WFH Date',
       width: 160,
-      valueGetter: (value, row) => `${dayjs(row.wfh_date).format('DD MMM YYYY')}`
+      valueGetter: (value, row) => `${dayjs(row.wfh_date).format('DD MMM YYYY')}`,
     },
     {
       field: 'fullName',
@@ -80,19 +89,25 @@ const [staffData, setStaffData] = useState([]);
     { id: 8, lastName: 'Frances', firstName: 'Rossini', age: 36 },
     { id: 9, lastName: 'Roxie', firstName: 'Harvey', age: 65 },
   ];
-
-  const StaffListTable = ({ staffData }) => (
-    <>
+  function StaffListTable({ staffData }){
+    if(loading) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <BounceLoader color="#00BFFF" loading={loading} size={150} />
+        </div>
+      );
+    }else{
+      return(
       <DataGrid
-        getRowId={(row) => row.staff_id}
+        getRowId={(row) => row.staff_id+row.wfh_date}
         rows={staffData}
         columns={columns}
         initialState={{ pagination: { paginationModel } }}
         pageSizeOptions={[10, 20, 30]}
         sx={{ border: 0 }}
-      />
-    </>
-  );
+      />)
+    }
+  };
 
   
 
@@ -100,13 +115,9 @@ const [staffData, setStaffData] = useState([]);
   <>
     <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px'}}>
       <Box sx={{ marginBottom: '20px', width: '200px' }}>
-        <TextField
-          label="Select Date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
+        <DateRange
+          ranges={dateRange}
+          onChange={(ranges) => setDateRange([ranges.selection])}
         />
       </Box>
       <StaffListTable staffData={staffData} />
