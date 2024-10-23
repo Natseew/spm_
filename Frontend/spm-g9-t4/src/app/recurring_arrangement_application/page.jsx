@@ -40,12 +40,13 @@ const RecurringArrangementPage = () => {
   const [statusMessage, setStatusMessage] = useState('');
   
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const user = window.sessionStorage.getItem("user");
-      if (user) {
-        setStaffId(JSON.parse(user).staff_id);
-      }
-    }
+    // if (typeof window !== 'undefined') {
+    //   const user = window.sessionStorage.getItem("user");
+    //   if (user) {
+    //     setStaffId(JSON.parse(user).staff_id);
+    //   }
+    // }
+    setStaffId(180001);
   }, []);
 
   // Current date and date restrictions
@@ -75,8 +76,11 @@ const RecurringArrangementPage = () => {
     setOpen(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
+    //   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
+        const response = await fetch(`http://localhost:4000/recurring_request/submit`, {
+
         method: 'POST',
+
         headers: {
           'Content-Type': 'application/json',
         },
