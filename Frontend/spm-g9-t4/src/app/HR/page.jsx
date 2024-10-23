@@ -48,7 +48,6 @@ const getStatusLabel = (scheduleStatus) => {
   }
 };
 
-// Component to render the list of staff for a selected date
 const StaffListTable = ({ staffDataForDate }) => {
   return (
     <Box>
@@ -91,17 +90,16 @@ const StaffListTable = ({ staffDataForDate }) => {
   );
 };
 
-// Component for the HR page
 const HRPage = () => {
   const departments = ["Finance", "CEO", "HR", "Sales", "Consultancy", "Engineering", "IT", "Solutioning"];
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [selectedSessions, setSelectedSessions] = useState({ AM: true, PM: true });
   const [dateRange, setDateRange] = useState([{ startDate: new Date(), endDate: new Date(), key: 'selection' }]);
-  const [staffSchedules, setStaffSchedules] = useState({}); // Now holding staff data grouped by date from the backend
+  const [staffSchedules, setStaffSchedules] = useState({});
   const [employeeCount, setEmployeeCount] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(""); // This will hold the selected date string
+  const [selectedDate, setSelectedDate] = useState(""); 
 
   // Handle department checkbox change
   const handleDepartmentChange = (event) => {
@@ -117,28 +115,40 @@ const HRPage = () => {
     setSelectedSessions((prev) => ({ ...prev, [name]: checked }));
   };
 
-  // Fetch staff schedule from the backend
+  // Validation to check if at least one session is selected
+  const validateSessionSelection = () => {
+    return selectedSessions.AM || selectedSessions.PM;
+  };
+
   const fetchStaffSchedule = async () => {
+    if (!validateSessionSelection()) {
+      setError('Please select at least one session (AM or PM).');
+      return; // Do not proceed with submission
+    }
+  
     try {
+      setError(''); // Clear error message
       setLoading(true);
       const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
       const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
-
+  
       // Fetch the staff schedules from the backend
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedStartDate}/${formattedEndDate}`);
       
+      console.log('API Response:', response.data); // Log the API response
+  
       const schedules = response.data.staff_schedules || {};
       const employeeCount = response.data.total_employees || [];
-
+    
       setEmployeeCount(employeeCount);
       setStaffSchedules(schedules);
-
+  
       const availableDates = Object.keys(schedules);
       if (availableDates.length > 0) {
-        setSelectedDate(availableDates[0]); // Set the first available date by default
+        setSelectedDate(availableDates[0]);
       }
-
+  
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
       setError('Error fetching staff schedule');
@@ -146,10 +156,9 @@ const HRPage = () => {
       setLoading(false);
     }
   };
-
+  
   const calculateStaffCounts = (selectedDate) => {
     const filteredData = staffSchedules[selectedDate] || [];
-
     const homeStaff = filteredData.filter(staff => staff.schedule_status !== 'Office').length;
     const officeStaff = filteredData.filter(staff => staff.schedule_status === 'Office').length;
 
@@ -240,6 +249,8 @@ const HRPage = () => {
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
           fullWidth
+          className="date-filter-select"  // Add className here
+          data-testid="date-filter-select" // Or add data-testid for more specificity in testing
         >
           {Object.keys(staffSchedules).map(date => (
             <MenuItem key={date} value={date}>
@@ -248,6 +259,7 @@ const HRPage = () => {
           ))}
         </Select>
       </Box>
+
 
       {!loading && (
         <>
