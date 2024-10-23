@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import RecurringModal from './RecurringModal'; // Make sure to create or import the Modal component.
-import HandleReccuringRejectModal from './HandleReccuringRejectModal'; // Changed to the correct component name
-import Notification from './Notification'; // Import your Notification component
+import RecurringModal from './RecurringModal';
+import HandleReccuringRejectModal from './HandleReccuringRejectModal';
+import Notification from './Notification';
 
-
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
-const employeeNameid = {} // Object to store staff_id and their corresponding full names
-const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
+const employeeNameid = {};
+const ManagerID = '130002'; 
+const YZManagerID = '140001';
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -17,39 +17,31 @@ const RecurringSchedule = () => {
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
     const [someData, setSomeData] = useState(null);
-    const [modalDates, setModalDates] = useState([]); // For storing dates for the rejection modal
-    const [selectedDate, setSelectedDate] = useState(""); 
+    const [modalDates, setModalDates] = useState([]);
+    const [selectedDate, setSelectedDate] = useState('');
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
 
-    // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
         const fetchEmployeeAndRecurringData = async () => {
             try {
-                // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`); // Replace with actual managerId
+                // Note to Zhen Yue: Comment out mine and uncomment yours  
+                // const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`);
+                const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${YZManagerID}`);
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
-                setEmployeeIds(ids); // Store employee IDs in state
-                console.log(ids)
+                setEmployeeIds(ids);
 
-                // Create employeeNameid mapping
                 employeeData.forEach(emp => {
-                    employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`; // Map staff_id to full name
-                    });
-                    
-                    // Log the employeeNameid for verification
-                    console.log("Employee ID to Name Mapping:", employeeNameid);
-    
-                // Step 2: Use these employee IDs to fetch WFH records
+                    employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;
+                });
+
                 const wfhResponse = await fetch('http://localhost:4000/recurring_request/by-employee-ids', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ employeeIds: ids }), // Sending employee IDs in the request body
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employeeIds: ids }),
                 });
 
                 if (!wfhResponse.ok) {
@@ -57,50 +49,32 @@ const RecurringSchedule = () => {
                 }
 
                 const wfhData = await wfhResponse.json();
-                setRecurringData(wfhData); // Store ad hoc data in state
-                console.log("Fetched Employee Data:",employeeData)
-                console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
-                console.log('Recurring Data:', RecurringData)
-                
+                console.log('Recurring WFH Data:', wfhData);
+                setRecurringData(wfhData);
             } catch (error) {
                 console.error('Error during fetch operations:', error);
                 setError(error.message);
             } finally {
-                setLoading(false); // Set loading to false irrespective of success or failure
+                setLoading(false);
             }
         };
         fetchEmployeeAndRecurringData();
-    }, []); // Fetch once when component mounts
-
-    useEffect(() => {
-        console.log('Recurring Data after update:', RecurringData);
-    }, [RecurringData]); // Monitor RecurringData changes
-
+    }, []);
 
     const openModal = (data) => {
-        setModalData(data); // Set the data to be displayed in the modal
-        setModalOpen(true); // Open the modal
+        setModalData(data);
+        setModalOpen(true);
     };
 
     const closeModal = () => {
-        setModalOpen(false); // Close the modal
-        setModalData({}); // Clear the modal data
-    };
-
-    const extractUniqueDates = (data) => {
-        const dates = new Set();
-        data.forEach((item) => {
-            if (item.wfh_dates) {
-                item.wfh_dates.forEach(date => dates.add(date)); // Assuming wfh_dates is an array
-            }
-        });
-        return Array.from(dates);
+        setModalOpen(false);
+        setModalData({});
     };
 
     const openRejectModal = (data) => {
-        setSomeData(data); // Set the request data
-        setModalDates(data.wfh_dates || []); // Get specific request dates
-        setRejectModalOpen(true); // Open the rejection modal
+        setSomeData(data);
+        setModalDates(data.wfh_dates || []);
+        setRejectModalOpen(true);
     };
 
     const closeRejectModal = () => {
@@ -108,97 +82,60 @@ const RecurringSchedule = () => {
         setSomeData(null);
         setModalDates([]);
     };
-    
+
     if (loading) {
-        return <p>Loading...</p>; // Display loading message
+        return <p>Loading...</p>;
     }
 
     if (error) {
-        return <p>Error: {error}</p>; // Display error message
+        return <p>Error: {error}</p>;
     }
 
-
-    // Handle status toggle
     const handleStatusChange = (status) => {
         setSelectedStatus(status);
     };
 
-    // Handle date change
     const handleDateChange = (event) => {
-        setSelectedDate(event.target.value); // Update selected date
+        setSelectedDate(event.target.value);
     };
 
-    // Filtering logic
     const filteredData = RecurringData.filter(item => {
-        const dateMatches = selectedDate ? new Date(item.wfh_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
-        return item.status === selectedStatus && dateMatches; // Both status and date match
+        const dateMatches = selectedDate ? new Date(item.start_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
+        let statusMatches = false;
+        if (selectedStatus === 'Pending Change') {
+            // If filtering by 'Pending Change', check if any wfh_records have that status
+            statusMatches = item.wfh_records.some(record => record.status === 'Pending Change');
+        } else {
+            // For other statuses, check the parent status only
+            statusMatches = item.status === selectedStatus;
+        }
+        return statusMatches && dateMatches;
     });
     
+
     const getStaffName = (id) => {
-        // Use the employeeNameid dictionary to retrieve the full name
-        const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
+        const name = employeeNameid[Number(id)] || 'Unknown';
+        return name;
+    };
+
+    const FormatDateToDayofweek = (num) => {
+        const dayofweek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return dayofweek[num - 1];
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Invalid Date'; // Handle null or undefined dates
+        return dateString.split('T')[0]; // Split at 'T' and take the first part
+    };
     
-        // Optionally log the name for debugging purposes
-        console.log(name); // Log the retrieved name
-        return name; // Return either found name or 'Unknown'
+    
+    const handleAcceptChange = async (reqId) => {
+        console.log(`Accepting change request with ID: ${reqId}`);
     };
 
-
-// Function to process and organize dates
-const formatDatesFromObject = (dateArray) => {
-    // Check if the input is an array
-    if (!Array.isArray(dateArray)) {
-        throw new Error("Invalid input. Please provide an array of date strings.");
-    }
-
-    // Initialize an array to hold formatted dates
-    const formattedDates = [];
-
-    // Loop through the date array
-    for (const date of dateArray) {
-        // Convert the string to a Date object and format it
-        const formatted_date = new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-        
-        // Push the formatted date to the result array
-        formattedDates.push(formatted_date);
-        formattedDates.push(" ");
-
-    }
-
-    // Return the formatted dates
-    return formattedDates;
-};
-
-const FormatDateToDayofweek= (num) => {
-    const dayofweek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-    const match_num = num - 1
-
-return dayofweek[match_num]
-}
-
-
-    // Action Handlers
-    const handleAccept = async (reqId) => {
-        // Logic to accept the request
-        console.log(`Accepting request with ID: ${reqId}`);
+    const handleRejectChange = async (reqId) => {
+        console.log(`Rejecting change request with ID: ${reqId}`);
     };
-
-    const handleReject = async (recordId, reason, dates) => {
-        console.log(`Rejecting request with ID: ${recordId}, Reason: ${reason}, Dates: ${dates}`);
-        // Logic to handle rejection
-        closeRejectModal(); 
-    };
-
-
-    const handleCancel = async (reqId) => {
-        // Logic to cancel the accepted request
-        console.log(`Canceling request with ID: ${reqId}`);
-    };
-
 
     return (
         <div>
@@ -206,9 +143,9 @@ return dayofweek[match_num]
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
                     {statusOptions.map(status => (
-                        <button id='button'
-                            key={status} 
-                            className={`py-2 px-4 mr-2 ${selectedStatus === status ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} 
+                        <button
+                            key={status}
+                            className={`py-2 px-4 mr-2 ${selectedStatus === status ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
                             onClick={() => handleStatusChange(status)}
                         >
                             {status}
@@ -225,92 +162,106 @@ return dayofweek[match_num]
                         onChange={handleDateChange}
                         className="p-2 border border-gray-300 rounded"
                     />
-                </div>  
+                </div>
             </div>
 
+            {/* Recurring Data Table */}
             <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-                
                 <thead className="bg-gray-500 text-white">
                     <tr className="text-center">
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Start Date</th>
-                        <th className="py-2 px-4 border-b border-gray-300">End Date</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Day of Week</th>
+                        <th className="py-2 px-4 border-b border-gray-300">WFH Date</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Status</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Actions</th>
+                        <th className="py-2 px-4 border-b border-gray-300">
+                            {selectedStatus === 'Pending Change' ? 'Requested Change Date' : 'Actions'}
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
-                        {filteredData
-                        .filter(item => item.status === selectedStatus) // Filter data by selected status
-                        .map((item, index) => (
-                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors ">
+                    {filteredData.map((item, index) => (
+                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors">
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{new Date(item.start_date).toLocaleDateString()}</td> 
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{new Date(item.end_date).toLocaleDateString()}</td>
-                            {/* <td className="py-2 px-4 border-b border-gray-300" >{formatDatesFromObject(item.wfh_dates)}</td> */}
-                            <td className="py-2 px-4 border-b border-gray-300" >{FormatDateToDayofweek(item.day_of_week)}</td>
-                            <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
-                            <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
+
+                            {/* WFH Date Column */}
                             <td className="py-2 px-4 border-b border-gray-300">
-                                <button 
-                                    className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
-                                    onClick={() => openModal(item)} // Open modal with item data
-                                >
-                                    View Details
-                                </button>
                                 {
-                                    item.status === 'Pending' &&
-                                    <>
-                                        <button 
-                                            className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                            onClick={() => handleAccept(item.req_id)} // Call accept handler
-                                        >
-                                            Accept
-                                        </button>
-                                        <button 
-                                            className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item)} // Open reject modal
-                                        >
-                                            Reject
-                                        </button>
-                                    </>
+                                    (() => {
+                                        const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === 'Pending Change') : null;
+                                        if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
+                                            return formatDate(pendingChangeRecord.wfh_date);
+                                        }
+                                        return 'No Pending Change';
+                                    })()
                                 }
-                                {
-                                    item.status === 'Approved' &&
-                                    <button 
-                                        className="bg-yellow-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleCancel(item.req_id)} // Call cancel handler for accepted requests
-                                    >
-                                        Cancel
-                                    </button>
-                                }
-                                {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
                             </td>
+
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
+
+                            {/* Requested Change Date Column */}
+                            {selectedStatus === 'Pending Change' ? (
+                                <td className="py-2 px-4 border-b border-gray-300">
+                                    {
+                                        (() => {
+                                            const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === 'Pending Change') : null;
+                                            if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
+                                                return (
+                                                    <div>
+                                                        {formatDate(pendingChangeRecord.wfh_date)}
+                                                        {/* Add Accept and Reject Buttons */}
+                                                        <div className="mt-2">
+                                                            <button 
+                                                                className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                                                onClick={() => handleAcceptChange(item.req_id)}
+                                                            >
+                                                                Accept Change
+                                                            </button>
+                                                            <button 
+                                                                className="bg-red-500 text-white px-2 py-1 rounded" 
+                                                                onClick={() => handleRejectChange(item.req_id)}
+                                                            >
+                                                                Reject Change
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return 'No Pending Change';
+                                        })()
+                                    }
+                                </td>
+                            ) : (
+                                <td className="py-2 px-4 border-b border-gray-300">
+                                    <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" onClick={() => openModal(item)}>
+                                        View Details
+                                    </button>
+                                    {item.status === 'Pending' && (
+                                        <>
+                                            <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" onClick={() => handleAcceptChange(item.req_id)}>
+                                                Accept
+                                            </button>
+                                            <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => handleRejectChange(item.req_id)}>
+                                                Reject
+                                            </button>
+                                        </>
+                                    )}
+                                </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>
             </table>
-            <RecurringModal 
-                isOpen={modalOpen} 
-                onClose={closeModal} 
-                data={modalData} // Data to be displayed in the modal
-            />
 
-            <HandleReccuringRejectModal 
-                isOpen={rejectModalOpen} 
-                onClose={closeRejectModal}
-                onReject={handleReject}
-                data={someData} 
-                dates={modalDates} // Only the selected request's dates
-            />
+
+
+            {/* Modals */}
+            <RecurringModal isOpen={modalOpen} onClose={closeModal} data={modalData} />
+            <HandleReccuringRejectModal isOpen={rejectModalOpen} onClose={closeRejectModal} onReject={handleRejectChange} data={someData} dates={modalDates} />
         </div>
-        );
-    };
+    );
+};
 
 export default RecurringSchedule;
