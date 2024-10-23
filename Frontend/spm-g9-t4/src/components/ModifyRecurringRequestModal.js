@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
 const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
-    // Initialize state with data properties
-    // Use optional chaining to avoid errors when data is undefined or null
-    const [startDate, setStartDate] = useState(data?.start_date ? data.start_date.split('T')[0] : ''); 
-    const [endDate, setEndDate] = useState(data?.end_date ? data.end_date.split('T')[0] : ''); 
-    const [timeslot, setTimeslot] = useState(data?.timeslot || 'AM'); 
     const [selectedDates, setSelectedDates] = useState([]);
 
-    // Populate initial selected dates based on wfh_dates from data prop
+    // Use effect to set the selected dates based on incoming data.wfh_dates
     useEffect(() => {
-        if (isOpen && data.wfh_dates) {
-            setSelectedDates(data.wfh_dates); // Set selected dates based on passed data
+        if (isOpen && data?.wfh_dates) {
+            // Format the wfh_dates to "YYYY-MM-DD"
+            const formattedDates = data.wfh_dates.map(date => 
+                new Date(date).toISOString().slice(0, 10) // Convert to YYYY-MM-DD format
+            );
+            setSelectedDates(formattedDates); // Initialize selected dates based on the formatted data
         }
     }, [isOpen, data]);
 
-    if (!isOpen) return null; // Don't render if the modal isn't open
+    if (!isOpen) return null; // Don't render if modal is not open
 
     // Handle date selection for rejecting dates
     const handleDateSelection = (date) => {
@@ -27,64 +26,37 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
     };
 
     const handleModifyConfirm = () => {
-        // Call the onModify handler with modified data for saving changes
-        onModify(data.requestid, { start_date: startDate, end_date: endDate, timeslot, selectedDates });
-        onClose(); // Close the modal
+        // Format both selected dates and the original wfh_dates to "YYYY-MM-DD"
+        const formattedSelectedDates = selectedDates.map(date => new Date(date).toISOString().slice(0, 10)); // Format selected dates
+        const updatedDates = data.wfh_dates.filter(date => 
+            !formattedSelectedDates.includes(new Date(date).toISOString().slice(0, 10)) // Compare formatted dates to compare equality
+        );
+    
+        console.log(updatedDates); // Log the updated dates for verification
+        // Call the onModify handler with request ID and updated wfh_dates to be sent to the backend
+        onModify(data.requestid, { wfh_dates: updatedDates });
+    
+        // Close the modal after modification
+        onClose();
     };
-
+    
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white p-4 rounded shadow-lg max-w-md w-full">
-                <h2 className="text-lg font-semibold mb-4">Modify Request</h2>
-
-                <div className="mt-4">
-                    <label htmlFor="startDate" className="block mb-2">Start Date:</label>
-                    <input 
-                        type="date" 
-                        id="startDate" 
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)} 
-                        className="w-full border border-gray-300 p-2 rounded"
-                    />
-                </div>
-
-                <div className="mt-4">
-                    <label htmlFor="endDate" className="block mb-2">End Date:</label>
-                    <input 
-                        type="date" 
-                        id="endDate" 
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)} 
-                        className="w-full border border-gray-300 p-2 rounded"
-                    />
-                </div>
-
-                <div className="mt-4">
-                    <label htmlFor="timeslot" className="block mb-2">Timeslot:</label>
-                    <select 
-                        id="timeslot" 
-                        value={timeslot}
-                        onChange={(e) => setTimeslot(e.target.value)} 
-                        className="w-full border border-gray-300 p-2 rounded"
-                    >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                        <option value="FD">Full Day</option>
-                    </select>
-                </div>
+                <h2 className="text-lg font-semibold mb-4">Modify Request: Remove Dates</h2>
 
                 {/* Displaying wfh_dates with checkboxes */}
                 <div className="mt-4">
-                    <h3 className="font-semibold mb-2">Select Dates to Reject:</h3>
+                    <h3 className="font-semibold mb-2 text-left">Unselect Dates to Remove Them:</h3>
                     {data.wfh_dates.map((date) => (
                         <div key={date} className="flex items-center">
                             <input 
                                 type="checkbox" 
                                 id={date} 
                                 value={date} 
-                                checked={selectedDates.includes(date)} 
-                                onChange={() => handleDateSelection(date)} 
+                                checked={selectedDates.includes(new Date(date).toISOString().slice(0, 10))} // Check if the formatted date is selected
+                                onChange={() => handleDateSelection(new Date(date).toISOString().slice(0, 10))} // Handle checkbox change
                                 className="mr-2"
                             />
                             <label htmlFor={date}>{new Date(date).toLocaleDateString()}</label>
@@ -92,25 +64,24 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
                     ))}
                 </div>
 
-            <div className="flex justify-end mt-4">
-                <button 
-                    onClick={onClose}
-                    className="bg-gray-500 text-white px-3 py-2 mr-2 rounded"
-                >
-                    Cancel
-                </button>
-
-<button 
-                        onClick={handleModifyConfirm}
-                        className="bg-blue-500 text-white px-3 py-2 rounded"
+                <div className="flex justify-end mt-4">
+                    <button 
+                        onClick={onClose}
+                        className="bg-gray-500 text-white px-3 py-2 mr-2 rounded"
                     >
-                        Modify
-                        </button>
+                        Cancel
+                    </button>
+
+                    <button 
+                        onClick={handleModifyConfirm}
+                        className="bg-red-500 text-white px-3 py-2 rounded"
+                    >
+                        Remove Dates
+                    </button>
                 </div>
             </div>
         </div>
     );
 };
-
 
 export default ModifyRecurringRequestModal;

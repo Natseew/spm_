@@ -358,4 +358,41 @@ router.post('/reject/:requestID', async (req, res) => {
     }
 });
 
+// Route to remove specific dates from wfh_dates of a recurring request
+router.patch('/modify/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+    const { wfh_dates } = req.body; // Expecting the filtered wfh_dates
+
+    console.log("Received request to modify ID:", requestid); // Log received ID
+    console.log("Update body:", req.body); // Log the request body
+
+    if (!Array.isArray(wfh_dates) || wfh_dates.length === 0) {
+        return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
+    }
+
+    try {
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET wfh_dates = array(
+                SELECT unnest(wfh_dates) EXCEPT
+                SELECT unnest($1::DATE[])
+            )
+            WHERE requestid = $2
+            RETURNING *;`,
+            [wfh_dates, requestid]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+
+
 module.exports = router;

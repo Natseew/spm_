@@ -248,34 +248,38 @@ return dayofweek[match_num]
 
     // Handle Modify
     const handleModify = async (requestId, updatedData) => {
-        console.log('Modifying request with ID:', requestId);
-        console.log('Updated Data:', updatedData);
-
+        // Validate parameters before proceeding
+        if (!requestId || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
+            console.error("Validation failed for inputs", requestId, updatedData);
+            return;
+        }
+    
         try {
             const response = await fetch(`/recurring_request/modify/${requestId}`, {
-                method: 'PATCH', // Use PATCH for updating the existing resource
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(updatedData), // Send the updated data as JSON
+                body: JSON.stringify(updatedData),
             });
-
+    
+            // Check if response is not ok (e.g., 4XX or 5XX HTTP code)
             if (!response.ok) {
                 throw new Error(`Error modifying the request: ${response.statusText}`);
             }
-
+    
             const result = await response.json();
             console.log(result.message); // Log success message
-
-            // Update state to reflect the modified request
+    
+            // Update the local state with the modified dates
             setRecurringData(prevData => 
                 prevData.map(req => 
-                    req.requestid === requestId ? { ...req, ...updatedData } : req
+                    req.requestid === requestId ? { ...req, wfh_dates: updatedData.wfh_dates } : req
                 )
             );
-
+    
             // Close the modification modal
-            setModifyModalOpen(false);
+            setModifyModalOpen(false); 
         } catch (error) {
             console.error('Error handling modification:', error);
         }
