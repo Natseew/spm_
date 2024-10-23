@@ -1,5 +1,6 @@
 export default function MyApp() {
 }
+// "use client";
 
 // "use client";
 
