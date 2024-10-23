@@ -38,11 +38,6 @@ router.get('/:staffid', async (req, res) => {
 });
 
 
-// Route to get approved staff schedule for a team based on Reporting Manager ID and date
-router.get('/team-schedule/:manager_id/:date', async (req, res) => {
-    const { manager_id, date } = req.params;
-})
-
 // Helper function to generate a list of dates between two given dates
 const generateDateRange = (startDate, endDate) => {
   const dates = [];
@@ -670,7 +665,7 @@ router.get('/recurring_dates', async (req, res) => {
 });
 
 
-// New route to get WFH records by an array of employee IDs
+// New route to get WFH records by an array of employee IDs 
 router.post('/by-employee-ids', async (req, res) => {
   try {
       const { employeeIds } = req.body;
