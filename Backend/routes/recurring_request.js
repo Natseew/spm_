@@ -133,26 +133,56 @@ router.delete('/:requestID', async (req, res) => {
         console.error('Error deleting recurring WFH request:', error);
     }
 });
+
 // New route to get recurring requests by an array of employee IDs
 router.post('/by-employee-ids', async (req, res) => {
     try {
         const { employeeIds } = req.body;
+
         // Validate input
         if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
             return res.status(400).json({ message: 'Invalid input. Must provide an array of employee IDs.' });
         }
+
         // Create placeholders for the SQL query
         const placeholders = employeeIds.map((_, index) => `$${index + 1}`).join(', ');
-        const query = `SELECT * FROM recurring_request WHERE staff_id IN (${placeholders})`;
-        // Execute the query
-        const result = await client.query(query, employeeIds);
-        console.log(result.rows); // Optional: Log the retrieved rows for debugging
-        res.status(200).json(result.rows); // Return fetched records
+        const recurringQuery = `SELECT * FROM recurring_request WHERE staff_id IN (${placeholders})`;
+
+        // Retrieve recurring requests
+        const recurringResult = await client.query(recurringQuery, employeeIds);
+        const recurring_request_data = recurringResult.rows; // Storing recurring request data
+
+        // If there are no matching records, return an empty array
+        if (recurring_request_data.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        // Loop through each recurring request and fetch corresponding wfh_record
+        const combinedDataPromises = recurring_request_data.map(async (recurringRequest) => {
+            const wfhQuery = `SELECT wfh_date, status FROM wfh_records WHERE requestID = $1`;
+            const wfhResult = await client.query(wfhQuery, [recurringRequest.requestid]);
+
+            // Combine recurring request with corresponding wfh records (if any)
+            return {
+                ...recurringRequest,
+                wfh_records: wfhResult.rows // Add the wfh_records (wfh_date and status)
+            };
+        });
+
+        // Wait for all the combined data to be fetched
+        const combinedData = await Promise.all(combinedDataPromises);
+
+        // Return the combined data
+        res.status(200).json(combinedData);
+        console.log(combinedData)
     } catch (error) {
         console.error('Error retrieving recurring requests by employee IDs:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
+
+
+
 router.post('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
     try {
@@ -248,6 +278,88 @@ router.put('/withdraw_entire/:requestid', async (req, res) => {
     }
   });
   
+  
 
+// Withdraw a date from a recurring WFH request
+router.post('/withdraw_recurring_wfh', async (req, res) => {
+    const { requestID, wfhDate, reason } = req.body;
+  
+    try {
+      // Start a transaction to ensure atomicity
+      await client.query('BEGIN');
+  
+      // 1. Fetch the recurring request to modify the wfh_dates array
+      const result = await client.query(
+        `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
+        [requestID]
+      );
+  
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'Recurring request not found.' });
+      }
+  
+      const { wfh_dates, status } = result.rows[0];
+  
+      // Convert the input date to the correct format and check if it exists in the array
+      const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
+  
+      if (!wfh_dates.includes(dateToRemove)) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'WFH date not found in the request.' });
+      }
+  
+      // Remove the date from the wfh_dates array
+      const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
+  
+      // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
+      if (status === 'Pending') {
+        await client.query(
+          `UPDATE recurring_request SET wfh_dates = $1 WHERE requestID = $2`,
+          [updatedDates, requestID]
+        );
+  
+        // 3. Insert a new activity log entry for the withdrawal
+        await client.query(
+          `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+          [requestID, `Withdrawn - ${reason}`]
+        );
+      }
+  
+      // 4. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
+      if (status === 'Approved') {
+        // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
+        await client.query(
+          `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
+          [wfhDate, requestID]
+        );
+  
+        // 5. Also update the status of the recurring request itself
+        await client.query(
+          `UPDATE recurring_request SET status = 'Pending Withdrawal' WHERE requestID = $1`,
+          [requestID]
+        );
+  
+        // 6. Insert a new activity log entry for the withdrawal
+        await client.query(
+          `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+          [requestID, `Pending Withdrawal - ${reason}`]
+        );
+      }
+  
+      // Commit the transaction
+      await client.query('COMMIT');
+      res.status(200).json({ message: 'Withdrawal successfully processed.' });
+    } catch (error) {
+      // Rollback the transaction in case of errors
+      await client.query('ROLLBACK');
+      console.error('Error withdrawing WFH date from recurring request:', error);
+      res.status(500).json({ message: 'Internal server error.' });
+    }
+  });
+
+  // update pending recurring change request - just update the corresponding wfh_records date to the new date and update the recurring_request wfh_dates array
+
+  
   
 module.exports = router;

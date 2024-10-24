@@ -212,6 +212,7 @@ export default function PendingRequests() {
     </>
   );
 }
+// "use client";
 
 // Component to display Ad-Hoc Requests Table with Withdraw button
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {

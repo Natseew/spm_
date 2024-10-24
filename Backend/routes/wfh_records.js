@@ -38,11 +38,6 @@ router.get('/:staffid', async (req, res) => {
 });
 
 
-// Route to get approved staff schedule for a team based on Reporting Manager ID and date
-router.get('/team-schedule/:manager_id/:date', async (req, res) => {
-    const { manager_id, date } = req.params;
-})
-
 // Helper function to generate a list of dates between two given dates
 const generateDateRange = (startDate, endDate) => {
   const dates = [];
@@ -732,10 +727,6 @@ router.post('/withdraw_recurring_request', async (req, res) => {
     res.status(500).json({ message: `Internal server error: ${error.message}` });
   }
 });
-
-
-
-
 
 
 
