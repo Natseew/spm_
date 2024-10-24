@@ -110,7 +110,7 @@ export default function PendingRequests() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/recurring_request/withdraw`, {
+      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
