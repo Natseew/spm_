@@ -21,6 +21,7 @@ const AdHocSchedule = () => {
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectPendingWithdrawalModalOpen, setRejectPendingWithdrawalModalOpen] = useState(false);
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
     
@@ -89,6 +90,16 @@ const AdHocSchedule = () => {
     
     const closeRejectModal = () => {
         setRejectModalOpen(false);
+        setRejectData(null);
+    };
+
+    const openRejectPendingWithdrawalModal = (data) => {
+        setRejectData(data);
+        setRejectPendingWithdrawalModalOpen(true);
+    };
+    
+    const closeRejectPendingWithdrawalModal = () => {
+        setRejectPendingWithdrawalModalOpen(false);
         setRejectData(null);
     };
 
@@ -238,7 +249,37 @@ const handleAcceptWithdraw = async (recordID) => {
     }
 };
 
+// Handle Reject Withdrawal
+const handleRejectPendingWithdrawal = async (reqId, reason) => {
+    console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+    try {
+        const response = await fetch(`http://localhost:4000/wfh_records/reject_withdrawal/${reqId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason }), // Send the reason in the request body
+        });
 
+        if (!response.ok) {
+            throw new Error(`Error rejecting request: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Rejection recorded successfully:', updatedData);
+        
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+            )
+        );
+
+        setNotification('Withdrawal request rejected!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during rejection update:', error);
+    }
+};
 
 
 // Handle Reject Withdrawal
@@ -277,6 +318,7 @@ const handleAcceptWithdraw = async (recordID) => {
 // Handling modal for reject action
 const handleRejectOpen = (data) => {
     openRejectModal(data);
+    console.log(data);
 };
 
 // Handle Cancelling Request
@@ -444,12 +486,12 @@ const handleCancel = async (recordID) => {
                                         >
                                             Accept
                                         </button>
-                                        {/* <button 
+                                        <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item)} // Reject button for Pending Withdrawal
+                                            onClick={() => openRejectPendingWithdrawalModal(item)} // Reject button for Pending Withdrawal
                                         >
                                             Reject
-                                        </button> */}
+                                        </button>
                                     </>
                                 )}
                             </td>
@@ -467,6 +509,13 @@ const handleCancel = async (recordID) => {
                 isOpen={rejectModalOpen} 
                 onClose={closeRejectModal} 
                 onReject={handleReject} // Pass OnReject as the function to call
+                data={rejectData} // Pass the relevant data to the modal
+            />
+            
+            <HandleRejectModal
+                isOpen={rejectPendingWithdrawalModalOpen} 
+                onClose={closeRejectPendingWithdrawalModal} 
+                onReject={handleRejectPendingWithdrawal} // Pass OnReject as the function to call
                 data={rejectData} // Pass the relevant data to the modal
             />
 
