@@ -538,7 +538,7 @@ router.post('/withdraw_wfh', async (req, res) => {
 
 // Change an ad-hoc WFH request
 router.post('/change_adhoc_wfh', async (req, res) => {
-  const { recordID, new_date, reason,staff_id } = req.body;
+  const { recordID, new_start_date, new_end_date, reason, staff_id } = req.body;
 
   try {
     // Start a transaction to ensure atomicity
@@ -550,73 +550,60 @@ router.post('/change_adhoc_wfh', async (req, res) => {
       [recordID]
     );
 
-    const currentStatus = result.rows[0]?.status;
-    const currentWfhDate = result.rows[0]?.wfh_date;
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'WFH request not found.' });
+    }
 
-    // Validate the current status for change (if it's neither Pending nor Approved)
+    const currentStatus = result.rows[0].status;
+    const currentWfhDate = new Date(result.rows[0].wfh_date);
+
+    // Validate the current status for change (only Pending or Approved)
     if (currentStatus !== "Pending" && currentStatus !== "Approved") {
       await client.query('ROLLBACK');
       return res.status(400).json({ message: 'Invalid request status for change.' });
     }
 
-    // Convert new_date to a proper Date object if it's not already
-    const formattedNewDate = new Date(new_date);
+    // Convert new_start_date and new_end_date to proper Date objects
+    const formattedNewStartDate = new Date(new_start_date);
+    const formattedNewEndDate = new Date(new_end_date);
 
-    // Determine new status and decide whether to update wfh_date or not
-    let newStatus = currentStatus;
-    let updateWfhDate = false;
-
-    if (currentStatus === "Pending") {
-      // For pending requests, keep the status as "Pending" and update the wfh_date
-      newStatus = "Pending";
-      updateWfhDate = true;
-    } else if (currentStatus === "Approved") {
-      // For approved requests, set status to "Pending Change" but don't update wfh_date
-      newStatus = "Pending Change";
+    // Check if the new date is valid
+    if (isNaN(formattedNewStartDate.getTime()) || isNaN(formattedNewEndDate.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'Invalid new WFH date(s) provided.' });
     }
 
     // 2. Update the wfh_records table
-    if (updateWfhDate) {
-      // For pending requests, update the wfh_date in the table
-      const updateResult = await client.query(
-        `UPDATE wfh_records 
-         SET status = $1, wfh_date = $2 
-         WHERE recordID = $3 
-         RETURNING *`,
-        [newStatus, formattedNewDate, recordID]
-      );
+    let newStatus = currentStatus === "Pending" ? "Pending" : "Pending Change";
+    
+    // Update both status and wfh_date for both Pending and Approved requests
+    const updateResult = await client.query(
+      `UPDATE wfh_records 
+       SET status = $1, wfh_date = $2 
+       WHERE recordID = $3 
+       RETURNING *`,
+      [newStatus, formattedNewStartDate, recordID]
+    );
 
-      if (updateResult.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'WFH request not found or already changed.' });
-      }
-    } else {
-      // For approved requests, only update the status without changing wfh_date
-      const updateResult = await client.query(
-        `UPDATE wfh_records 
-         SET status = $1 
-         WHERE recordID = $2 
-         RETURNING *`,
-        [newStatus, recordID]
-      );
-
-      if (updateResult.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'WFH request not found or already changed.' });
-      }
+    if (updateResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'WFH request not found or already changed.' });
     }
 
     // Convert dates to YYYY-MM-DD format for saving in the activity log
-    const formattedCurrentWfhDate = new Date(currentWfhDate).toISOString().split('T')[0]; // Old WFH Date
-    const formattedNewDateString = formattedNewDate.toISOString().split('T')[0]; // New WFH Date
+    const formattedCurrentWfhDateString = currentWfhDate.toISOString().split('T')[0];
+    const formattedNewStartDateString = formattedNewStartDate.toISOString().split('T')[0];
+    const formattedNewEndDateString = formattedNewEndDate.toISOString().split('T')[0];
 
     // 3. Insert a new row into the activity log to log the change along with the reason and old/new wfh_date
     const activityLog = {
       Staff_id: staff_id, // Log the staff_id as the actor
       Action: newStatus === "Pending Change" ? "Pending Change" : "Changed",
       Reason: reason,
-      CurrentWFHDate: formattedCurrentWfhDate,
-      NewWFHDate: formattedNewDateString,
+      CurrentWFHDate: formattedCurrentWfhDateString,
+      NewWFHStartDate: formattedNewStartDateString,
+      NewWFHEndDate: formattedNewEndDateString,
     };
 
     await client.query(
