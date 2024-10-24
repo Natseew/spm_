@@ -5,7 +5,7 @@ on:
   push:
     branches: 
       - main
-      
+
   pull_request:
     branches: 
       - main
@@ -42,7 +42,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Run ESLint
-        run: npx eslint . --ext .js
+        run: npx eslint . --ext=.js
 
       - name: Run Prettier
         run: npx prettier --check "**/*.js"
