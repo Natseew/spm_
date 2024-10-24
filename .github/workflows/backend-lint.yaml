@@ -1,0 +1,49 @@
+# Backend workflow (.github/workflows/backend-lint.yml)
+name: Backend Lint
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Backend/**'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Backend/**'
+
+jobs:
+  lint:
+    name: Run backend linters
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: Backend
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+          
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('Backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Run ESLint
+        run: npx eslint . --ext .js
+
+      - name: Run Prettier
+        run: npx prettier --check "**/*.js"
