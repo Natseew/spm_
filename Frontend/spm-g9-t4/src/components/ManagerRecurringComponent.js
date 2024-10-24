@@ -127,11 +127,11 @@ const RecurringSchedule = () => {
         setModifyData(data); // Set the request data to be modified
         setModifyModalOpen(true); // Open the modify modal
     };
-    // const closeModifyModal = () => {
-    //     // Reset any states if necessary
-    //     setSelectedDate([]);
-    //     setModifyModalOpen(false);
-    // };
+    const closeModifyModal = () => {
+        // Reset any states if necessary
+        setSelectedDate([]);
+        setModifyModalOpen(false);
+    };
 
     if (loading) {
         return <p>Loading...</p>; // Display loading message
