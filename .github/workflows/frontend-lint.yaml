@@ -3,13 +3,11 @@ name: Frontend Lint
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'Frontend/spm-g9-t4/**'
+    branches: 
+      - main 
   pull_request:
-    branches: [ main ]
-    paths:
-      - 'Frontend/spm-g9-t4/**'
+    branches: 
+      - main
 
 jobs:
   lint:
