@@ -214,6 +214,11 @@ router.post('/approve/:requestid', async (req, res) => {
 router.patch('/reject/:requestid', async (req, res) => {
     const { requestid } = req.params; // Extract request ID from the URL
     const { reason } = req.body; // Extract reason from the request body
+
+    // Validate input
+    if (!reason || typeof reason !== 'string') {
+        return res.status(400).json({ message: 'Invalid rejection reason' });
+    }
   
     try {
         // Update the status of the recurring request to 'Rejected' and set the rejection reason
@@ -232,8 +237,8 @@ router.patch('/reject/:requestid', async (req, res) => {
         // Log the rejection action (optional)
         await client.query(
             `INSERT INTO activitylog (requestid, activity)
-            VALUES ($1, 'Rejected Recurring Request: ${reason}');`,
-            [requestid]
+            VALUES ($1, $2);`, // Use parameterized values to prevent SQL injection
+            [requestid, `Rejected Recurring Request: ${reason}`]
         );
 
         // Return success response
@@ -361,31 +366,42 @@ router.post('/reject/:requestID', async (req, res) => {
 // Route to remove specific dates from wfh_dates of a recurring request
 router.patch('/modify/:requestid', async (req, res) => {
     const { requestid } = req.params;
-    const { wfh_dates } = req.body; // Expecting the filtered wfh_dates
+    const { wfh_dates } = req.body;
 
-    console.log("Received request to modify ID:", requestid); // Log received ID
-    console.log("Update body:", req.body); // Log the request body
+    console.log("Received request to modify ID:", requestid);
+    console.log("Update body:", req.body);
 
+    // Validate input
     if (!Array.isArray(wfh_dates) || wfh_dates.length === 0) {
         return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
     }
 
     try {
+        // Log the actual dates that are about to be passed to the query
+        console.log("Formatted wfh_dates being removed:", wfh_dates);
+
+        // SQL logic to remove specific dates from wfh_dates
         const result = await client.query(`
             UPDATE recurring_request
-            SET wfh_dates = array(
-                SELECT unnest(wfh_dates) EXCEPT
+            SET wfh_dates = ARRAY(
+                SELECT unnest(wfh_dates) 
+                EXCEPT 
                 SELECT unnest($1::DATE[])
-            )
+            ) 
             WHERE requestid = $2
             RETURNING *;`,
-            [wfh_dates, requestid]
+            [wfh_dates, requestid] // parameterized query
         );
 
+        // Check if any rows were affected
         if (result.rowCount === 0) {
+            console.log("No request found with the given request ID.");
             return res.status(404).json({ message: 'Request not found' });
         }
 
+        console.log("Update successful:", result.rows[0]); // Log the updated record
+
+        // Send success response
         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
     } catch (error) {
         console.error('Error updating request:', error);
@@ -393,6 +409,65 @@ router.patch('/modify/:requestid', async (req, res) => {
     }
 });
 
+// router.patch('/modify/:requestid', async (req, res) => {
+//     const { requestid } = req.params;
+//     const { wfh_dates } = req.body;
+
+//     console.log("Received request to modify ID:", requestid);
+//     console.log("Update body:", req.body);
+
+//     if (!Array.isArray(wfh_dates) || wfh_dates.length === 0) {
+//         return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
+//     }
+
+//     try {
+//         // SQL logic to update and respect date removal logic
+//         const result = await client.query(`
+//             UPDATE recurring_request
+//             SET wfh_dates = ARRAY(
+//                 SELECT unnest(wfh_dates) 
+//                 EXCEPT SELECT unnest($1::DATE[])
+//             ) 
+//             WHERE requestid = $2
+//             RETURNING *;`,
+//             [wfh_dates, requestid]
+//         );
+
+//         if (result.rowCount === 0) {
+//             return res.status(404).json({ message: 'Request not found' });
+//         }
+
+//         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+//     } catch (error) {
+//         console.error('Error updating request:', error);
+//         res.status(500).json({ message: 'Internal server error.' });
+//     }
+// });
+
+// Route to approve a recurring request
+router.patch('/approve/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+
+    try {
+        // Update the status of the recurring request to 'Approved'
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Approved'
+            WHERE requestid = $1
+            RETURNING *;`,
+            [requestid]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        res.status(200).json({ message: 'Request approved successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error approving request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
 
 
 module.exports = router;

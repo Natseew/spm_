@@ -8,6 +8,7 @@ import ModifyRecurringRequestModal from './ModifyRecurringRequestModal'; // Impo
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
 const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
+// process.env.NEXT_PUBLIC_API_URL
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -22,7 +23,9 @@ const RecurringSchedule = () => {
     const [someData, setSomeData] = useState(null);
     const [modifyData, setModifyData] = useState(null); // State for modification data
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
-    const [selectedDate, setSelectedDate] = useState(""); 
+    const [selectedDate, setSelectedDate] = useState([]); 
+    const [notification, setNotification] = useState('');
+    const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL)
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -36,7 +39,7 @@ const RecurringSchedule = () => {
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
                 setEmployeeIds(ids); // Store employee IDs in state
-                console.log(ids)
+                // console.log(ids)
 
                 // Create employeeNameid mapping
                 employeeData.forEach(emp => {
@@ -44,7 +47,7 @@ const RecurringSchedule = () => {
                     });
                     
                     // Log the employeeNameid for verification
-                    console.log("Employee ID to Name Mapping:", employeeNameid);
+                    // console.log("Employee ID to Name Mapping:", employeeNameid);
     
                 // Step 2: Use these employee IDs to fetch WFH records
                 const wfhResponse = await fetch('http://localhost:4000/recurring_request/by-employee-ids', {
@@ -61,9 +64,9 @@ const RecurringSchedule = () => {
 
                 const wfhData = await wfhResponse.json();
                 setRecurringData(wfhData); // Store ad hoc data in state
-                console.log("Fetched Employee Data:",employeeData)
+                // console.log("Fetched Employee Data:",employeeData)
                 console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
-                console.log('Recurring Data:', RecurringData)
+                // console.log('Recurring Data:', RecurringData)
                 
             } catch (error) {
                 console.error('Error during fetch operations:', error);
@@ -75,9 +78,14 @@ const RecurringSchedule = () => {
         fetchEmployeeAndRecurringData();
     }, []); // Fetch once when component mounts
 
+    // useEffect(() => {
+    //     console.log('Recurring Data after update:', RecurringData);
+    // }, [RecurringData]); // Monitor RecurringData changes
+
     useEffect(() => {
-        console.log('Recurring Data after update:', RecurringData);
-    }, [RecurringData]); // Monitor RecurringData changes
+        console.log('path', path);
+    }, [path]); // Monitor RecurringData changes
+
 
 
     const openModal = (data) => {
@@ -119,7 +127,11 @@ const RecurringSchedule = () => {
         setModifyData(data); // Set the request data to be modified
         setModifyModalOpen(true); // Open the modify modal
     };
-
+    // const closeModifyModal = () => {
+    //     // Reset any states if necessary
+    //     setSelectedDate([]);
+    //     setModifyModalOpen(false);
+    // };
 
     if (loading) {
         return <p>Loading...</p>; // Display loading message
@@ -151,7 +163,7 @@ const RecurringSchedule = () => {
         const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
     
         // Optionally log the name for debugging purposes
-        console.log(name); // Log the retrieved name
+        // console.log(name); // Log the retrieved name
         return name; // Return either found name or 'Unknown'
     };
 
@@ -194,43 +206,86 @@ return dayofweek[match_num]
 
 
     // Action Handlers
-    const handleAccept = async (reqId) => {
-        // Logic to accept the request
-        console.log(`Accepting request with ID: ${reqId}`);
+    const handleAccept = async (requestId) => {
+        console.log(`Accepting request with ID: ${requestId}`);
+    
+        try {
+            const response = await fetch(`${path}recurring_request/approve/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Error updating status: ${response.statusText}`);
+            }
+    
+            const result = await response.json();
+            console.log(result.message);
+    
+            // Update the state to reflect the modified request
+            setRecurringData(prevData =>
+                prevData.map(req =>
+                    req.requestid === requestId ? { ...req, status: 'Approved' } : req
+                )
+            );
+    
+            // Optionally display a notification to the user
+            setNotification('Request accepted successfully!');
+            setTimeout(() => setNotification(''), 3000); // Clear notification after 3 seconds
+            
+        } catch (error) {
+            console.error('Error during status update:', error);
+            setNotification(`Error accepting request: ${error.message}`);
+            setTimeout(() => setNotification(''), 3000);
+        }
     };
-
-    // Handle Reject
+    
+    
     const handleReject = async (requestId, reason) => {
         console.log('Request ID:', requestId); 
         console.log('Rejection Reason:', reason);
-
+    
         try {
-            const response = await fetch(`/recurring_request/reject/${requestId}`, {
+            const response = await fetch(`${path}/recurring_request/reject/${requestId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ reason }),
             });
-
+    
             if (!response.ok) {
                 throw new Error(`Error rejecting the request: ${response.statusText}`);
             }
-
+    
             const result = await response.json();
             console.log(result.message);
-            setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+    
+            // Option 1: Directly update the state by filtering out the rejected item
+            setRecurringData(prevData => prevData.filter(req => req.requestid !== requestId));
+    
+            // Option 2: Optionally fetch the data again to reload the updated list (might depend on how your backend handles the reject operation)
+            fetchEmployeeAndRecurringData();
+    
+            setNotification('Request rejected successfully!');
+            setTimeout(() => setNotification(''), 3000);
+    
         } catch (error) {
-            console.error('Error handling rejection:', error);
+            console.error('Error during status update:', error);
+            setNotification(`Error handling rejection: ${error.message}`);
+            setTimeout(() => setNotification(''), 3000);
         }
     };
     
-
+    
+    // handle Cancel
     const handleCancel = async (requestId) => {
         console.log(`Canceling request with ID: ${requestId}`);
         // API call or logic to cancel the request
         try {
-            const response = await fetch(`/recurring_request/withdraw_entire/${requestId}`, {
+            const response = await fetch(`${path}recurring_request/withdraw_entire/${requestId}`, {
                 method: 'PUT',
             });
 
@@ -241,21 +296,29 @@ return dayofweek[match_num]
             const result = await response.json();
             console.log(result.message);
             setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+            setNotification('Cancelled request successfully!');
+            setTimeout(() => setNotification(''), 3000);
         } catch (error) {
-            console.error('Error canceling request:', error);
+            console.error('Error during status update:', error);
+            setNotification(`Error  canceling request: ${error.message}`);
+            setTimeout(() => setNotification(''), 3000);
         }
     };
 
     // Handle Modify
-    const handleModify = async (requestId, updatedData) => {
-        // Validate parameters before proceeding
-        if (!requestId || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
-            console.error("Validation failed for inputs", requestId, updatedData);
+    const handleModify = async (requestid, updatedData) => {
+        console.log('Request ID:', requestid); 
+        console.log('Data to be parsed in:', updatedData);
+
+        // Validate inputs
+        if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
+            console.error("Validation failed for inputs", requestid, updatedData);
             return;
         }
     
         try {
-            const response = await fetch(`/recurring_request/modify/${requestId}`, {
+            // Send the PATCH request
+            const response = await fetch(`${path}recurring_request/modify/${requestid}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -263,31 +326,78 @@ return dayofweek[match_num]
                 body: JSON.stringify(updatedData),
             });
     
-            // Check if response is not ok (e.g., 4XX or 5XX HTTP code)
             if (!response.ok) {
-                throw new Error(`Error modifying the request: ${response.statusText}`);
+                const errorInfo = await response.json();
+                throw new Error(`Error modifying the request: ${errorInfo.message}`);
             }
     
             const result = await response.json();
-            console.log(result.message); // Log success message
-    
-            // Update the local state with the modified dates
-            setRecurringData(prevData => 
-                prevData.map(req => 
-                    req.requestid === requestId ? { ...req, wfh_dates: updatedData.wfh_dates } : req
+            console.log('Modification successful:', result);
+
+
+            // Option 1: Directly update the local state
+            // Assuming RecurringData is the state variable holding the requests
+            setRecurringData(prevData =>
+                prevData.map(req =>
+                    req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
                 )
             );
-    
-            // Close the modification modal
-            setModifyModalOpen(false); 
+
+            // Notify user of success
+            setNotification('Modification successful!');
+            setTimeout(() => setNotification(''), 3000);
+
+
+            // Handle success, possibly update local state or provide user feedback
         } catch (error) {
             console.error('Error handling modification:', error);
         }
     };
+
+    // const handleModify = async (requestid, updatedData) => {
+    //     // Validate parameters before proceeding
+    //     if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
+    //         console.error("Validation failed for inputs", requestid, updatedData);
+    //         return;
+    //     }
+    
+    //     try {
+    //         const response = await fetch(`/recurring_request/modify/${requestid}`, {
+    //             method: 'PATCH',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify(updatedData),
+    //         });
+    
+    //         // Check if response is not ok (e.g., 4XX or 5XX HTTP code)
+    //         if (!response.ok) {
+    //             throw new Error(`Error modifying the request: ${response.statusText}`);
+    //         }
+    
+    //         const result = await response.json();
+    //         console.log(result.message); // Log success message
+    
+    //         // Update the local state with the modified dates
+    //         setRecurringData(prevData => 
+    //             prevData.map(req => 
+    //                 req.requestid === requestId ? { ...req, wfh_dates: updatedData.wfh_dates } : req
+    //             )
+    //         );
+    
+    //         // Close the modification modal
+    //         setModifyModalOpen(false); 
+    //     } catch (error) {
+    //         console.error('Error handling modification:', error);
+    //     }
+    // };
     
 
     return (
         <div>
+            {/* {notification && <div className="notification">{notification}</div>} */}
+            {notification && <Notification message={notification} onClose={() => setNotification('')} />}
+
             <div className="flex justify-between mb-4">
                 <div className="flex-1 text-left">
                     <label htmlFor="button" className="block mb-2">Filter By Status:</label>
@@ -316,19 +426,22 @@ return dayofweek[match_num]
 
             <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
                 
-                <thead className="bg-gray-500 text-white">
-                    <tr className="text-center">
-                        <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Name</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Start Date</th>
-                        <th className="py-2 px-4 border-b border-gray-300">End Date</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Day of Week</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Status</th>
-                        <th className="py-2 px-4 border-b border-gray-300">Actions</th>
-                    </tr>
-                </thead>
+            <thead className="bg-gray-500 text-white">
+                <tr className="text-center">
+                    <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Name</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Start Date</th>
+                    <th className="py-2 px-4 border-b border-gray-300">End Date</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Day of Week</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
+                    <th className="py-2 px-4 border-b border-gray-300">Status</th>
+                    <th className="py-2 px-4 border-b border-gray-300">
+                            {selectedStatus === 'Rejected' ? 'Rejection Reason' : 'Reason'}
+                    </th>        
+                    <th className="py-2 px-4 border-b border-gray-300">Actions</th>
+                </tr>
+            </thead>
                 <tbody>
                         {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
@@ -343,6 +456,9 @@ return dayofweek[match_num]
                             <td className="py-2 px-4 border-b border-gray-300" >{FormatDateToDayofweek(item.day_of_week)}</td>
                             <td className="py-2 px-4 border-b border-gray-200">{item.timeslot}</td>
                             <td className="py-2 px-4 border-b border-gray-300">{item.status}</td>
+                            <td className="py-2 px-4 border-b border-gray-200">
+                                {item.status === 'Rejected' ? item.reject_reason : item.request_reason}
+                            </td>          
                             <td className="py-2 px-4 border-b border-gray-300">
                                 <button 
                                     className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
@@ -361,7 +477,7 @@ return dayofweek[match_num]
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item.requestid)} // Open reject modal
+                                            onClick={() => openRejectModal(item)} // Open reject modal
                                         >
                                             Reject
                                         </button>
@@ -403,12 +519,14 @@ return dayofweek[match_num]
                 data={someData} 
                 dates={modalDates} 
             />
+
             <ModifyRecurringRequestModal 
                 isOpen={modifyModalOpen} 
-                onClose={() => setModifyModalOpen(false)} // Method to close the modal
-                onModify={handleModify} // Function to handle updates
-                data={modifyData} // Data to be modified
+                onClose={closeModifyModal} 
+                onModify={handleModify} 
+                data={modifyData} 
             />
+
         </div>
         );
     };

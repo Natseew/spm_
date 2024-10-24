@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 
+// Utility function to format the date from ISO format to DD/MM/YYYY
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month, pad it, adding 1 since it's zero-indexed
+    const year = date.getFullYear(); // Get the full year
+    return `${day}/${month}/${year}`; // Return formatted date
+};
+
 const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
-    const [selectedDates, setSelectedDates] = useState([]);
+    const [selectedDates, setSelectedDates] = useState([]); // Initialized as empty array
 
     // Use effect to set the selected dates based on incoming data.wfh_dates
     useEffect(() => {
         if (isOpen && data?.wfh_dates) {
-            // Format the wfh_dates to "YYYY-MM-DD"
-            const formattedDates = data.wfh_dates.map(date => 
-                new Date(date).toISOString().slice(0, 10) // Convert to YYYY-MM-DD format
-            );
-            setSelectedDates(formattedDates); // Initialize selected dates based on the formatted data
+            // Initialize selected dates based on the provided data, if needed
+            setSelectedDates([]); // Reset selected dates each time the modal opens
         }
     }, [isOpen, data]);
 
@@ -26,20 +32,17 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
     };
 
     const handleModifyConfirm = () => {
-        // Format both selected dates and the original wfh_dates to "YYYY-MM-DD"
-        const formattedSelectedDates = selectedDates.map(date => new Date(date).toISOString().slice(0, 10)); // Format selected dates
-        const updatedDates = data.wfh_dates.filter(date => 
-            !formattedSelectedDates.includes(new Date(date).toISOString().slice(0, 10)) // Compare formatted dates to compare equality
-        );
-    
-        console.log(updatedDates); // Log the updated dates for verification
-        // Call the onModify handler with request ID and updated wfh_dates to be sent to the backend
+        // Filter out selected dates from original wfh_dates
+        const updatedDates = data.wfh_dates.filter(date => !selectedDates.includes(date)); // Remove selected dates
+
+        console.log('These are the Updated Dates:', updatedDates); // Log the updated dates for verification
+
+        // Modify request with filtered dates
         onModify(data.requestid, { wfh_dates: updatedDates });
-    
-        // Close the modal after modification
+
+        // Close the modal
         onClose();
     };
-    
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -55,11 +58,11 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
                                 type="checkbox" 
                                 id={date} 
                                 value={date} 
-                                checked={selectedDates.includes(new Date(date).toISOString().slice(0, 10))} // Check if the formatted date is selected
-                                onChange={() => handleDateSelection(new Date(date).toISOString().slice(0, 10))} // Handle checkbox change
+                                checked={selectedDates.includes(date)} // Check if the date is selected
+                                onChange={() => handleDateSelection(date)} // Handle checkbox change
                                 className="mr-2"
                             />
-                            <label htmlFor={date}>{new Date(date).toLocaleDateString()}</label>
+                            <label htmlFor={date}>{formatDate(date)}</label> {/* Display the date in DD/MM/YYYY format */}
                         </div>
                     ))}
                 </div>
