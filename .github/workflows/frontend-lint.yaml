@@ -41,7 +41,4 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Run ESLint
-        run: next lint
-
-      - name: Run Prettier
-        run: next prettier --check "**/*.{js,jsx,ts,.tsx}"
+        run: npm run lint
