@@ -86,30 +86,29 @@ const RecurringArrangementPage = () => {
       if (response.ok) {
         const data = await response.json();
         setStatusMessage(data.message);
-      } else {
+      }
         // setStatusMessage('Recurring request application failed: Please try again.' + response.statusText);
         // console.log(response); 
         // Handle different HTTP status codes
-        switch (response.status) {
-          case 400:
-              // Bad Request
-              setStatusMessage('Bad Request: (test)' + data.message);
-              break;
-          case 409:
-              // Conflict
-              setStatusMessage('Conflict: (test)' + data.message);
-              break;
-          case 500:
-              // Internal Server Error
-              setStatusMessage('Server Error: (test)' + data.message);
-              break;
-          default:
-              // Other errors
-              setStatusMessage('Error: (test)' + data.message);
-              break;
-      }
-      }
-    } catch (error) {
+      //   switch (response.status) {
+      //     case 400:
+      //         // Bad Request
+      //         setStatusMessage('Bad Request: (test)' + data.message);
+      //         break;
+      //     case 409:
+      //         // Conflict
+      //         setStatusMessage('Conflict: (test)' + data.message);
+      //         break;
+      //     case 500:
+      //         // Internal Server Error
+      //         setStatusMessage('Server Error: (test)' + data.message);
+      //         break;
+      //     default:
+      //         // Other errors
+      //         setStatusMessage('Error: (test)' + data.message);
+      //         break;
+      // }
+          } catch (error) {
       console.error("Error:", error);
       setStatusMessage("Request failed. Please fill up the form again");
       // Handle different HTTP status codes
