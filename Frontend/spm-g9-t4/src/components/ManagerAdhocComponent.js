@@ -267,6 +267,9 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
 
         const updatedData = await response.json();
         console.log('Rejection recorded successfully:', updatedData);
+
+        // this is the data we can use to format email
+        // console.log(updatedData.record);
         
         setAdhocData(prevData => 
             prevData.map(item => 
