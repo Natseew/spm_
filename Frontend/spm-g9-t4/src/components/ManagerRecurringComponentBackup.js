@@ -208,6 +208,79 @@
 //         console.log(`Rejecting change request with ID: ${reqId}`);
 //     }
 
+    // // Handle accepting a change request
+    // const handleAcceptChange = async (reqId) => {
+    //     console.log(`Accepting change request with ID: ${reqId}`);
+    //     const reqData = RecurringData.find(item => item.req_id === reqId);
+    //     const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
+    //     const wfhDate = wfhRecord.wfh_date;
+    //     const requestid = reqData.requestid;
+    //     const timeslot = wfhRecord.timeslot;
+
+    //     const response = await fetch('http://localhost:4000/recurring_request/accept-change', {
+    //         method: 'POST',
+    //         headers: { 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ requestid, wfhDate, timeslot }),
+    //     });
+
+    //     if (!response.ok) {
+    //         console.error(`Error accepting change request: ${response.status}`);
+    //         Notification('error', 'Error accepting change request');
+    //         return;
+    //     }
+
+    //     Notification('success', 'Change request accepted successfully');
+    //     const updatedData = RecurringData.map(item => {
+    //         if (item.req_id === reqId) {
+    //             const updatedRecords = item.wfh_records.map(record => {
+    //                 if (record.status === 'Pending Change') {
+    //                     return { ...record, status: 'Approved', wfh_date: wfhDate, timeslot };
+    //                 }
+    //                 return record;
+    //             });
+    //             return { ...item, wfh_records: updatedRecords };
+    //         }
+    //         return item;
+    //     });
+    //     setRecurringData(updatedData);
+    // };
+
+    // // Handle rejecting a change request
+    // const handleRejectChange = async (reqId, reason) => {
+    //     console.log(`Rejecting change request with ID: ${reqId}, Reason: ${reason}`);
+    //     const reqData = RecurringData.find(item => item.req_id === reqId);
+    //     const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
+    //     const wfhDate = wfhRecord.wfh_date;
+    //     const requestid = reqData.requestid;
+
+    //     const response = await fetch('http://localhost:4000/recurring_request/reject-change', {
+    //         method: 'POST',
+    //         headers: { 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ requestid, wfhDate, reason }),
+    //     });
+
+    //     if (!response.ok) {
+    //         console.error(`Error rejecting change request: ${response.status}`);
+    //         Notification('error', 'Error rejecting change request');
+    //         return;
+    //     }
+
+    //     Notification('success', 'Change request rejected');
+    //     const updatedData = RecurringData.map(item => {
+    //         if (item.req_id === reqId) {
+    //             const updatedRecords = item.wfh_records.map(record => {
+    //                 if (record.status === 'Pending Change') {
+    //                     return { ...record, status: 'Rejected', reject_reason: reason };
+    //                 }
+    //                 return record;
+    //             });
+    //             return { ...item, wfh_records: updatedRecords };
+    //         }
+    //         return item;
+    //     });
+    //     setRecurringData(updatedData);
+    // };
+
 
 //     return (
 //         <div>

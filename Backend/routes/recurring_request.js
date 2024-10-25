@@ -135,9 +135,9 @@ router.delete('/:requestID', async (req, res) => {
 });
 
 // New route to get recurring requests by an array of employee IDs
-router.post('/by-employee-ids', async (req, res) => {
+router.get('/by-employee-ids', async (req, res) => {
     try {
-        const { employeeIds } = req.body;
+        const employeeIds = req.query.employeeIds?.split(',');
 
         // Validate input
         if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
@@ -180,8 +180,6 @@ router.post('/by-employee-ids', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
-
-
 
 router.post('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
@@ -359,7 +357,103 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
   });
 
   // update pending recurring change request - just update the corresponding wfh_records date to the new date and update the recurring_request wfh_dates array
+  router.put('/accept-change', async (req, res) => {
+    const { requestID, wfhDate } = req.body;
 
+    wfhDate = new Date(wfhDate).toISOString().slice(0, 10);
+    requestID = parseInt(requestID);
+    
+
+    try {
+        await client.query('BEGIN');
+
+        // 1. Update the wfh_date in wfh_records
+        const result = await client.query(
+            `UPDATE wfh_records
+             SET wfh_date = $1, status = 'Approved'
+             WHERE requestID = $2 AND wfh_date = $3
+             RETURNING *;`,
+            [wfhDate, requestID, wfhDate]
+        );
+
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Record not found.' });
+        }
+
+        // 2. Update the wfh_dates array in recurring_request
+        await client.query(
+            `UPDATE recurring_request
+             SET wfh_dates = array_remove(wfh_dates, $1)
+             WHERE requestID = $2;`,
+            [wfhDate, requestID]
+        );
+
+        // 3. Insert a new activity log entry for the change
+        await client.query(
+            `INSERT INTO activitylog (requestID, activity)
+             VALUES ($1, $2);`,
+            [requestID, `Accepted Change - ${reason}`]
+        );
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'Recurring change request accepted successfully.' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error accepting recurring change request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+  });
+
+// Reject a pending recurring change request
+  router.put('/reject-change', async (req, res) => {
+    const { requestID, wfhDate, reject_reason } = req.body;
+
+    wfhDate = new Date(wfhDate).toISOString().slice(0, 10);
+    requestID = parseInt(requestID);
+    reject_reason = reject_reason.toString();
+
+    try {
+        await client.query('BEGIN');
+
+        // 1. Update the status of the corresponding date in wfh_records to 'Rejected' and include rej_reason
+        const result = await client.query(
+            `UPDATE wfh_records
+             SET status = 'Rejected', reject_reason = $3
+             WHERE requestID = $1 AND wfh_date = $2
+             RETURNING *;`,
+            
+            [requestID, wfhDate, reject_reason]
+        );
+
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Record not found.' });
+        }
+
+        // 2. remove the date from the wfh_dates array in the recurring_request
+        await client.query(
+            `UPDATE recurring_request
+             SET wfh_dates = array_remove(wfh_dates, $1)
+             WHERE requestID = $2;`,
+            [wfhDate, requestID]
+        );
+
+        // 3. Insert a new activity log entry for the rejection
+        await client.query(
+            `INSERT INTO activitylog (requestID, activity)
+             VALUES ($1, $2);`,
+            [requestID, `Rejected Change - ${reject_reason}`]
+        );
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'Recurring change request rejected successfully.' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error rejecting recurring change request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+  });
   
   
 module.exports = router;
