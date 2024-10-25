@@ -22,24 +22,23 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { DateRange } from "react-date-range";
+import { addMonths, subMonths } from 'date-fns';
+import DatePicker from "react-datepicker";
 import { useRouter } from 'next/navigation';
-import 'react-date-range/dist/styles.css'; // import styles
-import 'react-date-range/dist/theme/default.css'; // import theme css
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function PendingRequests() {
-  const [adhocRequests, setAdhocRequests] = useState([]); // Only fetching Ad-Hoc Requests
-  const [activeTab, setActiveTab] = useState(0); // Default to Ad-Hoc tab
-  const [selectedRange, setSelectedRange] = useState([{ startDate: new Date(), endDate: new Date(), key: "selection" }]); // Date range for changing WFH request
-  const [selectedRecordId, setSelectedRecordId] = useState(null); // Track which request is being changed
-  const [openChangeDialog, setOpenChangeDialog] = useState(false); // Dialog visibility state
-  const router = useRouter(); // Initialize the router
+  const [adhocRequests, setAdhocRequests] = useState([]);
+  const [activeTab, setActiveTab] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date()); // For WFH date selection
+  const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [openChangeDialog, setOpenChangeDialog] = useState(false);
+  const router = useRouter();
 
-  // Retrieve the user data from sessionStorage
+  // Retrieve user data and initialize
   const [user, setUser] = useState(null);
   const [staffId, setStaffId] = useState(null);
 
-  // **Use useEffect to access window.sessionStorage on the client side**
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
@@ -47,14 +46,11 @@ export default function PendingRequests() {
         setUser(storedUser);
         setStaffId(storedUser.staff_id);
       } else {
-      
-        router.push("/"); // Navigate to login if not logged in
+        router.push("/");
       }
     }
   }, []);
-  
 
-  // Handle the case where staffId is not available (user not logged in)
   useEffect(() => {
     if (staffId !== null) {
       fetchAdhocRequests();
@@ -66,84 +62,80 @@ export default function PendingRequests() {
     try {
       const response = await fetch(`http://localhost:4000/wfh_records`);
       const data = await response.json();
-
-      // Filter data by staffId on the frontend and sort by requestid in descending order
       const filteredData = data
         .filter((request) => request.staffid === parseInt(staffId) && !request.recurring)
         .sort((a, b) => b.recordid - a.recordid);
-
       setAdhocRequests(filteredData);
     } catch (error) {
       console.error("Error fetching ad-hoc requests:", error);
     }
   };
 
-  // Handle tab change for navigating between Ad-Hoc and Recurring Requests pages
+  // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     if (newValue === 1) {
-      router.push("/recurring_requests"); // Navigate to Recurring Requests page
+      router.push("/recurring_requests");
     }
   };
 
-  // Function to open the change dialog
+  // Open dialog for changing date
   const handleOpenChangeDialog = (id) => {
     setSelectedRecordId(id);
     setOpenChangeDialog(true);
   };
 
-  // Function to handle closing the change dialog
+  // Close dialog
   const handleCloseChangeDialog = () => {
     setSelectedRecordId(null);
-    setSelectedRange([{ startDate: new Date(), endDate: new Date(), key: "selection" }]);
+    setSelectedDate(new Date());
     setOpenChangeDialog(false);
   };
 
-  // Function to handle changing WFH request
-  const handleChangeRequest = async () => {
-    if (!selectedRange[0].startDate || !selectedRange[0].endDate) {
-      alert("Please select a valid date range.");
-      return;
+  // Submit change request
+const handleChangeRequest = async () => {
+  if (!selectedDate) {
+    alert("Please select a valid date.");
+    return;
+  }
+
+  const reason = prompt("Please enter the reason for change:");
+  if (!reason) {
+    alert("Change reason is required.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        recordID: selectedRecordId,
+        new_wfh_date: selectedDate, // Corrected to match backend expectation
+        reason,
+        staff_id: staffId,
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      alert(result.message);
+      handleCloseChangeDialog();
+    } else {
+      const result = await response.json();
+      alert(`Error changing WFH request: ${result.message}`);
     }
+  } catch (error) {
+    console.error("Error changing WFH request:", error);
+  }
+};
 
-    const reason = prompt("Please enter the reason for change:");
-    if (!reason) {
-      alert("Change reason is required.");
-      return;
-    }
 
-    try {
-      const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          recordID: selectedRecordId,
-          new_start_date: selectedRange[0].startDate,
-          new_end_date: selectedRange[0].endDate,
-          reason,
-          staff_id: staffId,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(result.message); // Display the message returned by the backend
-        handleCloseChangeDialog(); // Close the dialog after the operation is complete
-      } else {
-        const result = await response.json();
-        alert(`Error changing WFH request: ${result.message}`);
-      }
-    } catch (error) {
-      console.error("Error changing WFH request:", error);
-    }
-  };
-
-  // Function to handle withdrawing WFH request
+  // Handle withdrawing WFH request
   const handleWithdrawRequest = async (id, status) => {
     let reason = "";
-    // Prompt for reason if status is Pending or Approved
     if (status === "Pending" || status === "Approved") {
       reason = prompt("Please enter the reason for withdrawal:");
       if (!reason) {
@@ -163,8 +155,7 @@ export default function PendingRequests() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message); // Display the message returned by the backend
-        // Refresh the ad-hoc requests list after withdrawal
+        alert(result.message);
         setAdhocRequests((prev) => prev.filter((req) => req.recordid !== id));
       } else {
         const result = await response.json();
@@ -183,7 +174,6 @@ export default function PendingRequests() {
             Staff ID: {staffId}
           </Typography>
 
-          {/* Tabs for navigating between Ad-Hoc and Recurring Requests */}
           <Tabs value={activeTab} onChange={handleTabChange} centered>
             <Tab label="Ad-Hoc Requests" />
             <Tab label="Recurring Requests" />
@@ -191,8 +181,8 @@ export default function PendingRequests() {
 
           <AdhocRequestsTable
             requests={adhocRequests}
-            onWithdraw={handleWithdrawRequest} // Pass withdraw function to table
-            onChange={handleOpenChangeDialog} // Pass the function to handle change
+            onWithdraw={handleWithdrawRequest}
+            onChange={handleOpenChangeDialog}
           />
         </Paper>
       </Box>
@@ -201,11 +191,13 @@ export default function PendingRequests() {
       <Dialog open={openChangeDialog} onClose={handleCloseChangeDialog}>
         <DialogTitle>Change WFH Date</DialogTitle>
         <DialogContent>
-          <DateRange
-            ranges={selectedRange}
-            onChange={(range) => setSelectedRange([range.selection])}
-            minDate={new Date(new Date().setMonth(new Date().getMonth() - 2))} // 2 months back
-            maxDate={new Date(new Date().setMonth(new Date().getMonth() + 3))} // 3 months forward
+          <DatePicker
+            selected={selectedDate}
+            onChange={(date) => setSelectedDate(date)}
+            minDate={subMonths(new Date(), 2)}
+            maxDate={addMonths(new Date(), 3)}
+            filterDate={(date) => date.getDay() !== 0 && date.getDay() !== 6} // Disable weekends
+            inline // Display the calendar inline without the input field
           />
         </DialogContent>
         <DialogActions>
@@ -218,17 +210,8 @@ export default function PendingRequests() {
     </>
   );
 }
-// "use client";
 
-// Component to display Ad-Hoc Requests Table with Withdraw button
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
-  // Get today's date and calculate 2 weeks forward and backward
-  const today = new Date();
-  const twoWeeksBack = new Date();
-  const twoWeeksForward = new Date();
-  twoWeeksBack.setDate(today.getDate() - 14); // 2 weeks backward
-  twoWeeksForward.setDate(today.getDate() + 14); // 2 weeks forward
-
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
@@ -288,3 +271,4 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
+
