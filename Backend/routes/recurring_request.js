@@ -356,54 +356,71 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
     }
   });
 
-  // update pending recurring change request - just update the corresponding wfh_records date to the new date and update the recurring_request wfh_dates array
-  router.put('/accept-change', async (req, res) => {
-    const { requestID, wfhDate } = req.body;
+//   accept change
+router.post('/accept-change', async (req, res) => {
+    console.log("Request body:", req.body);
 
+    let { requestID, wfhDate } = req.body;
+
+    // Validate requestID
+    if (!requestID || isNaN(requestID)) {
+        console.error('Invalid or missing requestID:', requestID);
+        return res.status(400).json({ message: 'Invalid requestID' });
+    }
+
+    // Format wfhDate to YYYY-MM-DD
     wfhDate = new Date(wfhDate).toISOString().slice(0, 10);
-    requestID = parseInt(requestID);
-    
+    requestID = parseInt(requestID);  // Safely convert requestID to an integer
+
+    console.log(`Received request to accept change. RequestID: ${requestID}, wfhDate: ${wfhDate}`);
 
     try {
         await client.query('BEGIN');
 
-        // 1. Update the wfh_date in wfh_records
+        // 1. Update the wfh_date in wfh_records where it matches both requestID and the original wfh_date
+        console.log('Starting update for wfh_records...');
         const result = await client.query(
             `UPDATE wfh_records
-             SET wfh_date = $1, status = 'Approved'
-             WHERE requestID = $2 AND wfh_date = $3
+             SET status = 'Approved'
+             WHERE requestID = $1 AND wfh_date = $2
              RETURNING *;`,
-            [wfhDate, requestID, wfhDate]
+            [requestID, wfhDate]  // Order: requestID = $1, wfhDate = $2
         );
 
         if (result.rowCount === 0) {
+            console.error('No matching record found.');
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Record not found.' });
         }
 
         // 2. Update the wfh_dates array in recurring_request
+        console.log('Updating wfh_dates array in recurring_request...');
         await client.query(
             `UPDATE recurring_request
-             SET wfh_dates = array_remove(wfh_dates, $1)
-             WHERE requestID = $2;`,
-            [wfhDate, requestID]
+             SET wfh_dates = array_remove(wfh_dates, $2)
+             WHERE requestID = $1;`,
+            [requestID, wfhDate]  // Order: requestID = $1, wfhDate = $2
         );
 
         // 3. Insert a new activity log entry for the change
+        console.log('Inserting activity log...');
         await client.query(
             `INSERT INTO activitylog (requestID, activity)
              VALUES ($1, $2);`,
-            [requestID, `Accepted Change - ${reason}`]
+            [requestID, `Accepted Change`]
         );
 
         await client.query('COMMIT');
+        console.log('Change request accepted successfully.');
         res.status(200).json({ message: 'Recurring change request accepted successfully.' });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error accepting recurring change request:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
-  });
+});
+
+
 
 // Reject a pending recurring change request
   router.put('/reject-change', async (req, res) => {
