@@ -8,7 +8,6 @@ import ModifyRecurringRequestModal from './ModifyRecurringRequestModal'; // Impo
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
 const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
-// process.env.NEXT_PUBLIC_API_URL
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -32,7 +31,7 @@ const RecurringSchedule = () => {
         const fetchEmployeeAndRecurringData = async () => {
             try {
                 // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`); // Replace with actual managerId
+                const idResponse = await fetch(`${path}employee/by-manager/${ManagerID}`); // Replace with actual managerId
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
@@ -50,7 +49,7 @@ const RecurringSchedule = () => {
                     // console.log("Employee ID to Name Mapping:", employeeNameid);
     
                 // Step 2: Use these employee IDs to fetch WFH records
-                const wfhResponse = await fetch('http://localhost:4000/recurring_request/by-employee-ids', {
+                const wfhResponse = await fetch(`${path}recurring_request/by-employee-ids`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -64,9 +63,9 @@ const RecurringSchedule = () => {
 
                 const wfhData = await wfhResponse.json();
                 setRecurringData(wfhData); // Store ad hoc data in state
-                // console.log("Fetched Employee Data:",employeeData)
+                console.log("Fetched Employee Data:",employeeData)
                 console.log("Fetched WFH Data:", wfhData); // Log the data for debugging
-                // console.log('Recurring Data:', RecurringData)
+                console.log('Recurring Data:', RecurringData)
                 
             } catch (error) {
                 console.error('Error during fetch operations:', error);
@@ -167,35 +166,6 @@ const RecurringSchedule = () => {
         return name; // Return either found name or 'Unknown'
     };
 
-
-// // Function to process and organize dates
-// const formatDatesFromObject = (dateArray) => {
-//     // Check if the input is an array
-//     if (!Array.isArray(dateArray)) {
-//         throw new Error("Invalid input. Please provide an array of date strings.");
-//     }
-
-//     // Initialize an array to hold formatted dates
-//     const formattedDates = [];
-
-//     // Loop through the date array
-//     for (const date of dateArray) {
-//         // Convert the string to a Date object and format it
-//         const formatted_date = new Date(date).toLocaleDateString('en-US', {
-//             year: 'numeric',
-//             month: '2-digit',
-//             day: '2-digit'
-//         });
-        
-//         // Push the formatted date to the result array
-//         formattedDates.push(formatted_date);
-//         formattedDates.push(" ");
-
-//     }
-
-//     // Return the formatted dates
-//     return formattedDates;
-// };
 
 const FormatDateToDayofweek= (num) => {
     const dayofweek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
@@ -353,44 +323,6 @@ return dayofweek[match_num]
             console.error('Error handling modification:', error);
         }
     };
-
-    // const handleModify = async (requestid, updatedData) => {
-    //     // Validate parameters before proceeding
-    //     if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
-    //         console.error("Validation failed for inputs", requestid, updatedData);
-    //         return;
-    //     }
-    
-    //     try {
-    //         const response = await fetch(`/recurring_request/modify/${requestid}`, {
-    //             method: 'PATCH',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //             body: JSON.stringify(updatedData),
-    //         });
-    
-    //         // Check if response is not ok (e.g., 4XX or 5XX HTTP code)
-    //         if (!response.ok) {
-    //             throw new Error(`Error modifying the request: ${response.statusText}`);
-    //         }
-    
-    //         const result = await response.json();
-    //         console.log(result.message); // Log success message
-    
-    //         // Update the local state with the modified dates
-    //         setRecurringData(prevData => 
-    //             prevData.map(req => 
-    //                 req.requestid === requestId ? { ...req, wfh_dates: updatedData.wfh_dates } : req
-    //             )
-    //         );
-    
-    //         // Close the modification modal
-    //         setModifyModalOpen(false); 
-    //     } catch (error) {
-    //         console.error('Error handling modification:', error);
-    //     }
-    // };
     
 
     return (

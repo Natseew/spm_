@@ -364,6 +364,7 @@ router.post('/reject/:requestID', async (req, res) => {
 });
 
 // Route to remove specific dates from wfh_dates of a recurring request
+
 router.patch('/modify/:requestid', async (req, res) => {
     const { requestid } = req.params;
     const { wfh_dates } = req.body;
@@ -376,11 +377,11 @@ router.patch('/modify/:requestid', async (req, res) => {
         return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
     }
 
-    try {
-        // Log the actual dates that are about to be passed to the query
-        console.log("Formatted wfh_dates being removed:", wfh_dates);
+    // Log the actual dates that are about to be passed to the query
+    console.log("Formatted wfh_dates being removed:", wfh_dates);
 
-        // SQL logic to remove specific dates from wfh_dates
+    try {
+        // Ensure that wfh_dates are passed as DATE
         const result = await client.query(`
             UPDATE recurring_request
             SET wfh_dates = ARRAY(
@@ -390,7 +391,7 @@ router.patch('/modify/:requestid', async (req, res) => {
             ) 
             WHERE requestid = $2
             RETURNING *;`,
-            [wfh_dates, requestid] // parameterized query
+            [wfh_dates, requestid] // Check the types of wfh_dates here
         );
 
         // Check if any rows were affected
@@ -408,6 +409,52 @@ router.patch('/modify/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
+// router.patch('/modify/:requestid', async (req, res) => {
+//     const { requestid } = req.params;
+//     const { wfh_dates } = req.body;
+
+//     console.log("Received request to modify ID:", requestid);
+//     console.log("Update body:", req.body);
+
+//     // Validate input
+//     if (!Array.isArray(wfh_dates) || wfh_dates.length === 0) {
+//         return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
+//     }
+
+//     try {
+//         // Log the actual dates that are about to be passed to the query
+//         console.log("Formatted wfh_dates being removed:", wfh_dates);
+
+//         // SQL logic to remove specific dates from wfh_dates
+//         const result = await client.query(`
+//             UPDATE recurring_request
+//             SET wfh_dates = ARRAY(
+//                 SELECT unnest(wfh_dates) 
+//                 EXCEPT 
+//                 SELECT unnest($1::DATE[])
+//             ) 
+//             WHERE requestid = $2
+//             RETURNING *;`,
+//             [wfh_dates, requestid] // parameterized query
+//         );
+
+//         // Check if any rows were affected
+//         if (result.rowCount === 0) {
+//             console.log("No request found with the given request ID.");
+//             return res.status(404).json({ message: 'Request not found' });
+//         }
+
+//         console.log("Update successful:", result.rows[0]); // Log the updated record
+
+//         // Send success response
+//         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+//     } catch (error) {
+//         console.error('Error updating request:', error);
+//         res.status(500).json({ message: 'Internal server error.' });
+//     }
+// });
+
 
 // router.patch('/modify/:requestid', async (req, res) => {
 //     const { requestid } = req.params;
