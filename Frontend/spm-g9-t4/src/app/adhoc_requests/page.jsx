@@ -43,10 +43,16 @@ export default function PendingRequests() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
-      setUser(storedUser);
-      setStaffId(storedUser ? storedUser.staff_id : null);
+      if (storedUser) {
+        setUser(storedUser);
+        setStaffId(storedUser.staff_id);
+      } else {
+      
+        router.push("/"); // Navigate to login if not logged in
+      }
     }
   }, []);
+  
 
   // Handle the case where staffId is not available (user not logged in)
   useEffect(() => {
