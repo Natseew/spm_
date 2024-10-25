@@ -1,13 +1,10 @@
 export default function MyApp() {
 }
 
-// ArrangementForm.jsx
-
 // "use client";
 
 // import React, { useState, useEffect } from "react";
 // import {
-//   TextField,
 //   Button,
 //   Typography,
 //   Box,
@@ -18,15 +15,16 @@ export default function MyApp() {
 //   InputLabel,
 //   Alert,
 //   Container,
+//   TextField,
 // } from "@mui/material";
-// import { LocalizationProvider } from "@mui/x-date-pickers";
-// import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-// import { DatePicker } from "@mui/x-date-pickers"; // Removed PickersDay import
+// import { DateRange } from "react-date-range";
 // import { addMonths, subMonths, isSameDay } from "date-fns";
+// import 'react-date-range/dist/styles.css'; // Import CSS for date range
+// import 'react-date-range/dist/theme/default.css'; // Theme CSS for date range
 
 // export default function ArrangementForm() {
 //   const [staffId] = useState(140001); // Hardcoded Staff ID
-//   const [wfhDate, setWfhDate] = useState(null); // For WFH date picker
+//   const [dateRange, setDateRange] = useState([{ startDate: new Date(), endDate: new Date(), key: "selection" }]); // For WFH date range picker
 //   const [scheduleType, setScheduleType] = useState(""); // For selecting AM, PM, or Full Day
 //   const [reason, setReason] = useState(""); // For reason textarea
 //   const [approvedPendingDates, setApprovedPendingDates] = useState([]); // List of approved & pending WFH dates
@@ -41,7 +39,7 @@ export default function MyApp() {
 
 //   // Disable submit button if required fields are not filled
 //   const isSubmitDisabled =
-//     !wfhDate || !scheduleType || !reason.trim() || isSubmitting;
+//     !dateRange[0].startDate || !scheduleType || !reason.trim() || isSubmitting;
 
 //   // Fetch approved & pending WFH dates on component mount
 //   useEffect(() => {
@@ -52,7 +50,7 @@ export default function MyApp() {
 //   const fetchApprovedPendingDates = async () => {
 //     try {
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
+//         `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
 //       );
 //       if (response.ok) {
 //         const data = await response.json();
@@ -78,23 +76,27 @@ export default function MyApp() {
 
 //     const reqDate = new Date().toISOString().split("T")[0]; // Current request date
 
-//     // Ensure the WFH date is formatted correctly
-//     const formattedWfhDate = wfhDate
-//       ? new Date(wfhDate).toISOString().split("T")[0]
+//     // Format the selected date range
+//     const formattedStartDate = dateRange[0].startDate
+//       ? new Date(dateRange[0].startDate).toISOString().split("T")[0]
+//       : null;
+//     const formattedEndDate = dateRange[0].endDate
+//       ? new Date(dateRange[0].endDate).toISOString().split("T")[0]
 //       : null;
 
 //     // Prepare payload to match the backend schema
 //     const payload = {
 //       staff_id: staffId, // Use the hardcoded Staff ID
 //       req_date: reqDate, // Request date
-//       sched_date: formattedWfhDate, // Scheduled WFH date
+//       start_date: formattedStartDate, // Start date of WFH
+//       end_date: formattedEndDate, // End date of WFH
 //       timeSlot: scheduleType === "Full Day" ? "FD" : scheduleType, // Match TimeSlot
 //       reason, // WFH request reason
 //     };
 
 //     try {
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_adhoc_request`,
+//         `http://localhost:4000/wfh_records/wfh_adhoc_request`,
 //         {
 //           method: "POST",
 //           headers: {
@@ -109,7 +111,7 @@ export default function MyApp() {
 //       if (response.ok) {
 //         setSuccessMessage(data.message || "WFH request submitted successfully.");
 //         // Reset form fields
-//         setWfhDate(null);
+//         setDateRange([{ startDate: new Date(), endDate: new Date(), key: "selection" }]);
 //         setScheduleType("");
 //         setReason("");
 //         // Refresh the approved and pending dates
@@ -126,7 +128,7 @@ export default function MyApp() {
 
 //   // Handles form cancellation
 //   const handleCancel = () => {
-//     setWfhDate(null);
+//     setDateRange([{ startDate: new Date(), endDate: new Date(), key: "selection" }]);
 //     setScheduleType("");
 //     setReason("");
 //     setErrorMessage("");
@@ -135,113 +137,121 @@ export default function MyApp() {
 
 //   // Disable weekends and already approved/pending WFH dates
 //   const shouldDisableDate = (date) => {
-//     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+//     const isWeekend = date.getDay() === 0 || date.getDay() === 6; // Disable weekends (Sunday = 0, Saturday = 6)
 //     const isApprovedOrPending = approvedPendingDates.some((wfh) =>
 //       isSameDay(new Date(wfh.date), date)
 //     );
 //     return isWeekend || isApprovedOrPending;
 //   };
 
+//   // Create an array of all disabled dates (weekends + approved/pending dates)
+//   const disabledDates = [
+//     ...approvedPendingDates.map((record) => new Date(record.date)),
+//     ...getAllWeekends(minDate, maxDate),
+//   ];
+
+//   // Function to get all weekends in a date range
+//   function getAllWeekends(startDate, endDate) {
+//     let weekends = [];
+//     let currentDate = new Date(startDate);
+//     while (currentDate <= endDate) {
+//       const day = currentDate.getDay();
+//       if (day === 0 || day === 6) { // Sunday or Saturday
+//         weekends.push(new Date(currentDate));
+//       }
+//       currentDate.setDate(currentDate.getDate() + 1);
+//     }
+//     return weekends;
+//   }
+
 //   return (
-//     <LocalizationProvider dateAdapter={AdapterDateFns}>
-//       <Container maxWidth="sm">
-//         {/* Welcome Message */}
-//         <Typography variant="h6" align="left" sx={{ mt: 4 }}>
-//           Welcome, {staffId}
+//     <Container maxWidth="sm">
+//       {/* Welcome Message */}
+//       <Typography variant="h6" align="left" sx={{ mt: 4 }}>
+//         Welcome, {staffId}
+//       </Typography>
+
+//       <Paper elevation={3} sx={{ padding: 4, marginTop: 2 }}>
+//         {/* Header */}
+//         <Typography variant="h4" align="center" gutterBottom>
+//           AdHoc WFH Request Application
 //         </Typography>
 
-//         <Paper elevation={3} sx={{ padding: 4, marginTop: 2 }}>
-//           {/* Header */}
-//           <Typography variant="h4" align="center" gutterBottom>
-//             AdHoc WFH Request Application
-//           </Typography>
+//         {/* Display success or error messages */}
+//         {successMessage && (
+//           <Alert severity="success" sx={{ mb: 2 }}>
+//             {successMessage}
+//           </Alert>
+//         )}
+//         {errorMessage && (
+//           <Alert severity="error" sx={{ mb: 2 }}>
+//             {errorMessage}
+//           </Alert>
+//         )}
 
-//           {/* Display success or error messages */}
-//           {successMessage && (
-//             <Alert severity="success" sx={{ mb: 2 }}>
-//               {successMessage}
-//             </Alert>
-//           )}
-//           {errorMessage && (
-//             <Alert severity="error" sx={{ mb: 2 }}>
-//               {errorMessage}
-//             </Alert>
-//           )}
-
-//           <form noValidate autoComplete="off">
-//             <DatePicker
-//               label="WFH Date"
-//               value={wfhDate}
-//               onChange={(newValue) => setWfhDate(newValue)}
+//         <form noValidate autoComplete="off">
+//           {/* Centered Date Range Picker */}
+//           <Typography  variant="h6" sx={{ marginBottom: "10px", textAlign: "center"}}>Choose your WFH Date</Typography>
+//           <Box sx={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+//             <DateRange
+//               ranges={dateRange}
+//               onChange={(ranges) => setDateRange([ranges.selection])}
 //               minDate={minDate} // 2 months back
 //               maxDate={maxDate} // 3 months forward
-//               shouldDisableDate={shouldDisableDate} // Disable weekends and approved/pending WFH dates
-//               renderInput={(params) => (
-//                 <TextField
-//                   {...params}
-//                   fullWidth
-//                   margin="normal"
-//                   required
-//                   inputProps={{ ...params.inputProps, readOnly: true }} // Make input read-only to prevent manual typing
-//                   onKeyDown={(e) => e.preventDefault()} // Prevent keyboard input
-//                   onPaste={(e) => e.preventDefault()} // Disable paste
-//                   onCopy={(e) => e.preventDefault()} // Disable copy
-//                 />
-//               )}
+//               disabledDates={disabledDates} // Disable weekends and approved/pending dates
 //             />
+//           </Box>
 
-
-//             <FormControl fullWidth margin="normal" required>
-//               <InputLabel>Schedule Type</InputLabel>
-//               <Select
-//                 value={scheduleType}
-//                 onChange={(e) => setScheduleType(e.target.value)}
-//                 label="Schedule Type"
-//               >
-//                 <MenuItem value="AM">AM</MenuItem>
-//                 <MenuItem value="PM">PM</MenuItem>
-//                 <MenuItem value="Full Day">Full Day</MenuItem>
-//               </Select>
-//             </FormControl>
-
-//             <TextField
-//               label="Reason"
-//               value={reason}
-//               onChange={(e) => setReason(e.target.value)}
-//               fullWidth
-//               multiline
-//               rows={4}
-//               margin="normal"
-//               required
-//             />
-
-//             <Box
-//               sx={{
-//                 display: "flex",
-//                 justifyContent: "flex-end",
-//                 gap: 2,
-//                 marginTop: 2,
-//               }}
+//           <FormControl fullWidth margin="normal" required>
+//             <InputLabel>Schedule Type</InputLabel>
+//             <Select
+//               value={scheduleType}
+//               onChange={(e) => setScheduleType(e.target.value)}
+//               label="Schedule Type"
 //             >
-//               <Button
-//                 variant="outlined"
-//                 color="secondary"
-//                 onClick={handleCancel}
-//               >
-//                 Cancel
-//               </Button>
-//               <Button
-//                 variant="contained"
-//                 color="primary"
-//                 onClick={handleSubmit}
-//                 disabled={isSubmitDisabled}
-//               >
-//                 {isSubmitting ? "Submitting..." : "Submit"}
-//               </Button>
-//             </Box>
-//           </form>
-//         </Paper>
-//       </Container>
-//     </LocalizationProvider>
+//               <MenuItem value="AM">AM</MenuItem>
+//               <MenuItem value="PM">PM</MenuItem>
+//               <MenuItem value="Full Day">Full Day</MenuItem>
+//             </Select>
+//           </FormControl>
+
+//           <TextField
+//             label="Reason"
+//             value={reason}
+//             onChange={(e) => setReason(e.target.value)}
+//             fullWidth
+//             multiline
+//             rows={4}
+//             margin="normal"
+//             required
+//           />
+
+//           <Box
+//             sx={{
+//               display: "flex",
+//               justifyContent: "flex-end",
+//               gap: 2,
+//               marginTop: 2,
+//             }}
+//           >
+//             <Button
+//               variant="outlined"
+//               color="secondary"
+//               onClick={handleCancel}
+//             >
+//               Cancel
+//             </Button>
+//             <Button
+//               variant="contained"
+//               color="primary"
+//               onClick={handleSubmit}
+//               disabled={isSubmitDisabled}
+//             >
+//               {isSubmitting ? "Submitting..." : "Submit"}
+//             </Button>
+//           </Box>
+//         </form>
+//       </Paper>
+//     </Container>
 //   );
 // }
