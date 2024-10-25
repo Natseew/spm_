@@ -764,4 +764,26 @@ router.patch('/cancel/:recordID', async (req, res) => {
   }
 });
 
+// Pending Withdrawal (Reject) of WFH request
+router.patch('/reject_withdrawal/:recordID', async (req, res) => {
+  const { recordID } = req.params;
+  const { reason } = req.body;
+
+  try {
+    const result = await client.query(
+      'UPDATE wfh_records SET status = $1, reject_reason = $3 WHERE recordid = $2 AND status = $4 RETURNING *',
+      ['Approved', recordID, reason, 'Pending Withdrawal'] // Update the status to 'Approved'
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'No records found for the given record ID.' });
+    }
+
+    res.status(200).json({ message: 'Status updated to Approved.', record: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
 module.exports = router;
