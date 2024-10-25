@@ -2,7 +2,7 @@
 // }
 "use client";
 
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   TextField,
   Button,
@@ -50,8 +50,8 @@ const RecurringArrangementPage = () => {
 
   // Current date and date restrictions
   const today = new Date(); // Current date
-  const minDate = subMonths(today, 2); // 2 months back
-  const maxDate = addMonths(today, 3); // 3 months in front
+  // const minDate = subMonths(today, 2); // 2 months back
+  // const maxDate = addMonths(today, 3); // 3 months in front
   console.log(staff_id);
 
   const handleCancel = () => {
