@@ -183,16 +183,15 @@ const handleAccept = async (recordID) => {
 };
 
 // Handle Rejection Button
-
-const handleReject = async (reqId, reason) => {
-    console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+const handleReject = async (reqId, reject_reason) => {
+    console.log(`Rejecting request with ID: ${reqId} for reason: ${reject_reason}`);
     try {
         const response = await fetch(`http://localhost:4000/wfh_records/reject/${reqId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ reason }), // Send the reason in the request body
+            body: JSON.stringify({ reject_reason }), // Send the reason in the request body
         });
 
         if (!response.ok) {

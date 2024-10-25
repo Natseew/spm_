@@ -24,8 +24,6 @@ const RecurringSchedule = () => {
     useEffect(() => {
         const fetchEmployeeAndRecurringData = async () => {
             try {
-                // Note to Zhen Yue: Comment out mine and uncomment yours  
-                // const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`);
                 const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${YZManagerID}`);
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
@@ -38,21 +36,19 @@ const RecurringSchedule = () => {
                     employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;
                 });
 
-                const wfhResponse = await fetch('http://localhost:4000/recurring_request/by-employee-ids', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeIds: ids }),
-                });
+                const wfhResponse = await fetch(`http://localhost:4000/recurring_request/by-employee-ids?employeeIds=${ids.join(',')}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });                
 
                 if (!wfhResponse.ok) {
                     throw new Error(`Error fetching Recurring WFH records: ${wfhResponse.status}`);
                 }
 
                 const wfhData = await wfhResponse.json();
-                console.log('Recurring WFH Data:', wfhData);
+                console.log("Fetched Recurring WFH Data:", wfhData);
                 setRecurringData(wfhData);
             } catch (error) {
-                console.error('Error during fetch operations:', error);
                 setError(error.message);
             } finally {
                 setLoading(false);
@@ -72,8 +68,27 @@ const RecurringSchedule = () => {
     };
 
     const openRejectModal = (data) => {
+        let filteredDates = [];
+    
+        // Filter based on the selected status
+        if (selectedStatus === 'Pending Change') {
+            // For "Pending Change", filter the wfh_records to only include pending change dates
+            filteredDates = data.wfh_records
+                .filter(record => record.status === 'Pending Change')
+                .map(record => record.wfh_date);
+        } else if (selectedStatus === 'Pending') {
+            // For "Pending", filter the wfh_records to only include pending dates
+            filteredDates = data.wfh_records
+                .filter(record => record.status === 'Pending')
+                .map(record => record.wfh_date);
+        } else {
+            // For other statuses, pass all wfh_dates (or apply other filters if needed)
+            filteredDates = data.wfh_records.map(record => record.wfh_date);
+        }
+    
+        // Set the filtered dates and open the modal
         setSomeData(data);
-        setModalDates(data.wfh_dates || []);
+        setModalDates(filteredDates); // Pass only the filtered dates based on status
         setRejectModalOpen(true);
     };
 
@@ -103,38 +118,99 @@ const RecurringSchedule = () => {
         const dateMatches = selectedDate ? new Date(item.start_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
         let statusMatches = false;
         if (selectedStatus === 'Pending Change') {
-            // If filtering by 'Pending Change', check if any wfh_records have that status
             statusMatches = item.wfh_records.some(record => record.status === 'Pending Change');
+        } else if (selectedStatus === 'Pending') {
+            statusMatches = item.wfh_records.some(record => record.status === 'Pending');
+        } else if (selectedStatus === 'Pending Withdrawal') {
+            statusMatches = item.wfh_records.some(record => record.status === 'Pending Withdrawal');
         } else {
-            // For other statuses, check the parent status only
             statusMatches = item.status === selectedStatus;
         }
+
         return statusMatches && dateMatches;
     });
-    
 
     const getStaffName = (id) => {
         const name = employeeNameid[Number(id)] || 'Unknown';
         return name;
     };
 
-    const FormatDateToDayofweek = (num) => {
-        const dayofweek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        return dayofweek[num - 1];
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Invalid Date';
+        return dateString.split('T')[0];
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return 'Invalid Date'; // Handle null or undefined dates
-        return dateString.split('T')[0]; // Split at 'T' and take the first part
-    };
-    
-    
+    // Handle accepting a change request
     const handleAcceptChange = async (reqId) => {
         console.log(`Accepting change request with ID: ${reqId}`);
+        const reqData = RecurringData.find(item => item.req_id === reqId);
+        const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
+        const wfhDate = wfhRecord.wfh_date;
+        const requestid = reqData.requestid;
+        const timeslot = wfhRecord.timeslot;
+
+        const response = await fetch('http://localhost:4000/recurring_request/accept-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestid, wfhDate, timeslot }),
+        });
+
+        if (!response.ok) {
+            console.error(`Error accepting change request: ${response.status}`);
+            Notification('error', 'Error accepting change request');
+            return;
+        }
+
+        Notification('success', 'Change request accepted successfully');
+        const updatedData = RecurringData.map(item => {
+            if (item.req_id === reqId) {
+                const updatedRecords = item.wfh_records.map(record => {
+                    if (record.status === 'Pending Change') {
+                        return { ...record, status: 'Approved', wfh_date: wfhDate, timeslot };
+                    }
+                    return record;
+                });
+                return { ...item, wfh_records: updatedRecords };
+            }
+            return item;
+        });
+        setRecurringData(updatedData);
     };
 
-    const handleRejectChange = async (reqId) => {
-        console.log(`Rejecting change request with ID: ${reqId}`);
+    // Handle rejecting a change request
+    const handleRejectChange = async (reqId, reason) => {
+        console.log(`Rejecting change request with ID: ${reqId}, Reason: ${reason}`);
+        const reqData = RecurringData.find(item => item.req_id === reqId);
+        const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
+        const wfhDate = wfhRecord.wfh_date;
+        const requestid = reqData.requestid;
+
+        const response = await fetch('http://localhost:4000/recurring_request/reject-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestid, wfhDate, reason }),
+        });
+
+        if (!response.ok) {
+            console.error(`Error rejecting change request: ${response.status}`);
+            Notification('error', 'Error rejecting change request');
+            return;
+        }
+
+        Notification('success', 'Change request rejected');
+        const updatedData = RecurringData.map(item => {
+            if (item.req_id === reqId) {
+                const updatedRecords = item.wfh_records.map(record => {
+                    if (record.status === 'Pending Change') {
+                        return { ...record, status: 'Rejected', reject_reason: reason };
+                    }
+                    return record;
+                });
+                return { ...item, wfh_records: updatedRecords };
+            }
+            return item;
+        });
+        setRecurringData(updatedData);
     };
 
     return (
@@ -172,10 +248,12 @@ const RecurringSchedule = () => {
                         <th className="py-2 px-4 border-b border-gray-300">Request ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Staff ID</th>
                         <th className="py-2 px-4 border-b border-gray-300">Name</th>
-                        <th className="py-2 px-4 border-b border-gray-300">WFH Date</th>
+                        <th className="py-2 px-4 border-b border-gray-300">Start Date</th>
+                        <th className="py-2 px-4 border-b border-gray-300">End Date</th>
+                        <th className="py-2 px-4 border-b border-gray-300">WFH Dates</th>
                         <th className="py-2 px-4 border-b border-gray-300">Timeslot</th>
                         <th className="py-2 px-4 border-b border-gray-300">
-                            {selectedStatus === 'Pending Change' ? 'Requested Change Date' : 'Actions'}
+                            {selectedStatus === 'Pending Change' || selectedStatus === 'Pending Withdrawal' ? 'Requested Change Date' : 'Actions'}
                         </th>
                     </tr>
                 </thead>
@@ -185,28 +263,30 @@ const RecurringSchedule = () => {
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.start_date)}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.end_date)}</td>
 
-                            {/* WFH Date Column */}
+                            {/* WFH Dates Column */}
                             <td className="py-2 px-4 border-b border-gray-300">
                                 {
-                                    (() => {
-                                        const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === 'Pending Change') : null;
-                                        if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
-                                            return formatDate(pendingChangeRecord.wfh_date);
-                                        }
-                                        return 'No Pending Change';
-                                    })()
+                                    item.wfh_records && item.wfh_records.length > 0 ? 
+                                    item.wfh_records.map(record => (
+                                        <div key={record.wfh_date}>
+                                            {formatDate(record.wfh_date)} - {record.status}
+                                        </div>
+                                    )) : 
+                                    'No WFH Records'
                                 }
                             </td>
 
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
 
-                            {/* Requested Change Date Column */}
-                            {selectedStatus === 'Pending Change' ? (
+                            {/* Requested Change or Withdrawal Date */}
+                            {selectedStatus === 'Pending Change' || selectedStatus === 'Pending Withdrawal' ? (
                                 <td className="py-2 px-4 border-b border-gray-300">
                                     {
                                         (() => {
-                                            const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === 'Pending Change') : null;
+                                            const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === selectedStatus) : null;
                                             if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
                                                 return (
                                                     <div>
@@ -221,7 +301,7 @@ const RecurringSchedule = () => {
                                                             </button>
                                                             <button 
                                                                 className="bg-red-500 text-white px-2 py-1 rounded" 
-                                                                onClick={() => handleRejectChange(item.req_id)}
+                                                                onClick={() => openRejectModal(item)}
                                                             >
                                                                 Reject Change
                                                             </button>
@@ -243,7 +323,7 @@ const RecurringSchedule = () => {
                                             <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" onClick={() => handleAcceptChange(item.req_id)}>
                                                 Accept
                                             </button>
-                                            <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => handleRejectChange(item.req_id)}>
+                                            <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => openRejectModal(item)}>
                                                 Reject
                                             </button>
                                         </>
@@ -254,8 +334,6 @@ const RecurringSchedule = () => {
                     ))}
                 </tbody>
             </table>
-
-
 
             {/* Modals */}
             <RecurringModal isOpen={modalOpen} onClose={closeModal} data={modalData} />
