@@ -270,7 +270,7 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
         
         setAdhocData(prevData => 
             prevData.map(item => 
-                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+                item.recordid === reqId ? { ...item, status: 'Approved', reject_reason: reason } : item
             )
         );
 
