@@ -440,7 +440,7 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
       `
       SELECT * FROM wfh_records 
       WHERE staffID = $1
-      AND status IN ('Approved', 'Pending')
+      AND status IN ('Approved', 'Pending', 'Pending Withdrawal', 'Pending Change')
       `,
       [req.params.staffid]
     );
