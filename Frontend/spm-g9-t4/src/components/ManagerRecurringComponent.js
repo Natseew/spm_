@@ -143,27 +143,55 @@ const RecurringSchedule = () => {
     // Handle accepting a change request
     const handleAcceptChange = async (reqId) => {
         console.log(`Accepting change request with ID: ${reqId}`);
-        const reqData = RecurringData.find(item => item.req_id === reqId);
+    
+        const reqData = RecurringData.find(item => item.requestid === reqId);
+    
+        // Debugging log to check the structure of reqData
+        console.log("reqData:", reqData);
+    
+        if (!reqData) {
+            console.error(`Request data not found for ID: ${reqId}`);
+            Notification('error', `Request data not found for ID: ${reqId}`);
+            return;
+        }
+    
+        // Add a check to ensure wfh_records exists
+        if (!reqData.wfh_records) {
+            console.error(`No wfh_records found for request ID: ${reqId}`);
+            Notification('error', `No wfh_records found for request ID: ${reqId}`);
+            return;
+        }
+    
         const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
+        if (!wfhRecord) {
+            console.error(`No pending change record found for request ID: ${reqId}`);
+            Notification('error', `No pending change record found for request ID: ${reqId}`);
+            return;
+        }
+    
+        // Proceed with the rest of your logic
         const wfhDate = wfhRecord.wfh_date;
-        const requestid = reqData.requestid;
-        const timeslot = wfhRecord.timeslot;
-
+        console.log(`Accepting change request for date: ${wfhDate}`);
+        const requestid = reqId
+    
         const response = await fetch('http://localhost:4000/recurring_request/accept-change', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requestid, wfhDate, timeslot }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ requestID: 122, wfhDate: '2024-10-21' })
         });
-
+        
+    
         if (!response.ok) {
             console.error(`Error accepting change request: ${response.status}`);
             Notification('error', 'Error accepting change request');
             return;
         }
-
+    
         Notification('success', 'Change request accepted successfully');
         const updatedData = RecurringData.map(item => {
-            if (item.req_id === reqId) {
+            if (item.requestid === reqId) {
                 const updatedRecords = item.wfh_records.map(record => {
                     if (record.status === 'Pending Change') {
                         return { ...record, status: 'Approved', wfh_date: wfhDate, timeslot };
@@ -176,6 +204,7 @@ const RecurringSchedule = () => {
         });
         setRecurringData(updatedData);
     };
+        
 
     // Handle rejecting a change request
     const handleRejectChange = async (reqId, reason) => {
@@ -258,80 +287,80 @@ const RecurringSchedule = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredData.map((item, index) => (
-                        <tr key={item.req_id || index} className="text-center hover:bg-blue-100 transition-colors">
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.start_date)}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.end_date)}</td>
+                {filteredData.map((item, index) => (
+                    <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.start_date)}</td>
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{formatDate(item.end_date)}</td>
 
-                            {/* WFH Dates Column */}
+                        {/* WFH Dates Column */}
+                        <td className="py-2 px-4 border-b border-gray-300">
+                            {
+                                item.wfh_records && item.wfh_records.length > 0 ? 
+                                item.wfh_records.map(record => (
+                                    <div key={record.wfh_date}>
+                                        {formatDate(record.wfh_date)} - {record.status}
+                                    </div>
+                                )) : 
+                                'No WFH Records'
+                            }
+                        </td>
+
+                        <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
+
+                        {/* Requested Change or Withdrawal Date */}
+                        {selectedStatus === 'Pending Change' || selectedStatus === 'Pending Withdrawal' ? (
                             <td className="py-2 px-4 border-b border-gray-300">
                                 {
-                                    item.wfh_records && item.wfh_records.length > 0 ? 
-                                    item.wfh_records.map(record => (
-                                        <div key={record.wfh_date}>
-                                            {formatDate(record.wfh_date)} - {record.status}
-                                        </div>
-                                    )) : 
-                                    'No WFH Records'
+                                    (() => {
+                                        const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === selectedStatus) : null;
+                                        if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
+                                            return (
+                                                <div>
+                                                    {formatDate(pendingChangeRecord.wfh_date)}
+                                                    {/* Add Accept and Reject Buttons */}
+                                                    <div className="mt-2">
+                                                        <button 
+                                                            className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                                            onClick={() => handleAcceptChange(item.requestid)} // Updated to use requestid
+                                                        >
+                                                            Accept Change
+                                                        </button>
+                                                        <button 
+                                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                                            onClick={() => openRejectModal(item)}
+                                                        >
+                                                            Reject Change
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return 'No Pending Change';
+                                    })()
                                 }
                             </td>
-
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
-
-                            {/* Requested Change or Withdrawal Date */}
-                            {selectedStatus === 'Pending Change' || selectedStatus === 'Pending Withdrawal' ? (
-                                <td className="py-2 px-4 border-b border-gray-300">
-                                    {
-                                        (() => {
-                                            const pendingChangeRecord = item.wfh_records ? item.wfh_records.find(record => record.status === selectedStatus) : null;
-                                            if (pendingChangeRecord && pendingChangeRecord.wfh_date) {
-                                                return (
-                                                    <div>
-                                                        {formatDate(pendingChangeRecord.wfh_date)}
-                                                        {/* Add Accept and Reject Buttons */}
-                                                        <div className="mt-2">
-                                                            <button 
-                                                                className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                                                onClick={() => handleAcceptChange(item.req_id)}
-                                                            >
-                                                                Accept Change
-                                                            </button>
-                                                            <button 
-                                                                className="bg-red-500 text-white px-2 py-1 rounded" 
-                                                                onClick={() => openRejectModal(item)}
-                                                            >
-                                                                Reject Change
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            return 'No Pending Change';
-                                        })()
-                                    }
-                                </td>
-                            ) : (
-                                <td className="py-2 px-4 border-b border-gray-300">
-                                    <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" onClick={() => openModal(item)}>
-                                        View Details
-                                    </button>
-                                    {item.status === 'Pending' && (
-                                        <>
-                                            <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" onClick={() => handleAcceptChange(item.req_id)}>
-                                                Accept
-                                            </button>
-                                            <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => openRejectModal(item)}>
-                                                Reject
-                                            </button>
-                                        </>
-                                    )}
-                                </td>
-                            )}
-                        </tr>
-                    ))}
+                        ) : (
+                            <td className="py-2 px-4 border-b border-gray-300">
+                                <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" onClick={() => openModal(item)}>
+                                    View Details
+                                </button>
+                                {item.status === 'Pending' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" onClick={() => handleAcceptChange(item.requestid)}> {/* Updated to use requestid */}
+                                            Accept
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => openRejectModal(item)}>
+                                            Reject
+                                        </button>
+                                    </>
+                                )}
+                            </td>
+                        )}
+                    </tr>
+                ))}
                 </tbody>
             </table>
 

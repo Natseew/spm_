@@ -2,13 +2,11 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
-    "plugin:react-hooks/recommended",
-    "next/core-web-vitals"
+    "plugin:react-hooks/recommended"
   ],
   "plugins": [
     "react",
-    "react-hooks",
-    "next"
+    "react-hooks"
   ],
   "parserOptions": {
     "ecmaVersion": "latest",
@@ -23,7 +21,7 @@
     "node": true
   },
   "rules": {
-    "react/prop-types": 0, //using 0 instead of "off" (both work)
+    "react/prop-types": 0,      // Using 0 instead of "off" (both work)
     "react/react-in-jsx-scope": "off"
   },
   "settings": {

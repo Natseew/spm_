@@ -36,12 +36,17 @@ export default function PendingRequests() {
 
   // Use useEffect to access window.sessionStorage on the client side
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
-      setUser(storedUser);
-      setStaffId(storedUser ? storedUser.staff_id : null);
+      if (storedUser) {
+        setUser(storedUser);
+        setStaffId(storedUser.staff_id);
+      } else {
+        router.push("/"); // Navigate to login if not logged in
+      }
     }
   }, []);
+  
 
   // Fetch recurring requests from the backend
   useEffect(() => {
