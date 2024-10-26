@@ -22,7 +22,6 @@ export default function Page() {
   //     createdBy: "Kristina Mayer"
   //   }
   ]);
-  const [isLoading, setIsLoading] = useState(true);
   const eventsRef = useRef(events)
 
   const Scheduler = dynamic(
@@ -53,7 +52,6 @@ export default function Page() {
           eventsArray.push(eventItem);
         }
         setEvents(eventsArray);
-        setIsLoading(false);
       };
       fetchStaffSchedule();
     } catch (error) {
@@ -86,27 +84,6 @@ export default function Page() {
       showDatePicker: true
     }
   })
-  
-  const handleCellClick = (event, row, day) => {
-    // Do something...
-  }
-  
-  const handleEventClick = (event, item) => {
-    // Do something...
-  }
-  
-  const handleEventsChange = (item) => {
-    // Do something...
-  }
-  
-  const handleAlertCloseButtonClicked = (item) => {
-    // Do something...
-  }
-  // if (isLoading){
-  //   return(
-  //     <div>Loading</div>
-  //   )
-  // }
 
   return (
     <Scheduler
@@ -116,10 +93,6 @@ export default function Page() {
       options={state?.options}
       user="Current"
       toolbarProps={state?.toolbarProps}
-      onEventsChange={handleEventsChange}
-      onCellClick={handleCellClick}
-      onTaskClick={handleEventClick}
-      onAlertCloseButtonClicked={handleAlertCloseButtonClicked}
     />
   )
 }

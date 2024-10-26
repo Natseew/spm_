@@ -38,6 +38,57 @@ router.get('/:staffid', async (req, res) => {
 });
 
 
+// Route to get approved staff schedule for a team based on Reporting Manager ID and date
+router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, res) => {
+  const { manager_id, start_date, end_date } = req.params;
+
+  try {
+      const dateRange = generateDateRange(start_date, end_date);
+      let staff_schedules = []
+        for(date of dateRange){
+          const scheduleResult = await client.query(
+            `
+            SELECT 
+                e.staff_id, 
+                e.staff_fname, 
+                e.staff_lname, 
+                e.dept, 
+                e.reporting_manager, 
+                COALESCE(wr.wfh_date, $2) AS wfh_date,
+                COALESCE(wr.timeslot, 'Office') AS timeslot,
+                COALESCE(wr.status, 'Office') AS status,
+                CASE 
+                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
+                    WHEN wr.timeslot = 'AM' THEN 'AM'
+                    WHEN wr.timeslot = 'PM' THEN 'PM'
+                    ELSE 'Office'
+                END AS schedule_status,
+                wr.recurring,
+                wr.request_reason,
+                wr.requestDate,
+                wr.reject_reason
+            FROM 
+                Employee e
+            LEFT JOIN 
+                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
+            WHERE 
+                e.reporting_manager = $1
+            `,
+            [manager_id, date]
+        );
+        staff_schedules = staff_schedules.concat(scheduleResult.rows)
+      }
+
+      res.status(200).json({
+          staff_schedules: staff_schedules
+      });
+
+  } catch (error) {
+      console.error('Error fetching approved team schedule:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+})
+
 // Helper function to generate a list of dates between two given dates
 const generateDateRange = (startDate, endDate) => {
   const dates = [];
