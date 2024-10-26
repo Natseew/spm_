@@ -415,6 +415,7 @@ return dayofweek[match_num]
         });
         setRecurringData(updatedData);
     };
+}
     return (
         <div>
             {notification && <Notification message={notification} onClose={() => setNotification('')} />}
@@ -598,11 +599,4 @@ export default RecurringSchedule;
                         //         )}
     
 
-            {/* Modals */}
-            <RecurringModal isOpen={modalOpen} onClose={closeModal} data={modalData} />
-            <HandleReccuringRejectModal isOpen={rejectModalOpen} onClose={closeRejectModal} onReject={handleRejectChange} data={someData} dates={modalDates} />
-        </div>
-    );
-};
 
-export default RecurringSchedule;
