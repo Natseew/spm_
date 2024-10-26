@@ -657,5 +657,37 @@ router.patch('/approve/:requestid', async (req, res) => {
     }
 });
 
+// Get recurring requests by employee IDs with WFH records
+router.get('/by-employee-ids', async (req, res) => {
+    try {
+        const employeeIds = req.query.employeeIds?.split(',');
+
+        if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+            return res.status(400).json({ message: 'Must provide an array of employee IDs.' });
+        }
+
+        const placeholders = employeeIds.map((_, index) => `$${index + 1}`).join(', ');
+        const recurringQuery = `SELECT * FROM recurring_request WHERE staff_id IN (${placeholders})`;
+
+        const recurringResult = await client.query(recurringQuery, employeeIds);
+        const recurring_request_data = recurringResult.rows;
+
+        const combinedDataPromises = recurring_request_data.map(async (recurringRequest) => {
+            const wfhQuery = `SELECT wfh_date, status FROM wfh_records WHERE requestID = $1`;
+            const wfhResult = await client.query(wfhQuery, [recurringRequest.requestid]);
+            return {
+                ...recurringRequest,
+                wfh_records: wfhResult.rows
+            };
+        });
+
+        const combinedData = await Promise.all(combinedDataPromises);
+        res.status(200).json(combinedData);
+    } catch (error) {
+        console.error('Error retrieving recurring requests by employee IDs:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
 
 module.exports = router;
