@@ -18,16 +18,15 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Checkbox,
-  FormControlLabel,
 } from "@mui/material";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 export default function PendingRequests() {
   const [recurringRequests, setRecurringRequests] = useState([]);
-  const [selectedDates, setSelectedDates] = useState([]); // Track selected WFH dates for withdrawal
-  const [selectedRequestId, setSelectedRequestId] = useState(null); // Track which request is being changed
-  const [openWithdrawDialog, setOpenWithdrawDialog] = useState(false); // Dialog visibility state
+  const [selectedRequest, setSelectedRequest] = useState(null); // Track which request details to view
+  const [wfhRecords, setWfhRecords] = useState([]); // Store all WFH records
+  const [filteredRecords, setFilteredRecords] = useState([]); // Store filtered WFH records
+  const [openDetailsDialog, setOpenDetailsDialog] = useState(false); // Dialog visibility state
   const [activeTab, setActiveTab] = useState(1); // Set default to Recurring Requests tab
   const router = useRouter(); // Initialize the router
 
@@ -39,10 +38,15 @@ export default function PendingRequests() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
-      setUser(storedUser);
-      setStaffId(storedUser ? storedUser.staff_id : null);
+      if (storedUser) {
+        setUser(storedUser);
+        setStaffId(storedUser.staff_id);
+      } else {
+        router.push("/"); // Navigate to login if not logged in
+      }
     }
   }, []);
+  
 
   // Fetch recurring requests from the backend
   useEffect(() => {
@@ -65,69 +69,100 @@ export default function PendingRequests() {
     fetchRecurringRequests();
   }, [staffId]);
 
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-    if (newValue === 0) {
-      router.push('/adhoc_requests'); // Navigate to Ad-Hoc Requests page
-    }
-  };
-
-  // Function to handle opening the withdraw dialog and selecting dates
-  const handleOpenWithdrawDialog = (requestId) => {
-    setSelectedRequestId(requestId);
-    setOpenWithdrawDialog(true);
-  };
-
-  // Function to handle closing the withdraw dialog
-  const handleCloseWithdrawDialog = () => {
-    setSelectedRequestId(null);
-    setSelectedDates([]);
-    setOpenWithdrawDialog(false);
-  };
-
-  // Function to handle selecting dates
-  const handleDateSelection = (date) => {
-    setSelectedDates((prev) => {
-      if (prev.includes(date)) {
-        return prev.filter((d) => d !== date); // Unselect the date
-      } else {
-        return [...prev, date]; // Select the date
+  // Fetch all WFH records from the backend
+  useEffect(() => {
+    const fetchWfhRecords = async () => {
+      try {
+        const response = await fetch(`http://localhost:4000/wfh_records/`);
+        const data = await response.json();
+        setWfhRecords(data); // Store all records
+      } catch (error) {
+        console.error("Error fetching WFH records:", error);
       }
-    });
+    };
+
+    fetchWfhRecords();
+  }, []);
+
+  // Function to handle opening the details dialog for a request
+  const handleOpenDetailsDialog = (request) => {
+    setSelectedRequest(request);
+
+    // Filter the WFH records based on the requestId
+    const filtered = wfhRecords.filter((record) => record.requestid === request.requestid);
+    setFilteredRecords(filtered); // Store the filtered records
+
+    setOpenDetailsDialog(true);
   };
 
-  // Function to handle withdrawing selected WFH dates
-  const handleWithdrawRequest = async () => {
-    if (selectedDates.length === 0) {
-      alert("Please select at least one date to withdraw.");
-      return;
-    }
+  // Function to handle closing the details dialog
+  const handleCloseDetailsDialog = () => {
+    setSelectedRequest(null);
+    setFilteredRecords([]); // Clear the filtered records
+    setOpenDetailsDialog(false);
+  };
 
+  // Function to handle withdrawn date
+  const handleWithdrawDate = async (recordId, date) => {
     const reason = prompt("Please enter the reason for withdrawal:");
+
     if (!reason) {
       alert("Withdrawal reason is required.");
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/recurring_request/withdraw`, {
+      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ requestId: selectedRequestId, dates: selectedDates, reason, staff_id: staffId }),
+        body: JSON.stringify({
+          requestId: recordId, // The specific record ID for the WFH request
+          date: date, // The specific date for withdrawal
+          reason: reason, // The reason entered by the user
+          staff_id: staffId, // The staff ID of the user withdrawing the request
+        }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message); // Display the message returned by the backend
-        handleCloseWithdrawDialog(); // Close the dialog after the operation is complete
+        alert(result.message); // Display success message
       } else {
         const result = await response.json();
         alert(`Error withdrawing WFH request: ${result.message}`);
       }
     } catch (error) {
       console.error("Error withdrawing WFH request:", error);
+      alert("An error occurred while withdrawing the request.");
+    }
+  };
+
+  const handleChangeDate = (recordId, date) => {
+    // Handle the change logic for a specific WFH date
+    console.log("Change Date:", recordId, date);
+  };
+
+  const isDateWithinTwoWeeks = (date) => {
+    const today = new Date();
+    const targetDate = new Date(date);
+    const twoWeeksBack = new Date(today);
+    twoWeeksBack.setDate(today.getDate() - 14);
+    const twoWeeksForward = new Date(today);
+    twoWeeksForward.setDate(today.getDate() + 14);
+
+    return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
+  };
+
+  const isStatusValidForAction = (status) => {
+    return status === "Pending" || status === "Approved";
+  };
+
+  // Function to handle tab changes
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+    if (newValue === 0) {
+      router.push("/adhoc_requests"); // Navigate to Ad-Hoc Requests page
     }
   };
 
@@ -145,40 +180,61 @@ export default function PendingRequests() {
             <Tab label="Recurring Requests" />
           </Tabs>
 
-          <RecurringRequestsTable
-            requests={recurringRequests}
-            onWithdraw={handleOpenWithdrawDialog} // Pass the function to handle withdraw
-          />
+          <RecurringRequestsTable requests={recurringRequests} onViewDetails={handleOpenDetailsDialog} />
         </Paper>
       </Box>
 
-      {/* Withdraw Request Dialog */}
-      <Dialog open={openWithdrawDialog} onClose={handleCloseWithdrawDialog}>
-        <DialogTitle>Withdraw WFH Dates</DialogTitle>
+      {/* View Details Dialog */}
+      <Dialog open={openDetailsDialog} onClose={handleCloseDetailsDialog}>
+        <DialogTitle>View WFH Request Details</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" gutterBottom>
-            Select the dates you want to withdraw:
-          </Typography>
-          {recurringRequests
-            .find((req) => req.requestid === selectedRequestId)
-            ?.wfh_dates.map((date) => (
-              <FormControlLabel
-                key={date}
-                control={
-                  <Checkbox
-                    checked={selectedDates.includes(date)}
-                    onChange={() => handleDateSelection(date)}
-                  />
-                }
-                label={new Date(date).toLocaleDateString()}
-              />
-            ))}
+          {selectedRequest ? (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>WFH Date</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredRecords.map((record, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{new Date(record.wfh_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{record.status}</TableCell>
+                      <TableCell>
+                        {isDateWithinTwoWeeks(record.wfh_date) && isStatusValidForAction(record.status) && (
+                          <>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              onClick={() => handleWithdrawDate(record.requestid, record.wfh_date)}
+                            >
+                              Withdraw
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="primary"
+                              sx={{ marginLeft: 1 }}
+                              onClick={() => handleChangeDate(record.requestid, record.wfh_date)}
+                            >
+                              Change
+                            </Button>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography>No details available.</Typography>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseWithdrawDialog}>Cancel</Button>
-          <Button onClick={handleWithdrawRequest} variant="contained" color="primary">
-            Submit Withdrawal
-          </Button>
+          <Button onClick={handleCloseDetailsDialog}>Close</Button>
         </DialogActions>
       </Dialog>
     </>
@@ -186,68 +242,73 @@ export default function PendingRequests() {
 }
 
 // Component to display Recurring Requests Table
-function RecurringRequestsTable({ requests, onWithdraw, onChange }) {
-    const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  
-    return (
-      <TableContainer component={Paper} sx={{ marginTop: 2 }}>
-        <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Request ID</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Start Date</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>End Date</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Day of Week</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Timeslot</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Status</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Reason</TableCell>
-              <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {requests.length > 0 ? (
-              requests.map((request) => (
-                <TableRow key={request.requestid}>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.requestid}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.start_date ? new Date(request.start_date).toLocaleDateString() : "N/A"}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.end_date ? new Date(request.end_date).toLocaleDateString() : "N/A"}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{daysOfWeek[request.day_of_week - 1]}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.timeslot === "FD" ? "Full Day" : request.timeslot}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
-                  <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                    {["Pending", "Approved"].includes(request.status) && (
-                      <>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={() => onWithdraw(request.requestid)}
-                          sx={{ marginRight: 1 }}
-                        >
-                          Withdraw
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => onChange(request.requestid)}
-                        >
-                          Change
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} sx={{ textAlign: "center" }}>
-                  <Typography>No recurring requests found.</Typography>
+function RecurringRequestsTable({ requests, onViewDetails }) {
+  return (
+    <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+      <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
+        <TableHead>
+          <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Request ID
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Start Date
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              End Date
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Day of Week
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Timeslot
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Status
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Reason
+            </TableCell>
+            <TableCell sx={{ backgroundColor: "#e0e0e0", fontWeight: "bold", border: "1px solid #ccc", textAlign: "center" }}>
+              Actions
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {requests.length > 0 ? (
+            requests.map((request) => (
+              <TableRow key={request.requestid}>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.requestid}</TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                  {request.start_date ? new Date(request.start_date).toLocaleDateString() : "N/A"}
+                </TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                  {request.end_date ? new Date(request.end_date).toLocaleDateString() : "N/A"}
+                </TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][request.day_of_week - 1]}
+                </TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                  {request.timeslot === "FD" ? "Full Day" : request.timeslot}
+                </TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status}</TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
+                <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
+                  <Button variant="outlined" color="primary" onClick={() => onViewDetails(request)}>
+                    View Details
+                  </Button>
                 </TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  }
-  
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={8} sx={{ textAlign: "center" }}>
+                <Typography>No recurring requests found.</Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
