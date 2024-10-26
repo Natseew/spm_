@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ToggleView from "@/components/ToggleViewComponent";
+// import Navbar from "@/components/Navbar";
 
 export default function ManagerView() {
     const [selectedDate, setSelectedDate] = useState("");
@@ -37,6 +38,7 @@ export default function ManagerView() {
 
     return (
         <div className="flex flex-col bg-white min-h-screen justify-center px-6 py-12 lg:px-8">
+            {/* <Navbar/> */}
             <div className="flex flex-col flex-1 bg-white px-6 py-12 lg:px-8 overflow-hidden">
                 <div className="overflow-x-auto flex-grow">
                     <ToggleView/>
