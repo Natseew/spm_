@@ -41,11 +41,10 @@ const RecurringSchedule = () => {
                     employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;
                 });
 
-                const wfhResponse = await fetch(`${path}recurring_request/by-employee-ids`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeIds: ids }),
-                });
+                const wfhResponse = await fetch(`http://localhost:4000/recurring_request/by-employee-ids?employeeIds=${ids.join(',')}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });      
 
                 if (!wfhResponse.ok) {
                     throw new Error(`Error fetching Recurring WFH records: ${wfhResponse.status}`);
