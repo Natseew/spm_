@@ -14,11 +14,11 @@ const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) 
         );
     };
 
-    // Helper function to format dates to DD/MM/YYYY
     const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+        const [year, month, day] = dateString.split('T')[0].split('-');
+        return `${day}/${month}/${year}`;
     };
+    
 
     const handleRejectConfirm = () => {
         onReject(data.requestid, reason); // Pass only the record ID and reason
