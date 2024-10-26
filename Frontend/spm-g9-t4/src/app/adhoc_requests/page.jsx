@@ -1,6 +1,3 @@
-// export default function MyApp() {
-// }
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -22,7 +19,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { addMonths, subMonths } from 'date-fns';
+import { addMonths, subMonths, isSameDay } from 'date-fns';
 import DatePicker from "react-datepicker";
 import { useRouter } from 'next/navigation';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -30,9 +27,10 @@ import 'react-datepicker/dist/react-datepicker.css';
 export default function PendingRequests() {
   const [adhocRequests, setAdhocRequests] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedDate, setSelectedDate] = useState(new Date()); // For WFH date selection
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
+  const [approvedPendingDates, setApprovedPendingDates] = useState([]);
   const router = useRouter();
 
   // Retrieve user data and initialize
@@ -54,6 +52,7 @@ export default function PendingRequests() {
   useEffect(() => {
     if (staffId !== null) {
       fetchAdhocRequests();
+      fetchApprovedPendingDates();
     }
   }, [staffId]);
 
@@ -68,6 +67,24 @@ export default function PendingRequests() {
       setAdhocRequests(filteredData);
     } catch (error) {
       console.error("Error fetching ad-hoc requests:", error);
+    }
+  };
+
+  // Fetch approved and pending WFH dates
+  const fetchApprovedPendingDates = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const dates = data.map((record) => new Date(record.wfh_date));
+        setApprovedPendingDates(dates);
+      } else {
+        console.error("Failed to fetch approved and pending dates");
+      }
+    } catch (error) {
+      console.error("Error fetching approved and pending dates:", error);
     }
   };
 
@@ -93,45 +110,44 @@ export default function PendingRequests() {
   };
 
   // Submit change request
-const handleChangeRequest = async () => {
-  if (!selectedDate) {
-    alert("Please select a valid date.");
-    return;
-  }
-
-  const reason = prompt("Please enter the reason for change:");
-  if (!reason) {
-    alert("Change reason is required.");
-    return;
-  }
-
-  try {
-    const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        recordID: selectedRecordId,
-        new_wfh_date: selectedDate, // Corrected to match backend expectation
-        reason,
-        staff_id: staffId,
-      }),
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      alert(result.message);
-      handleCloseChangeDialog();
-    } else {
-      const result = await response.json();
-      alert(`Error changing WFH request: ${result.message}`);
+  const handleChangeRequest = async () => {
+    if (!selectedDate) {
+      alert("Please select a valid date.");
+      return;
     }
-  } catch (error) {
-    console.error("Error changing WFH request:", error);
-  }
-};
 
+    const reason = prompt("Please enter the reason for change:");
+    if (!reason) {
+      alert("Change reason is required.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recordID: selectedRecordId,
+          new_wfh_date: selectedDate,
+          reason,
+          staff_id: staffId,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+        handleCloseChangeDialog();
+      } else {
+        const result = await response.json();
+        alert(`Error changing WFH request: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error changing WFH request:", error);
+    }
+  };
 
   // Handle withdrawing WFH request
   const handleWithdrawRequest = async (id, status) => {
@@ -166,6 +182,13 @@ const handleChangeRequest = async () => {
     }
   };
 
+  // Disable weekends and already approved/pending WFH dates
+  const isDateDisabled = (date) => {
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending;
+  };
+
   return (
     <>
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
@@ -196,8 +219,8 @@ const handleChangeRequest = async () => {
             onChange={(date) => setSelectedDate(date)}
             minDate={subMonths(new Date(), 2)}
             maxDate={addMonths(new Date(), 3)}
-            filterDate={(date) => date.getDay() !== 0 && date.getDay() !== 6} // Disable weekends
-            inline // Display the calendar inline without the input field
+            filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+            inline
           />
         </DialogContent>
         <DialogActions>
@@ -210,6 +233,19 @@ const handleChangeRequest = async () => {
     </>
   );
 }
+
+// Check if the WFH date is within two weeks of today
+const isWithinTwoWeeks = (date) => {
+  const today = new Date();
+  const wfhDate = new Date(date);
+  const twoWeeksBefore = new Date(today);
+  const twoWeeksAfter = new Date(today);
+
+  twoWeeksBefore.setDate(today.getDate() - 14);
+  twoWeeksAfter.setDate(today.getDate() + 14);
+
+  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
+};
 
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
   return (
@@ -237,7 +273,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {["Pending", "Approved"].includes(request.status) && (
+                  {["Pending", "Approved"].includes(request.status) && isWithinTwoWeeks(request.wfh_date) && (
                     <>
                       <Button
                         variant="outlined"
@@ -271,4 +307,3 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
-
