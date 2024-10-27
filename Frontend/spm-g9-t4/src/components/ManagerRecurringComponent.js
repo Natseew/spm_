@@ -335,15 +335,18 @@ const RecurringSchedule = () => {
                             </td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
                             <td className="py-2 px-4 border-b border-gray-300">
-                                <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" onClick={() => openModal(item)}>
+                                <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
+                                onClick={() => openModal(item)}>
                                     View Details
                                 </button>
                                 {item.status === 'Pending' && (
                                     <>
-                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" onClick={() => handleAcceptChange(item.requestid)}>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAccept(item.requestid)}>
                                             Accept
                                         </button>
-                                        <button className="bg-red-500 text-white px-2 py-1 rounded" onClick={() => openRejectModal(item)}>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => openRejectModal(item)}>
                                             Reject
                                         </button>
                                     </>
@@ -364,6 +367,8 @@ const RecurringSchedule = () => {
                                         </button>
                                     </>
                                 )}
+                                {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
+
                             </td>
                         </tr>
                     ))}
