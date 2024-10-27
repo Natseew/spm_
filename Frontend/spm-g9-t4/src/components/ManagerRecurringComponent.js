@@ -29,7 +29,7 @@ const RecurringSchedule = () => {
     useEffect(() => {
         const fetchEmployeeAndRecurringData = async () => {
             try {
-                const idResponse = await fetch(`${path}employee/by-manager/${YZManagerID}`);
+                const idResponse = await fetch(`${path}employee/by-manager/${ManagerID}`);
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
@@ -41,7 +41,7 @@ const RecurringSchedule = () => {
                     employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;
                 });
 
-                const wfhResponse = await fetch(`http://localhost:4000/recurring_request/by-employee-ids?employeeIds=${ids.join(',')}`, {
+                const wfhResponse = await fetch(`${path}recurring_request/by-employee-ids?employeeIds=${ids.join(',')}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });      
@@ -198,6 +198,81 @@ const RecurringSchedule = () => {
         setRecurringData(updatedData);
     };
 
+
+    // Handle Modify
+    const handleModify = async (requestid, updatedData) => {
+        console.log('Request ID:', requestid); 
+        console.log('Data to be parsed in:', updatedData);
+
+        // Validate inputs
+        if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
+            console.error("Validation failed for inputs", requestid, updatedData);
+            return;
+        }
+    
+        try {
+            // Send the PATCH request
+            const response = await fetch(`${path}recurring_request/modify/${requestid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedData),
+            });
+    
+            if (!response.ok) {
+                const errorInfo = await response.json();
+                throw new Error(`Error modifying the request: ${errorInfo.message}`);
+            }
+    
+            const result = await response.json();
+            console.log('Modification successful:', result);
+
+
+            // Option 1: Directly update the local state
+            // Assuming RecurringData is the state variable holding the requests
+            setRecurringData(prevData =>
+                prevData.map(req =>
+                    req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
+                )
+            );
+
+            // Notify user of success
+            setNotification('Modification successful!');
+            setTimeout(() => setNotification(''), 3000);
+
+
+            // Handle success, possibly update local state or provide user feedback
+        } catch (error) {
+            console.error('Error handling modification:', error);
+        }
+    };
+
+        // handle Cancel
+        const handleCancel = async (requestId) => {
+            console.log(`Canceling request with ID: ${requestId}`);
+            // API call or logic to cancel the request
+            try {
+                const response = await fetch(`${path}recurring_request/withdraw_entire/${requestId}`, {
+                    method: 'PUT',
+                });
+    
+                if (!response.ok) {
+                    throw new Error('Failed to cancel the request.');
+                }
+    
+                const result = await response.json();
+                console.log(result.message);
+                setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+                setNotification('Cancelled request successfully!');
+                setTimeout(() => setNotification(''), 3000);
+            } catch (error) {
+                console.error('Error during status update:', error);
+                setNotification(`Error  canceling request: ${error.message}`);
+                setTimeout(() => setNotification(''), 3000);
+            }
+        };
+
     return (
         <div>
             {notification && <Notification message={notification} onClose={() => setNotification('')} />}
@@ -242,7 +317,9 @@ const RecurringSchedule = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredData.map((item, index) => (
+                    {filteredData
+                        .filter(item => item.status === selectedStatus) // Filter data by selected status
+                        .map((item, index) => (
                         <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
@@ -273,8 +350,17 @@ const RecurringSchedule = () => {
                                 )}
                                 {item.status === 'Approved' && (
                                     <>
-                                        <button className="bg-yellow-500 text-white px-2 py-1 rounded mr-2" onClick={() => openModifyModal(item)}>
+                                        <button 
+                                            className="bg-yellow-500 text-white px-2 py-1 rounded mr-2" 
+                                            onClick={() => openModifyModal(item)}
+                                        >
                                             Modify
+                                        </button>
+                                        <button 
+                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                            onClick={() => handleCancel(item.requestid)} // Call cancel handler
+                                        >
+                                            Cancel
                                         </button>
                                     </>
                                 )}
@@ -284,9 +370,25 @@ const RecurringSchedule = () => {
                 </tbody>
             </table>
 
-            <RecurringModal isOpen={modalOpen} onClose={closeModal} data={modalData} />
-            <HandleReccuringRejectModal isOpen={rejectModalOpen} onClose={closeRejectModal} onReject={handleRejectChange} data={someData} dates={modalDates} />
-            <ModifyRecurringRequestModal isOpen={modifyModalOpen} onClose={closeModifyModal} onModify={handleAcceptChange} data={modifyData} />
+            <RecurringModal 
+            isOpen={modalOpen} 
+            onClose={closeModal} 
+            data={modalData} 
+            />
+
+            <HandleReccuringRejectModal 
+            isOpen={rejectModalOpen} 
+            onClose={closeRejectModal} 
+            onReject={handleRejectChange} 
+            data={someData} dates={modalDates} 
+            />
+
+            <ModifyRecurringRequestModal 
+            isOpen={modifyModalOpen} 
+            onClose={closeModifyModal} 
+            onModify={handleAcceptChange} 
+            data={modifyData} 
+            />
         </div>
     );
 };

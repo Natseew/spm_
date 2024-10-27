@@ -471,6 +471,7 @@ router.post('/accept-change', async (req, res) => {
     }
   });
   
+  
 // Reject a recurring request
 router.post('/reject/:requestID', async (req, res) => {
     const { requestID } = req.params;
@@ -493,7 +494,7 @@ router.post('/reject/:requestID', async (req, res) => {
         // Additional logging activity if needed
         await client.query(
             `INSERT INTO activitylog (requestid, activity)
-             VALUES ($1, 'Rejected Recurring Request: ${reason}');`,
+            VALUES ($1, 'Rejected Recurring Request: ${reason}');`,
             [requestID]
         );
 
