@@ -134,47 +134,32 @@ router.delete('/:requestID', async (req, res) => {
     }
 });
 
-// New route to get recurring requests by an array of employee IDs
+// Get recurring requests by employee IDs with WFH records
 router.get('/by-employee-ids', async (req, res) => {
     try {
         const employeeIds = req.query.employeeIds?.split(',');
 
-        // Validate input
         if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
-            return res.status(400).json({ message: 'Invalid input. Must provide an array of employee IDs.' });
+            return res.status(400).json({ message: 'Must provide an array of employee IDs.' });
         }
 
-        // Create placeholders for the SQL query
         const placeholders = employeeIds.map((_, index) => `$${index + 1}`).join(', ');
         const recurringQuery = `SELECT * FROM recurring_request WHERE staff_id IN (${placeholders})`;
 
-        // Retrieve recurring requests
         const recurringResult = await client.query(recurringQuery, employeeIds);
-        const recurring_request_data = recurringResult.rows; // Storing recurring request data
+        const recurring_request_data = recurringResult.rows;
 
-        // If there are no matching records, return an empty array
-        if (recurring_request_data.length === 0) {
-            return res.status(200).json([]);
-        }
-
-        // Loop through each recurring request and fetch corresponding wfh_record
         const combinedDataPromises = recurring_request_data.map(async (recurringRequest) => {
             const wfhQuery = `SELECT wfh_date, status FROM wfh_records WHERE requestID = $1`;
             const wfhResult = await client.query(wfhQuery, [recurringRequest.requestid]);
-
-            // Combine recurring request with corresponding wfh records (if any)
             return {
                 ...recurringRequest,
-                wfh_records: wfhResult.rows // Add the wfh_records (wfh_date and status)
+                wfh_records: wfhResult.rows
             };
         });
 
-        // Wait for all the combined data to be fetched
         const combinedData = await Promise.all(combinedDataPromises);
-
-        // Return the combined data
         res.status(200).json(combinedData);
-        console.log(combinedData)
     } catch (error) {
         console.error('Error retrieving recurring requests by employee IDs:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
@@ -235,6 +220,7 @@ router.post('/approve/:requestid', async (req, res) => {
 });
 
 
+// cancel approved recurring request
 // withdraw entire recurring request
 // Reject a recurring request
 router.patch('/reject/:requestid', async (req, res) => {
@@ -505,8 +491,7 @@ router.post('/reject/:requestID', async (req, res) => {
     }
 });
 
-// Route to remove specific dates from wfh_dates of a recurring request
-
+// Remove specific dates from wfh_dates of a recurring request
 router.patch('/modify/:requestid', async (req, res) => {
     const { requestid } = req.params;
     const { wfh_dates } = req.body;
@@ -519,12 +504,12 @@ router.patch('/modify/:requestid', async (req, res) => {
         return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
     }
 
-    // Log the actual dates that are about to be passed to the query
-    console.log("Formatted wfh_dates being removed:", wfh_dates);
-
     try {
-        // Ensure that wfh_dates are passed as DATE
-        const result = await client.query(`
+        // Begin a transaction to ensure atomicity
+        await client.query('BEGIN');
+
+        // 1. Update recurring_request to remove the specified dates from wfh_dates
+        const recurringResult = await client.query(`
             UPDATE recurring_request
             SET wfh_dates = ARRAY(
                 SELECT unnest(wfh_dates) 
@@ -532,25 +517,47 @@ router.patch('/modify/:requestid', async (req, res) => {
                 SELECT unnest($1::DATE[])
             ) 
             WHERE requestid = $2
-            RETURNING *;`,
-            [wfh_dates, requestid] // Check the types of wfh_dates here
-        );
+            RETURNING wfh_dates;
+        `, [wfh_dates, requestid]);
 
-        // Check if any rows were affected
-        if (result.rowCount === 0) {
+        if (recurringResult.rowCount === 0) {
             console.log("No request found with the given request ID.");
+            await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Request not found' });
         }
 
-        console.log("Update successful:", result.rows[0]); // Log the updated record
+        // 2. Delete corresponding records from wfh_records and capture the recordIDs
+        const wfhRecordResult = await client.query(`
+            DELETE FROM wfh_records
+            WHERE requestID = $1 AND wfh_date = ANY($2::DATE[])
+            RETURNING recordID, wfh_date;
+        `, [requestid, wfh_dates]);
 
-        // Send success response
-        res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+        // 3. Log each removed date in ActivityLog with both requestID and recordID
+        const logPromises = wfhRecordResult.rows.map(row => {
+            const { recordID, wfh_date } = row;
+            return client.query(`
+                INSERT INTO ActivityLog (requestID, recordID, activity)
+                VALUES ($1, $2, $3)
+            `, [requestid, recordID, `Removed WFH date: ${wfh_date}`]);
+        });
+        await Promise.all(logPromises);
+
+        // Commit the transaction
+        await client.query('COMMIT');
+
+        console.log("Update successful:", recurringResult.rows[0]); // Log the updated record
+
+        // Send success response with the updated recurring request dates
+        res.status(200).json({ message: 'Request updated successfully', record: recurringResult.rows[0] });
     } catch (error) {
+        // Rollback the transaction in case of errors
+        await client.query('ROLLBACK');
         console.error('Error updating request:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
 
 // router.patch('/modify/:requestid', async (req, res) => {
 //     const { requestid } = req.params;
@@ -655,38 +662,6 @@ router.patch('/approve/:requestid', async (req, res) => {
     } catch (error) {
         console.error('Error approving request:', error);
         res.status(500).json({ message: 'Internal server error.' });
-    }
-});
-
-// Get recurring requests by employee IDs with WFH records
-router.get('/by-employee-ids', async (req, res) => {
-    try {
-        const employeeIds = req.query.employeeIds?.split(',');
-
-        if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
-            return res.status(400).json({ message: 'Must provide an array of employee IDs.' });
-        }
-
-        const placeholders = employeeIds.map((_, index) => `$${index + 1}`).join(', ');
-        const recurringQuery = `SELECT * FROM recurring_request WHERE staff_id IN (${placeholders})`;
-
-        const recurringResult = await client.query(recurringQuery, employeeIds);
-        const recurring_request_data = recurringResult.rows;
-
-        const combinedDataPromises = recurring_request_data.map(async (recurringRequest) => {
-            const wfhQuery = `SELECT wfh_date, status FROM wfh_records WHERE requestID = $1`;
-            const wfhResult = await client.query(wfhQuery, [recurringRequest.requestid]);
-            return {
-                ...recurringRequest,
-                wfh_records: wfhResult.rows
-            };
-        });
-
-        const combinedData = await Promise.all(combinedDataPromises);
-        res.status(200).json(combinedData);
-    } catch (error) {
-        console.error('Error retrieving recurring requests by employee IDs:', error);
-        res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
 

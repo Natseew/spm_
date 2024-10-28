@@ -95,9 +95,12 @@ const RecurringSchedule = () => {
     };
 
     const openModifyModal = (data) => {
-        setModifyData(data);
+        let ModifyfilteredDates = [];
+        ModifyfilteredDates = data.wfh_records.map(record => record.wfh_date);
+        setModifyData({ ...data, wfh_dates: ModifyfilteredDates });
         setModifyModalOpen(true);
     };
+    
 
     const closeModifyModal = () => {
         setModifyModalOpen(false);
@@ -249,29 +252,29 @@ const RecurringSchedule = () => {
     };
 
         // handle Cancel
-        const handleCancel = async (requestId) => {
-            console.log(`Canceling request with ID: ${requestId}`);
-            // API call or logic to cancel the request
-            try {
-                const response = await fetch(`${path}recurring_request/withdraw_entire/${requestId}`, {
-                    method: 'PUT',
-                });
+        // const handleCancel = async (requestId) => {
+        //     console.log(`Canceling request with ID: ${requestId}`);
+        //     // API call or logic to cancel the request
+        //     try {
+        //         const response = await fetch(`${path}recurring_request/withdraw-entire/${requestId}`, {
+        //             method: 'PUT',
+        //         });
     
-                if (!response.ok) {
-                    throw new Error('Failed to cancel the request.');
-                }
+        //         if (!response.ok) {
+        //             throw new Error('Failed to cancel the request.');
+        //         }
     
-                const result = await response.json();
-                console.log(result.message);
-                setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
-                setNotification('Cancelled request successfully!');
-                setTimeout(() => setNotification(''), 3000);
-            } catch (error) {
-                console.error('Error during status update:', error);
-                setNotification(`Error  canceling request: ${error.message}`);
-                setTimeout(() => setNotification(''), 3000);
-            }
-        };
+        //         const result = await response.json();
+        //         console.log(result.message);
+        //         setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
+        //         setNotification('Cancelled request successfully!');
+        //         setTimeout(() => setNotification(''), 3000);
+        //     } catch (error) {
+        //         console.error('Error during status update:', error);
+        //         setNotification(`Error  canceling request: ${error.message}`);
+        //         setTimeout(() => setNotification(''), 3000);
+        //     }
+        // };
 
     return (
         <div>
@@ -361,7 +364,7 @@ const RecurringSchedule = () => {
                                         </button>
                                         <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => handleCancel(item.requestid)} // Call cancel handler
+                                            onClick={() => openRejectModal(item)} // cancel button just route to rejectHandler
                                         >
                                             Cancel
                                         </button>

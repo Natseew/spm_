@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 
-// Utility function to format the date from ISO format to DD/MM/YYYY
 const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month, pad it, adding 1 since it's zero-indexed
-    const year = date.getFullYear(); // Get the full year
-    return `${day}/${month}/${year}`; // Return formatted date
+
+    const day = String(date.getUTCDate()).padStart(2, '0'); // Get day in UTC to avoid timezone adjustments
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Get month in UTC, adding 1 since it's zero-indexed
+    const year = date.getUTCFullYear(); // Get the full year in UTC
+    return `${day}/${month}/${year}`; // Return formatted date in DD/MM/YYYY format
 };
 
+
 const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
-    const [selectedDates, setSelectedDates] = useState([]); // Initialized as empty array
+    const [selectedDates, setSelectedDates] = useState([]); // Initialize as empty array
 
     // Use effect to set the selected dates based on incoming data.wfh_dates
     useEffect(() => {
