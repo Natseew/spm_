@@ -219,7 +219,7 @@ const handleReject = async (reqId, reject_reason) => {
         
         setAdhocData(prevData => 
             prevData.map(item => 
-                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reject_reason } : item
             )
         );
 
