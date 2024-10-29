@@ -3,6 +3,7 @@ import AdhocModal from './AdhocModal'; // Make sure to create or import the Moda
 // import CalendarComponent from "@/components/CalendarComponent";
 import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
+import emailjs from '@emailjs/browser';
 
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
@@ -166,6 +167,15 @@ const handleAccept = async (recordID) => {
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
 
+        const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+            user_name: "",
+            recordID: recordID,
+            }, 
+            'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        console.log("Email Updates");
+        console.log('Email sent successfully:', emailResponse);
+
         // Update the state
         setAdhocData(prevData => 
             prevData.map(item => 
@@ -269,6 +279,18 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
 
         // this is the data we can use to format email
         // console.log(updatedData.record);
+
+        // const reqId = 290;
+        const reject_reason = updatedData.record.reject_reason;
+        const emailResponse = await emailjs.send('service_aby0abw', 'template_7x88wcp', {
+            user_name: "",
+            recordID: reqId,
+            reject_reason: reject_reason,
+            }, 
+            'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        console.log("Email Updates");
+        console.log('Email sent successfully:', emailResponse);
         
         setAdhocData(prevData => 
             prevData.map(item => 
