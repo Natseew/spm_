@@ -785,6 +785,14 @@ router.patch('/reject/:id', async (req, res) => {
       if (result.rowCount === 0) {
           return res.status(404).json({ message: 'No records found for the given record ID.' });
       }
+
+        // Log the rejection action (optional)
+        await client.query(
+          `INSERT INTO activitylog (requestid, activity)
+          VALUES ($1, $2);`, // Use parameterized values to prevent SQL injection
+          [requestid, `Rejected Recurring Request: ${reason}`]
+      );
+
       res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
   } catch (error) {
       console.error('Update error:', error);

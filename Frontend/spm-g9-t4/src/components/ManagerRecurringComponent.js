@@ -3,11 +3,12 @@ import RecurringModal from './RecurringModal';
 import HandleReccuringRejectModal from './HandleReccuringRejectModal';
 import Notification from './Notification';
 import ModifyRecurringRequestModal from './ModifyRecurringRequestModal';
+import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal';
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
 const employeeNameid = {};
 const ManagerID = '130002';
-const YZManagerID = '140001';
+// const YZManagerID = '140001';
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -16,6 +17,7 @@ const RecurringSchedule = () => {
     const [employeeIds, setEmployeeIds] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectChangeModalOpen, setRejectChangeModalOpen] = useState(false);
     const [modifyModalOpen, setModifyModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
     const [someData, setSomeData] = useState(null);
@@ -75,8 +77,8 @@ const RecurringSchedule = () => {
     const openRejectModal = (data) => {
         let filteredDates = [];
 
-        if (selectedStatus === 'Pending Change') {
-            filteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
+        if (selectedStatus === 'Pending') {
+            filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
@@ -90,6 +92,28 @@ const RecurringSchedule = () => {
 
     const closeRejectModal = () => {
         setRejectModalOpen(false);
+        setSomeData(null);
+        setModalDates([]);
+    };
+
+    const openRejectChangeModal = (data) => {
+        let filteredDates = [];
+
+        if (selectedStatus === 'Pending Change') {
+            filteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
+        } else if (selectedStatus === 'Pending') {
+            filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
+        } else {
+            filteredDates = data.wfh_records.map(record => record.wfh_date);
+        }
+
+        setSomeData(data);
+        setModalDates(filteredDates);
+        setRejectChangeModalOpen(true);
+    };
+
+    const closeRejectChangeModal = () => {
+        setRejectChangeModalOpen(false);
         setSomeData(null);
         setModalDates([]);
     };
@@ -276,6 +300,94 @@ const RecurringSchedule = () => {
         //     }
         // };
 
+        //Handle Accept
+// Action Handlers
+const handleAccept = async (recordID) => {
+    console.log(`Accepting request with ID: ${recordID}`);
+    try {
+        const response = await fetch(`${path}recurring_request/approve/${recordID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+
+        // Update the state
+        setRecurringData(prevData => 
+            prevData.map(item => 
+                item.recordid === recordID ? { ...item, status: 'Approved' } : item
+            )
+        );
+
+        setNotification('Request accepted successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error accepting request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
+const handleReject = async (recordID) => {
+    console.log(`Accepting request with ID: ${recordID}`);
+    try {
+        const response = await fetch(`${path}recurring_request/reject/${recordID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+
+        // Update the state
+        setRecurringData(prevData => 
+            prevData.map(item => 
+                item.recordid === recordID ? { ...item, status: 'Approved' } : item
+            )
+        );
+
+        setNotification('Request Rejected successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error rejecting request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
     return (
         <div>
             {notification && <Notification message={notification} onClose={() => setNotification('')} />}
@@ -371,7 +483,18 @@ const RecurringSchedule = () => {
                                     </>
                                 )}
                                 {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
-
+                                {item.status === 'Pending Change' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAcceptChange(item.requestid)}>
+                                            Accept
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => openRejectChangeModal(item)}>
+                                            Reject
+                                        </button>
+                                    </>
+                                )}
                             </td>
                         </tr>
                     ))}
@@ -387,7 +510,14 @@ const RecurringSchedule = () => {
             <HandleReccuringRejectModal 
             isOpen={rejectModalOpen} 
             onClose={closeRejectModal} 
-            onReject={handleRejectChange} 
+            onReject={handleReject} 
+            data={someData} dates={modalDates} 
+            />
+
+            <HandleReccuringRejectChangeModal 
+            isOpen={rejectModalOpen} 
+            onClose={closeRejectChangeModal} 
+            onRejectChange={handleRejectChange} 
             data={someData} dates={modalDates} 
             />
 
