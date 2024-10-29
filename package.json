@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "react-calendar": "^5.1.0"
+    "react-calendar": "^5.1.0",
+    "@emailjs/browser": "^4.4.1"
   }
 }

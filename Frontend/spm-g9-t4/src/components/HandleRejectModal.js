@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import emailjs from '@emailjs/browser';
 
 const HandleRejectModal = ({ isOpen, onClose, onReject, data }) => {
     const [reason, setReason] = useState(''); // State for rejection reason
@@ -9,7 +10,28 @@ const HandleRejectModal = ({ isOpen, onClose, onReject, data }) => {
         onReject(data.recordid, reason); // Pass the record ID and reason
         setReason(''); // Clear the input field
         onClose(); // Close the modal after action
+        
     };
+
+    // const handleRejectConfirm = async (e) => {
+    //     e.preventDefault();
+    //     setStatus('Sending...');
+
+    //     try {
+    //         // Call the email sending function
+    //         await emailjs.sendForm('service_aby0abw', 'template_or5vnzs', form.current, {
+    //             publicKey: 'iPUoaKtoJPR3QXdd9',
+    //         });
+
+    //         // Call the rejection logic
+    //         onReject(data.recordid, reason); // Pass the record ID and reason
+    //         setStatus('Email sent successfully!');
+    //         setReason(''); // Clear the input field
+    //         onClose(); // Close the modal after action
+    //     } catch (error) {
+    //         setStatus(`Failed to send: ${error.text}`);
+    //     }
+    // };
     
 
     return (
