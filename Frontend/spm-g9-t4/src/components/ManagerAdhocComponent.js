@@ -172,14 +172,15 @@ const handleAccept = async (recordID) => {
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
 
-        const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
-            user_name: "",
-            recordID: recordID,
-            }, 
-            'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
 
-        console.log("Email Updates");
-        console.log('Email sent successfully:', emailResponse);
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
 
         // Update the state
         setAdhocData(prevData => 
@@ -282,20 +283,21 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
         const updatedData = await response.json();
         console.log('Rejection recorded successfully:', updatedData);
 
+        // COMMENTED OUT - bc of email limits
         // this is the data we can use to format email
         // console.log(updatedData.record);
 
         // const reqId = 290;
-        const reject_reason = updatedData.record.reject_reason;
-        const emailResponse = await emailjs.send('service_aby0abw', 'template_7x88wcp', {
-            user_name: "",
-            recordID: reqId,
-            reject_reason: reject_reason,
-            }, 
-            'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+        // const reject_reason = updatedData.record.reject_reason;
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_7x88wcp', {
+        //     user_name: "",
+        //     recordID: reqId,
+        //     reject_reason: reject_reason,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
 
-        console.log("Email Updates");
-        console.log('Email sent successfully:', emailResponse);
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
         
         setAdhocData(prevData => 
             prevData.map(item => 
