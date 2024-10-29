@@ -1,0 +1,13 @@
+{
+  "staff_schedules": [
+    {
+      "staff_id": 1,
+      "staff_fname": "John",
+      "staff_lname": "Doe",
+      "dept": "Engineering",
+      "wfh_date": "2024-10-29T16:00:00.000Z",
+      "schedule_status": "Full-Day",
+      "reporting_manager": "160008"
+    }
+  ]
+}
