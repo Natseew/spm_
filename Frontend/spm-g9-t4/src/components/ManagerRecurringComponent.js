@@ -7,8 +7,8 @@ import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
 const employeeNameid = {};
-const ManagerID = '130002';
-// const YZManagerID = '140001';
+// const ManagerID = '130002';
+const ManagerID = '140001';
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -88,6 +88,7 @@ const RecurringSchedule = () => {
         setSomeData(data);
         setModalDates(filteredDates);
         setRejectModalOpen(true);
+        setRejectChangeModalOpen(false);  // Ensure change modal is closed
     };
 
     const closeRejectModal = () => {
@@ -110,6 +111,7 @@ const RecurringSchedule = () => {
         setSomeData(data);
         setModalDates(filteredDates);
         setRejectChangeModalOpen(true);
+        setRejectModalOpen(false);  // Ensure reject modal is closed
     };
 
     const closeRejectChangeModal = () => {
@@ -165,6 +167,7 @@ const RecurringSchedule = () => {
 
     const getStaffName = (id) => employeeNameid[Number(id)] || 'Unknown';
 
+    // For pending change functionality
     const handleAcceptChange = async (reqId) => {
         const reqData = RecurringData.find(item => item.requestid === reqId);
 
@@ -300,12 +303,13 @@ const RecurringSchedule = () => {
         //     }
         // };
 
-        //Handle Accept
+//Handle Accept
 // Action Handlers
-const handleAccept = async (recordID) => {
-    console.log(`Accepting request with ID: ${recordID}`);
+// Changed "recordID" to "requestID" to match the API
+const handleAccept = async (requestid) => {
+    console.log(`Accepting request with ID: ${requestid}`);
     try {
-        const response = await fetch(`${path}recurring_request/approve/${recordID}`, {
+        const response = await fetch(`${path}recurring_request/approve/${requestid}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -329,12 +333,22 @@ const handleAccept = async (recordID) => {
         // console.log("Email Updates");
         // console.log('Email sent successfully:', emailResponse);
 
-        // Update the state
+        // Update the status for BOTH recurring request & wfh_records in displayed table
         setRecurringData(prevData => 
             prevData.map(item => 
-                item.recordid === recordID ? { ...item, status: 'Approved' } : item
+                item.requestid === requestid 
+                    ? { 
+                        ...item, 
+                        status: 'Approved', 
+                        wfh_records: item.wfh_records.map(record => ({ 
+                            ...record, 
+                            status: 'Approved' 
+                        })) 
+                    }
+                    : item
             )
         );
+        
 
         setNotification('Request accepted successfully!');
         setTimeout(() => setNotification(''), 3000);
@@ -345,14 +359,16 @@ const handleAccept = async (recordID) => {
     }
 };
 
-const handleReject = async (recordID) => {
-    console.log(`Accepting request with ID: ${recordID}`);
+// Added reason parameter to async function
+const handleReject = async (requestid,reason) => {
+    console.log(`Rejecting request with ID: ${requestid} for reason: ${reason}`);
     try {
-        const response = await fetch(`${path}recurring_request/reject/${recordID}`, {
+        const response = await fetch(`${path}recurring_request/reject/${requestid}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ reason }) 
         });
 
         if (!response.ok) {
@@ -372,10 +388,19 @@ const handleReject = async (recordID) => {
         // console.log("Email Updates");
         // console.log('Email sent successfully:', emailResponse);
 
-        // Update the state
+        // Update the status in displayed table
         setRecurringData(prevData => 
             prevData.map(item => 
-                item.recordid === recordID ? { ...item, status: 'Approved' } : item
+                item.requestid === requestid 
+                    ? { 
+                        ...item, 
+                        status: 'Rejected', // Updates the status of the recurring_request
+                        wfh_records: item.wfh_records.map(record => ({ 
+                            ...record, 
+                            status: 'Rejected' // Updates the status of each corresponding wfh_record
+                        })) 
+                    }
+                    : item
             )
         );
 
@@ -515,7 +540,7 @@ const handleReject = async (recordID) => {
             />
 
             <HandleReccuringRejectChangeModal 
-            isOpen={rejectModalOpen} 
+            isOpen={rejectChangeModalOpen} 
             onClose={closeRejectChangeModal} 
             onRejectChange={handleRejectChange} 
             data={someData} dates={modalDates} 

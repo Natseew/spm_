@@ -166,56 +166,101 @@ router.get('/by-employee-ids', async (req, res) => {
     }
 });
 
-router.post('/approve/:requestid', async (req, res) => {
+
+//  REDUNDANT : ZHEN YUE PLEASE CONFIRM
+// router.post('/approve/:requestid', async (req, res) => {
+//     const { requestid } = req.params;
+//     try {
+//         await client.query('BEGIN');
+//         // Step 1: Update the recurring_request status to 'Approved'
+//         const updateResult = await client.query(
+//             `UPDATE recurring_request
+//              SET status = 'Approved'
+//              WHERE requestid = $1
+//              RETURNING staff_id, wfh_dates, timeslot, request_reason;`,
+//             [requestid]
+//         );
+//         // Check if the request was found
+//         if (updateResult.rowCount === 0) {
+//             return res.status(404).json({ message: 'Request not found' });
+//         }
+//         const { status, staff_id, wfh_dates, timeslot, request_reason } = updateResult.rows[0];
+//         if (status === 'Approved') {
+//             return res.status(400).json({ message: 'Request has already been approved.' });
+//         }
+//         // Adding this part to update all entries with request_id == id in recurring request table
+//         await client.query(
+//             `
+//             UPDATE wfh_records
+//             SET status = 'Approved'
+//             WHERE requestID = $1;
+//             `,
+//             [requestid]
+//         );
+//         await client.query(
+//             `
+//             INSERT INTO activitylog (requestid, activity)
+//             VALUES ($1, 'Approved Recurring Request');
+//             `,
+//             [requestid]
+//         );
+//         // Removed because functionality is transferred to when request is made
+//         // //Step 2: Insert into wfh_records for each date in wfh_dates
+//         // await client.query(
+//         //     `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
+//         //      SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Approved', $4, $5, CURRENT_DATE;`,
+//         //     [staff_id, wfh_dates, timeslot, request_reason, requestid]
+//         // );
+//         await client.query('COMMIT');
+//         // Send a success response
+//         res.status(200).json({ message: 'Request approved and WFH records created successfully.' });
+//     } catch (error) {
+//         await client.query('ROLLBACK');
+//         console.error('Error approving request:', error);
+//         res.status(500).json({ message: 'Internal server error. ' + error.message });
+//     }
+// });
+
+
+// Route to approve a recurring request
+// Need add : check if <50% in office and prompt manager for confirmation to overide the limit
+router.patch('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
+
     try {
         await client.query('BEGIN');
-        // Step 1: Update the recurring_request status to 'Approved'
-        const updateResult = await client.query(
-            `UPDATE recurring_request
-             SET status = 'Approved'
-             WHERE requestid = $1
-             RETURNING staff_id, wfh_dates, timeslot, request_reason;`,
-            [requestid]
-        );
-        // Check if the request was found
-        if (updateResult.rowCount === 0) {
-            return res.status(404).json({ message: 'Request not found' });
+        // Update recurring request status to 'Approved'
+        const recurringRequestResult = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Approved'
+            WHERE requestid = $1
+            RETURNING *;
+        `, [requestid]);
+
+        if (recurringRequestResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Recurring request not found' });
         }
-        const { status, staff_id, wfh_dates, timeslot, request_reason } = updateResult.rows[0];
-        if (status === 'Approved') {
-            return res.status(400).json({ message: 'Request has already been approved.' });
-        }
-        // Adding this part to update all entries with request_id == id in recurring request table
-        await client.query(
-            `
+
+        // Update corresponding wfh_records status to 'Approved'
+        const wfhRecordsResult = await client.query(`
             UPDATE wfh_records
             SET status = 'Approved'
-            WHERE requestID = $1;
-            `,
-            [requestid]
-        );
-        await client.query(
-            `
-            INSERT INTO activitylog (requestid, activity)
-            VALUES ($1, 'Approved Recurring Request');
-            `,
-            [requestid]
-        );
-        // Removed because functionality is transferred to when request is made
-        // //Step 2: Insert into wfh_records for each date in wfh_dates
-        // await client.query(
-        //     `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
-        //      SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Approved', $4, $5, CURRENT_DATE;`,
-        //     [staff_id, wfh_dates, timeslot, request_reason, requestid]
-        // );
+            WHERE requestid = $1
+            RETURNING *;
+        `, [requestid]);
+
         await client.query('COMMIT');
-        // Send a success response
-        res.status(200).json({ message: 'Request approved and WFH records created successfully.' });
+
+        res.status(200).json({
+            message: 'Request and corresponding WFH records approved successfully',
+            recurringRequest: recurringRequestResult.rows[0],
+            wfhRecords: wfhRecordsResult.rows
+        });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error approving request:', error);
-        res.status(500).json({ message: 'Internal server error. ' + error.message });
+        res.status(500).json({ message: 'Internal server error.' });
     }
 });
 
@@ -224,44 +269,64 @@ router.post('/approve/:requestid', async (req, res) => {
 // withdraw entire recurring request
 // Reject a recurring request
 router.patch('/reject/:requestid', async (req, res) => {
-    const { requestid } = req.params; // Extract request ID from the URL
-    const { reason } = req.body; // Extract reason from the request body
+    const { requestid } = req.params; 
+    const { reason } = req.body; 
 
     // Validate input
     if (!reason || typeof reason !== 'string') {
         return res.status(400).json({ message: 'Invalid rejection reason' });
     }
-  
-    try {
-        // Update the status of the recurring request to 'Rejected' and set the rejection reason
-        const result = await client.query(`
-            UPDATE recurring_request
-            SET status = 'Rejected', reject_reason = $1
-            WHERE requestid = $2
-            RETURNING *;`,
-            [reason, requestid]
-        );
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Request not found' });
+    try {
+        await client.query('BEGIN');
+        // Update status in recurring request to 'Rejected'
+        const recurringRequestResult = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Rejected', reject_reason = $2
+            WHERE requestid = $1
+            RETURNING *;
+        `, [requestid, reason]);
+
+        if (recurringRequestResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Recurring request not found' });
         }
 
-        // Log the rejection action (optional)
-        await client.query(
-            `INSERT INTO activitylog (requestid, activity)
-            VALUES ($1, $2);`, // Use parameterized values to prevent SQL injection
-            [requestid, `Rejected Recurring Request: ${reason}`]
-        );
+        // Update status in wfh_records to 'Rejected'
+        const wfhRecordsResult = await client.query(`
+            UPDATE wfh_records
+            SET status = 'Rejected', reject_reason = $2
+            WHERE requestid = $1
+            RETURNING recordID;
+        `, [requestid, reason]);
 
-        // Return success response
-        res.status(200).json({ message: 'Recurring request rejected successfully', record: result.rows[0] });
+        // Log rejection in ActivityLog
+        const logPromises = wfhRecordsResult.rows.map(({ recordid }) => {
+            return client.query(`
+                INSERT INTO activitylog (requestid, recordid, activity, timestamp)
+                VALUES ($1, $2, $3, NOW())
+                RETURNING *;
+            `, [requestid, recordid, `Rejected recurring request: ${reason}`]);
+        });
+        
+        const activityLogResults = await Promise.all(logPromises);
+
+        await client.query('COMMIT');
+
+        // Return success response with updated information
+        res.status(200).json({
+            message: 'Request and corresponding WFH records rejected successfully',
+            recurringRequest: recurringRequestResult.rows[0],
+            wfhRecords: wfhRecordsResult.rows,
+            activityLogs: activityLogResults.map(result => result.rows[0])
+        });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error rejecting recurring request:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
-  });
-  
-  
+});
+
 
 // Withdraw a date from a recurring WFH request
 router.post('/withdraw_recurring_wfh', async (req, res) => {
@@ -641,30 +706,7 @@ router.patch('/modify/:requestid', async (req, res) => {
 //     }
 // });
 
-// Route to approve a recurring request
-router.patch('/approve/:requestid', async (req, res) => {
-    const { requestid } = req.params;
 
-    try {
-        // Update the status of the recurring request to 'Approved'
-        const result = await client.query(`
-            UPDATE recurring_request
-            SET status = 'Approved'
-            WHERE requestid = $1
-            RETURNING *;`,
-            [requestid]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Request not found' });
-        }
-
-        res.status(200).json({ message: 'Request approved successfully', record: result.rows[0] });
-    } catch (error) {
-        console.error('Error approving request:', error);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
-});
 
 
 module.exports = router;
