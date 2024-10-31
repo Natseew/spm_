@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import axios from 'axios';
 import { uuid } from 'uuidv4';
 import dayjs from 'dayjs';  // For date formatting
+import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 export default function Page() {
   const [events, setEvents] = useState([
@@ -86,13 +87,16 @@ export default function Page() {
   })
 
   return (
-    <Scheduler
-      locale="en"
-      events={events}
-      legacyStyle={false}
-      options={state?.options}
-      user="Current"
-      toolbarProps={state?.toolbarProps}
-    />
+    <>
+      <Navbar></Navbar>
+      <Scheduler
+        locale="en"
+        events={events}
+        legacyStyle={false}
+        options={state?.options}
+        user="Current"
+        toolbarProps={state?.toolbarProps}
+      />
+    </>
   )
 }
