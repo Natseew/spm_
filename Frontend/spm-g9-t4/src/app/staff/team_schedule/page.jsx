@@ -9,6 +9,7 @@ import 'react-date-range/dist/theme/default.css';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { DataGrid } from '@mui/x-data-grid';
+import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 export default function Page() {
 const [staffData, setStaffData] = useState([]);
@@ -103,6 +104,7 @@ const [loading, setLoading] = useState(true)
   return (
   <>
     <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px'}}>
+      <Navbar></Navbar>
       <Box sx={{ marginBottom: '20px', width: '200px' }}>
         <DateRange
           ranges={dateRange}
