@@ -368,8 +368,6 @@ router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
 });
 
 
-
-
 // Route to submit a WFH ad-hoc request
 router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, reason } = req.body;
@@ -384,8 +382,8 @@ router.post('/wfh_adhoc_request', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields.' });
     }
 
-    // Ensure sched_date only contains the date part
-    const formattedSchedDate = new Date(sched_date).toISOString().split('T')[0];
+    // Use sched_date directly as formatted in the frontend to avoid timezone shifts
+    const formattedSchedDate = sched_date; 
 
     // Check if a request for the same date already exists with a non-rejected status
     const existingRequest = await client.query(
@@ -403,7 +401,7 @@ router.post('/wfh_adhoc_request', async (req, res) => {
       });
     }
 
-    // Get the reporting manager ID for the staff
+    // Retrieve reporting manager ID for the staff
     const managerResult = await client.query(
       `SELECT Reporting_Manager FROM Employee WHERE Staff_ID = $1`,
       [staff_id]
@@ -415,8 +413,6 @@ router.post('/wfh_adhoc_request', async (req, res) => {
     }
 
     const reportingManagerId = managerResult.rows[0].reporting_manager;
-
-    // Determine the initial status as 'Pending'
     let status = 'Pending';
 
     // Check if approving this request would cause more than 50% of the team to be WFH
@@ -437,17 +433,14 @@ router.post('/wfh_adhoc_request', async (req, res) => {
     );
     const teamWfh = parseInt(teamWfhResult.rows[0].team_wfh, 10);
 
-    const newWfhCount = teamWfh + 1;
-    const wfhFraction = newWfhCount / totalTeam;
-
-    if (wfhFraction > 0.5) {
+    if ((teamWfh + 1) / totalTeam > 0.5) {
       await client.query('ROLLBACK');
       return res.status(403).json({
         message: 'WFH request denied. More than 50% of the team would be WFH on this date.',
       });
     }
 
-    // Insert into wfh_records table with the date-only wfh_date
+    // Insert WFH request record with date-only formatted wfh_date
     const wfhRecordResult = await client.query(
       `
       INSERT INTO wfh_records (
@@ -461,7 +454,7 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     const recordID = wfhRecordResult.rows[0].recordid;
 
-    // Insert into ActivityLog with "New Request" activity
+    // Log activity with "New Request"
     await client.query(
       `
       INSERT INTO ActivityLog (recordID, activity)
@@ -475,7 +468,7 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     res.status(201).json({ message: 'WFH request submitted successfully', recordID });
   } catch (error) {
-    // Rollback transaction in case of any error
+    // Rollback transaction in case of error
     await client.query('ROLLBACK');
     console.error('Error submitting WFH request:', error);
     res.status(500).json({ message: 'Internal server error.' });
@@ -511,7 +504,7 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
 
 
 // Withdraw an ad-hoc WFH request
-router.post('/withdraw_wfh', async (req, res) => {
+router.post('/withdraw_adhoc_wfh', async (req, res) => {
   const { recordID, reason,staff_id} = req.body;
 
   try {
@@ -614,15 +607,16 @@ router.post('/change_adhoc_wfh', async (req, res) => {
       return res.status(400).json({ message: 'Invalid request status for change.' });
     }
 
+    // Ensure new_wfh_date is in the correct format and valid
     const formattedNewWfhDate = new Date(new_wfh_date);
-    if (isNaN(formattedNewWfhDate.getTime())) {
+    if (isNaN(formattedNewWfhDate.getTime()) || new_wfh_date.length !== 10) {
       console.error(`Invalid date format for new WFH date: ${new_wfh_date}`);
       await client.query('ROLLBACK');
-      return res.status(400).json({ message: 'Invalid new WFH date provided.' });
+      return res.status(400).json({ message: 'Invalid new WFH date provided. Use format YYYY-MM-DD.' });
     }
 
     const newStatus = currentStatus === "Pending" ? "Pending" : "Pending Change";
-    console.log(`Updating WFH record status to ${newStatus} and date to ${formattedNewWfhDate}`);
+    console.log(`Updating WFH record status to ${newStatus} and date to ${new_wfh_date}`);
 
     // Update the wfh_records table with the new status and date
     const updateResult = await client.query(
@@ -630,7 +624,7 @@ router.post('/change_adhoc_wfh', async (req, res) => {
        SET status = $1, wfh_date = $2 
        WHERE recordID = $3 
        RETURNING *`,
-      [newStatus, formattedNewWfhDate, recordID]
+      [newStatus, new_wfh_date, recordID]
     );
 
     if (updateResult.rows.length === 0) {
@@ -640,15 +634,12 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     }
 
     const formattedCurrentWfhDateString = currentWfhDate.toISOString().split('T')[0];
-    const formattedNewWfhDateString = formattedNewWfhDate.toISOString().split('T')[0];
-    console.log(`Logging activity with current date ${formattedCurrentWfhDateString} and new date ${formattedNewWfhDateString}`);
-
     const activityLog = {
       Staff_id: staff_id,
       Action: newStatus === "Pending Change" ? "Pending Change" : "Changed",
       Reason: reason,
       CurrentWFHDate: formattedCurrentWfhDateString,
-      NewWFHDate: formattedNewWfhDateString,
+      NewWFHDate: new_wfh_date, // Using the exact date format as provided
     };
 
     await client.query(
