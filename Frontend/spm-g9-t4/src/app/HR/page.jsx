@@ -177,100 +177,99 @@ const HRPage = () => {
   const { officeStaff, homeStaff, totalEmployeeCount } = calculateStaffCounts(selectedDate);
 
   return (
-  <div>
-    <Box sx={{ padding: '20px' }}>
-      {error && (
-        <Alert severity="error" sx={{ marginBottom: '20px' }}>
-          {error.split('.').map((msg, index) => (
-            <div key={index}>{msg.trim()}.</div>
-          ))}
-        </Alert>
-      )}
+    <div>
+      <Box sx={{ padding: '20px' }}>
+        {error && (
+          <Alert severity="error" sx={{ marginBottom: '20px' }}>
+            {error.split('.').map((msg, index) => (
+              <div key={index}>{msg.trim()}.</div>
+            ))}
+          </Alert>
+        )}
 
-      <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
-        <Typography variant="h6" sx={{ marginBottom: '10px' }}>SESSION</Typography>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedSessions.AM}
-              onChange={handleSessionChange}
-              name="AM"
-              color="primary"
-            />
-          }
-          label="AM"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedSessions.PM}
-              onChange={handleSessionChange}
-              name="PM"
-              color="primary"
-            />
-          }
-          label="PM"
-        />
-      </Paper>
-
-      <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
-        <Typography variant="h6" sx={{ marginBottom: '10px' }}>DEPARTMENT</Typography>
-        {departments.map((dept) => (
+        <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
+          <Typography variant="h6" sx={{ marginBottom: '10px' }}>SESSION</Typography>
           <FormControlLabel
-            key={dept}
             control={
               <Checkbox
-                value={dept}
-                checked={selectedDepartments.includes(dept)}
-                onChange={handleDepartmentChange}
-                sx={{ color: '#4caf50', '&.Mui-checked': { color: '#4caf50' } }}
+                checked={selectedSessions.AM}
+                onChange={handleSessionChange}
+                name="AM"
+                color="primary"
               />
             }
-            label={dept}
+            label="AM"
           />
-        ))}
-      </Paper>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={selectedSessions.PM}
+                onChange={handleSessionChange}
+                name="PM"
+                color="primary"
+              />
+            }
+            label="PM"
+          />
+        </Paper>
 
-      <DateRange
-        ranges={dateRange}
-        onChange={(ranges) => setDateRange([ranges.selection])}
-      />
-
-      <Button 
-        variant="contained" 
-        color="primary" 
-        onClick={fetchStaffSchedule}
-        sx={{ marginBottom: '20px' }}
-      >
-        {loading ? <CircularProgress size={24} /> : 'Submit'}
-      </Button>
-
-      <Box sx={{ marginBottom: '20px', width: '200px' }}>
-        <Typography variant="h6" sx={{ marginBottom: '10px' }}>Filter by Date</Typography>
-        <Select
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          fullWidth
-          className="date-filter-select"  // Add className here
-          data-testid="date-filter-select" // Or add data-testid for more specificity in testing
-        >
-          {Object.keys(staffSchedules).map(date => (
-            <MenuItem key={date} value={date}>
-              {date}
-            </MenuItem>
+        <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
+          <Typography variant="h6" sx={{ marginBottom: '10px' }}>DEPARTMENT</Typography>
+          {departments.map((dept) => (
+            <FormControlLabel
+              key={dept}
+              control={
+                <Checkbox
+                  value={dept}
+                  checked={selectedDepartments.includes(dept)}
+                  onChange={handleDepartmentChange}
+                  sx={{ color: '#4caf50', '&.Mui-checked': { color: '#4caf50' } }}
+                />
+              }
+              label={dept}
+            />
           ))}
-        </Select>
+        </Paper>
+
+        <DateRange
+          ranges={dateRange}
+          onChange={(ranges) => setDateRange([ranges.selection])}
+        />
+
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={fetchStaffSchedule}
+          sx={{ marginBottom: '20px' }}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Submit'}
+        </Button>
+
+        <Box sx={{ marginBottom: '20px', width: '200px' }}>
+          <Typography variant="h6" sx={{ marginBottom: '10px' }}>Filter by Date</Typography>
+          <Select
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            fullWidth
+            className="date-filter-select"
+            data-testid="date-filter-select"
+          >
+            {Object.keys(staffSchedules).map(date => (
+              <MenuItem key={date} value={date}>
+                {date}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+
+        {!loading && (
+          <>
+            <StaffCountBox officeCount={officeStaff} homeCount={homeStaff} totalEmployees={totalEmployeeCount} />
+            <StaffListTable staffDataForDate={staffSchedules[selectedDate]} />
+          </>
+        )}
       </Box>
-
-
-      {!loading && (
-        <>
-          <StaffCountBox officeCount={officeStaff} homeCount={homeStaff} totalEmployees={totalEmployeeCount} />
-          <StaffListTable staffDataForDate={staffSchedules[selectedDate]} />
-        </>
-      )}
-    </Box>
-  
+    </div> 
   );
 };
 
