@@ -9,11 +9,10 @@ import { DateRange } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import dayjs from 'dayjs';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'; 
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 
 dayjs.extend(isSameOrBefore);
 
-// Define StaffCountBox component
 const StaffCountBox = ({ officeCount, homeCount, totalEmployees }) => (
   <Paper elevation={3} sx={{ padding: '20px', borderRadius: '10px', backgroundColor: '#f5f5f5' }}>
     <Typography variant="h5" align="center">Staff Count for Selected Date</Typography>
@@ -34,7 +33,6 @@ const StaffCountBox = ({ officeCount, homeCount, totalEmployees }) => (
   </Paper>
 );
 
-// Get status label based on schedule status
 const getStatusLabel = (scheduleStatus) => {
   switch (scheduleStatus) {
     case 'AM':
@@ -100,9 +98,8 @@ const HRPage = () => {
   const [employeeCount, setEmployeeCount] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(""); 
+  const [selectedDate, setSelectedDate] = useState("");
 
-  // Handle department checkbox change
   const handleDepartmentChange = (event) => {
     const { value, checked } = event.target;
     setSelectedDepartments((prev) =>
@@ -110,13 +107,11 @@ const HRPage = () => {
     );
   };
 
-  // Handle session change (AM/PM)
   const handleSessionChange = (event) => {
     const { name, checked } = event.target;
     setSelectedSessions((prev) => ({ ...prev, [name]: checked }));
   };
 
-  // Validation to check if at least one session is selected
   const validateSessionSelection = () => {
     return selectedSessions.AM || selectedSessions.PM;
   };
@@ -124,32 +119,28 @@ const HRPage = () => {
   const fetchStaffSchedule = async () => {
     if (!validateSessionSelection()) {
       setError('Please select at least one session (AM or PM).');
-      return; // Do not proceed with submission
+      return;
     }
-  
+
     try {
-      setError(''); // Clear error message
+      setError('');
       setLoading(true);
       const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
       const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
-  
-      // Fetch the staff schedules from the backend
+
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedStartDate}/${formattedEndDate}`);
-      
-      console.log('API Response:', response.data); // Log the API response
-  
       const schedules = response.data.staff_schedules || {};
       const employeeCount = response.data.total_employees || [];
-    
+
       setEmployeeCount(employeeCount);
       setStaffSchedules(schedules);
-  
+
       const availableDates = Object.keys(schedules);
       if (availableDates.length > 0) {
         setSelectedDate(availableDates[0]);
       }
-  
+
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
       setError('Error fetching staff schedule');
@@ -157,7 +148,7 @@ const HRPage = () => {
       setLoading(false);
     }
   };
-  
+
   const calculateStaffCounts = (selectedDate) => {
     const filteredData = staffSchedules[selectedDate] || [];
     const homeStaff = filteredData.filter(staff => staff.schedule_status !== 'Office').length;
@@ -178,6 +169,7 @@ const HRPage = () => {
 
   return (
     <div>
+      <Navbar /> {/* Added Navbar here */}
       <Box sx={{ padding: '20px' }}>
         {error && (
           <Alert severity="error" sx={{ marginBottom: '20px' }}>
@@ -186,74 +178,34 @@ const HRPage = () => {
             ))}
           </Alert>
         )}
-
         <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
           <Typography variant="h6" sx={{ marginBottom: '10px' }}>SESSION</Typography>
           <FormControlLabel
-            control={
-              <Checkbox
-                checked={selectedSessions.AM}
-                onChange={handleSessionChange}
-                name="AM"
-                color="primary"
-              />
-            }
+            control={<Checkbox checked={selectedSessions.AM} onChange={handleSessionChange} name="AM" color="primary" />}
             label="AM"
           />
           <FormControlLabel
-            control={
-              <Checkbox
-                checked={selectedSessions.PM}
-                onChange={handleSessionChange}
-                name="PM"
-                color="primary"
-              />
-            }
+            control={<Checkbox checked={selectedSessions.PM} onChange={handleSessionChange} name="PM" color="primary" />}
             label="PM"
           />
         </Paper>
-
         <Paper elevation={3} sx={{ padding: '20px', marginBottom: '20px' }}>
           <Typography variant="h6" sx={{ marginBottom: '10px' }}>DEPARTMENT</Typography>
           {departments.map((dept) => (
             <FormControlLabel
               key={dept}
-              control={
-                <Checkbox
-                  value={dept}
-                  checked={selectedDepartments.includes(dept)}
-                  onChange={handleDepartmentChange}
-                  sx={{ color: '#4caf50', '&.Mui-checked': { color: '#4caf50' } }}
-                />
-              }
+              control={<Checkbox value={dept} checked={selectedDepartments.includes(dept)} onChange={handleDepartmentChange} />}
               label={dept}
             />
           ))}
         </Paper>
-
-        <DateRange
-          ranges={dateRange}
-          onChange={(ranges) => setDateRange([ranges.selection])}
-        />
-
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={fetchStaffSchedule}
-          sx={{ marginBottom: '20px' }}
-        >
+        <DateRange ranges={dateRange} onChange={(ranges) => setDateRange([ranges.selection])} />
+        <Button variant="contained" color="primary" onClick={fetchStaffSchedule} sx={{ marginBottom: '20px' }}>
           {loading ? <CircularProgress size={24} /> : 'Submit'}
         </Button>
-
         <Box sx={{ marginBottom: '20px', width: '200px' }}>
           <Typography variant="h6" sx={{ marginBottom: '10px' }}>Filter by Date</Typography>
-          <Select
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            fullWidth
-            className="date-filter-select"
-            data-testid="date-filter-select"
-          >
+          <Select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} fullWidth>
             {Object.keys(staffSchedules).map(date => (
               <MenuItem key={date} value={date}>
                 {date}
@@ -261,7 +213,6 @@ const HRPage = () => {
             ))}
           </Select>
         </Box>
-
         {!loading && (
           <>
             <StaffCountBox officeCount={officeStaff} homeCount={homeStaff} totalEmployees={totalEmployeeCount} />
