@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Navbar from '../../components/Navbar';
 import { Grid, Typography, Box, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, Paper, Button, Alert, CircularProgress, MenuItem, Select } from '@mui/material';
 import Link from 'next/link';
 import axios from 'axios';
@@ -176,6 +177,7 @@ const HRPage = () => {
   const { officeStaff, homeStaff, totalEmployeeCount } = calculateStaffCounts(selectedDate);
 
   return (
+  <div>
     <Box sx={{ padding: '20px' }}>
       {error && (
         <Alert severity="error" sx={{ marginBottom: '20px' }}>
@@ -268,6 +270,7 @@ const HRPage = () => {
         </>
       )}
     </Box>
+  
   );
 };
 
