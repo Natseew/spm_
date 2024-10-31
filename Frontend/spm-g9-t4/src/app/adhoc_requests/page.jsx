@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Paper,
@@ -43,21 +43,22 @@ export default function PendingRequests() {
       if (storedUser) {
         setUser(storedUser);
         setStaffId(storedUser.staff_id);
+        console.log(user);
       } else {
         router.push("/");
       }
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (staffId !== null) {
       fetchAdhocRequests();
       fetchApprovedPendingDates();
     }
-  }, [staffId]);
+  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
 
   // Fetch Ad-Hoc requests from the backend
-  const fetchAdhocRequests = async () => {
+  const fetchAdhocRequests = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:4000/wfh_records`);
       const data = await response.json();
@@ -68,10 +69,10 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching ad-hoc requests:", error);
     }
-  };
+  },[staffId]);
 
   // Fetch approved and pending WFH dates
-  const fetchApprovedPendingDates = async () => {
+  const fetchApprovedPendingDates = useCallback(async () => {
     try {
       const response = await fetch(
         `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
@@ -86,7 +87,7 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching approved and pending dates:", error);
     }
-  };
+  },[staffId]);
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -122,6 +123,9 @@ export default function PendingRequests() {
       return;
     }
 
+    // Format the selected date as YYYY-MM-DD
+    const formattedDate = selectedDate.toISOString().split("T")[0];
+
     try {
       const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
         method: "POST",
@@ -130,7 +134,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           recordID: selectedRecordId,
-          new_wfh_date: selectedDate,
+          new_wfh_date: formattedDate, // Send only the date in YYYY-MM-DD format
           reason,
           staff_id: staffId,
         }),
@@ -161,7 +165,7 @@ export default function PendingRequests() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_wfh`, {
+      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_adhoc_wfh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
