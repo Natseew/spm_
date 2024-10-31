@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 
 const Navbar = () => {
@@ -31,7 +30,7 @@ const Navbar = () => {
               setUserType("Staff");
               break;
             default:
-              setUserType("User");
+              setUserType("Staff");
           }
         } else {
           // Redirect to login only if no valid user data is found
@@ -69,28 +68,26 @@ const Navbar = () => {
     if (userType === "HR") {
       links = [
         { href: '/HR', label: 'HR Home' },
-        { href: '/TeamScheduleHR', label: 'HR Scheduler' }
+        { href: '/manager-view', label: 'Manager View' },
+        { href: '/staff', label: 'Own Schedule' },
+        { href: '/staff/team_schedule', label: 'Team Schedule' },
+        { href: '/adhoc_requests', label: 'View Requests' },
+        { href: '/adhoc_application', label: 'WFH Application' },
       ];
     } else if (userType === "Manager") {
       links = [
         { href: '/manager-view', label: 'Manager View' },
-        { href: '/request_view', label: 'Request View' },
-        { href: '/recurring_requests', label: 'Recurring Request' },
         { href: '/staff', label: 'Own Schedule' },
         { href: '/staff/team_schedule', label: 'Team Schedule' },
-        { href: '/WFH_Application', label: 'WFH Application' },
-        { href: '/adhoc_requests', label: 'View Ad-Hoc Requests' },
-        { href: '/recurring_requests', label: 'View Recurring Requests' },
-        { href: '/recurring_arrangement_application', label: 'Recurring Application' }
+        { href: '/adhoc_requests', label: 'View Requests' },
+        { href: '/adhoc_application', label: 'WFH Application' },
       ];
     } else if (userType === "Staff") {
       links = [
         { href: '/staff', label: 'Own Schedule' },
         { href: '/staff/team_schedule', label: 'Team Schedule' },
-        { href: '/WFH_Application', label: 'WFH Application' },
-        { href: '/adhoc_requests', label: 'View Ad-Hoc Requests' },
-        { href: '/recurring_requests', label: 'View Recurring Requests' },
-        { href: '/recurring_arrangement_application', label: 'Recurring Application' }
+        { href: '/adhoc_requests', label: 'View Requests' },
+        { href: '/adhoc_application', label: 'WFH Application' },
       ];
     }
 
@@ -108,7 +105,6 @@ const Navbar = () => {
   return (
     <nav style={styles.navbar}>
       <div style={styles.logoContainer}>
-        <Image src="/logo.png" alt="Company Logo" width={50} height={30} /> {/* Logo set to 50x30 */}
         <h2 style={styles.logoText}>{getTitle()}</h2>
       </div>
       <div style={styles.linksContainer}>{renderLinks()}</div>
