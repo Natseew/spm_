@@ -23,13 +23,14 @@ const AdHocSchedule = () => {
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
-    
+    const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL)
+
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
         const fetchEmployeeAndAdhocData = async () => {
             try {
                 // Step 1: Fetch employee IDs based on the manager ID
-                const idResponse = await fetch(`http://localhost:4000/employee/by-manager/${ManagerID}`); // Replace with actual managerId
+                const idResponse = await fetch(`${path}employee/by-manager/${ManagerID}`); // Replace with actual managerId
                 if (!idResponse.ok) {
                     throw new Error(`Error fetching employee IDs: ${idResponse.status}`);
                 }
@@ -46,7 +47,7 @@ const AdHocSchedule = () => {
                 console.log("Employee ID to Name Mapping:", employeeNameid);
 
                 // Step 2: Use these employee IDs to fetch WFH records
-                const wfhResponse = await fetch('http://localhost:4000/wfh_records/by-employee-ids', {
+                const wfhResponse = await fetch(`${path}wfh_records/by-employee-ids`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -80,6 +81,10 @@ const AdHocSchedule = () => {
             console.log('Adhoc Data after update:', adhocData);
         }
     }, [adhocData]); // This will run every time adhocData is updated
+
+    useEffect(() => {
+        console.log('path', path);
+    }, [path]); // Monitor RecurringData changes
 
     // Modals Opening and Closing
     const openRejectModal = (data) => {
@@ -141,7 +146,7 @@ const AdHocSchedule = () => {
 const handleAccept = async (recordID) => {
     console.log(`Accepting request with ID: ${recordID}`);
     try {
-        const response = await fetch(`http://localhost:4000/wfh_records/accept/${recordID}`, {
+        const response = await fetch(`${path}wfh_records/accept/${recordID}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -172,16 +177,15 @@ const handleAccept = async (recordID) => {
 };
 
 // Handle Rejection Button
-
-const handleReject = async (reqId, reason) => {
-    console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+const handleReject = async (reqId, reject_reason) => {
+    console.log(`Rejecting request with ID: ${reqId} for reason: ${reject_reason}`);
     try {
-        const response = await fetch(`http://localhost:4000/wfh_records/reject/${reqId}`, {
+        const response = await fetch(`${path}wfh_records/reject/${reqId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ reason }), // Send the reason in the request body
+            body: JSON.stringify({ reject_reason }), // Send the reason in the request body
         });
 
         if (!response.ok) {
@@ -208,7 +212,7 @@ const handleReject = async (reqId, reason) => {
 const handleAcceptWithdraw = async (recordID) => {
     console.log(`Accepting request with ID: ${recordID}`);
     try {
-        const response = await fetch(`http://localhost:4000/wfh_records/acceptwithdrawal/${recordID}`, {
+        const response = await fetch(`${path}wfh_records/acceptwithdrawal/${recordID}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -240,40 +244,6 @@ const handleAcceptWithdraw = async (recordID) => {
 
 
 
-
-// Handle Reject Withdrawal
-// const handleRejectWithdraw = async (reqId, reason) => {
-//     console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
-//     try {
-//         const response = await fetch(`http://localhost:4000/wfh_records/rejectwithdrawal/${reqId}`, {
-//             method: 'PATCH',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify({ reason }), // Send the reason in the request body
-//         });
-
-//         if (!response.ok) {
-//             throw new Error(`Error rejecting request: ${response.status}`);
-//         }
-
-//         const updatedData = await response.json();
-//         console.log('Withdrawal Revoked recorded successfully:', updatedData);
-        
-//         setAdhocData(prevData => 
-//             prevData.map(item => 
-//                 item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
-//             )
-//         );
-
-//         setNotification('Request rejected!');
-//         setTimeout(() => setNotification(''), 3000);
-//     } catch (error) {
-//         console.error('Error during rejection update:', error);
-//     }
-// };
-
-
 // Handling modal for reject action
 const handleRejectOpen = (data) => {
     openRejectModal(data);
@@ -283,7 +253,7 @@ const handleRejectOpen = (data) => {
 const handleCancel = async (recordID) => {
     console.log(`Accepting request with ID: ${recordID}`);
     try {
-        const response = await fetch(`http://localhost:4000/wfh_records/cancel/${recordID}`, {
+        const response = await fetch(`${path}wfh_records/cancel/${recordID}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

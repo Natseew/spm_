@@ -14,16 +14,15 @@ const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) 
         );
     };
 
-    // Helper function to format dates to DD/MM/YYYY
     const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+        const [year, month, day] = dateString.split('T')[0].split('-');
+        return `${day}/${month}/${year}`;
     };
+    
 
     const handleRejectConfirm = () => {
-        onReject(data.recordid, reason, selectedDates); // Pass the record ID, reason, and selected dates
+        onReject(data.requestid, reason); // Pass only the record ID and reason
         setReason(''); // Clear the input field
-        setSelectedDates([]); // Clear selected dates
         onClose(); // Close the modal after action
     };
     
@@ -47,18 +46,19 @@ const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) 
                 </div>
                 
                 {/* Checkbox for dates */}
+                
                 <div className="mt-4">
-                    <h3 className="font-semibold mb-2">Select Dates:</h3>
+                    {/* <h3 className="font-semibold mb-2">Select Dates:</h3> */}
                     {dates.map((date) => (
                         <div key={date} className="flex items-center">
-                            <input 
+                            {/* <input 
                                 type="checkbox" 
                                 id={date} 
                                 checked={selectedDates.includes(date)} 
                                 onChange={() => handleDateChange(date)} 
                                 className="mr-2"
                             />
-                            <label htmlFor={date}>{formatDate(date)}</label> {/* Format the date for display */}
+                            <label htmlFor={date}>{formatDate(date)}</label>  */}
                         </div>
                     ))}
                 </div>
