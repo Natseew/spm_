@@ -3,9 +3,7 @@
 import React, {useState} from 'react'
 import axios from 'axios';
 import { useRouter } from 'next/navigation'
-import Snackbar, { SnackbarCloseReason } from '@mui/material/Snackbar';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
+import Snackbar from '@mui/material/Snackbar';
 require('dotenv').config();
 
 
@@ -18,8 +16,6 @@ export default function MyApp() {
     password: ""
   })
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [open, setOpen] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const [snackColor, setSnackColor] = React.useState("");
@@ -52,12 +48,6 @@ export default function MyApp() {
         router.push('/staff')
         snackBar("Success", "green");
       }
-      else if (response.data[0].role == "3") {
-    
-        router.push('/staff'); 
-      }
-
-
     })
     .catch(error => {
       // Handle error
