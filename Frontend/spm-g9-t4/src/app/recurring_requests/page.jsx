@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Navbar from '../../components/Navbar';
 import {
   Typography,
   Paper,
@@ -20,6 +21,7 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function PendingRequests() {
   const [recurringRequests, setRecurringRequests] = useState([]);
@@ -52,7 +54,7 @@ export default function PendingRequests() {
   useEffect(() => {
     const fetchRecurringRequests = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/recurring_request`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request`);
         const data = await response.json();
 
         // Filter data by staffId on the frontend and sort by requestid in descending order
@@ -73,7 +75,7 @@ export default function PendingRequests() {
   useEffect(() => {
     const fetchWfhRecords = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/wfh_records/`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/`);
         const data = await response.json();
         setWfhRecords(data); // Store all records
       } catch (error) {
@@ -112,7 +114,7 @@ export default function PendingRequests() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/withdraw_recurring_request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,6 +170,7 @@ export default function PendingRequests() {
 
   return (
     <>
+     <Navbar /> {/* Added Navbar here */}
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
         <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: "100%" }}>
           <Typography variant="h6" gutterBottom textAlign="center">
