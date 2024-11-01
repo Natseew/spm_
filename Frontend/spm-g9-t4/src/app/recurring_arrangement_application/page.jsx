@@ -40,13 +40,12 @@ const RecurringArrangementPage = () => {
   const [statusMessage, setStatusMessage] = useState('');
   
   useEffect(() => {
-    // if (typeof window !== 'undefined') {
-    //   const user = window.sessionStorage.getItem("user");
-    //   if (user) {
-    //     setStaffId(JSON.parse(user).staff_id);
-    //   }
-    // }
-    setStaffId(180001);
+    if (typeof window !== 'undefined') {
+      const user = window.sessionStorage.getItem("user");
+      if (user) {
+        setStaffId(JSON.parse(user).staff_id);
+      }
+    }
   }, []);
 
   // Current date and date restrictions

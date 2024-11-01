@@ -60,8 +60,8 @@ export default function RecurringArrangementPage() {
       start_date: startDate,
       end_date: endDate,
       day_of_week: dayOfWeek,
-      timeslot,
-      reason,
+      request_reason: reason,
+      timeslot: timeslot
     };
 
     try {

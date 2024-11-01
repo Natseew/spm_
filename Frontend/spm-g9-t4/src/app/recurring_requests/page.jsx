@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Paper,
@@ -20,6 +20,8 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import DatePicker from "react-datepicker";
+import { addMonths, subMonths, isSameDay } from 'date-fns';
 
 export default function PendingRequests() {
   const [recurringRequests, setRecurringRequests] = useState([]);
@@ -28,6 +30,11 @@ export default function PendingRequests() {
   const [filteredRecords, setFilteredRecords] = useState([]); // Store filtered WFH records
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false); // Dialog visibility state
   const [activeTab, setActiveTab] = useState(1); // Set default to Recurring Requests tab
+  const [openChangeDialog, setOpenChangeDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [approvedPendingDates, setApprovedPendingDates] = useState([]);
+  const [openReason, setOpenReason] = useState(false);
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -52,6 +59,7 @@ export default function PendingRequests() {
   useEffect(() => {
     const fetchRecurringRequests = async () => {
       try {
+        
         const response = await fetch(`http://localhost:4000/recurring_request`);
         const data = await response.json();
 
@@ -84,6 +92,30 @@ export default function PendingRequests() {
     fetchWfhRecords();
   }, []);
 
+
+  const isDateDisabled = (date) => {
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending;
+  };
+
+  const fetchApprovedPendingDates = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const dates = data.map((record) => new Date(record.wfh_date));
+        setApprovedPendingDates(dates);
+      } else {
+        console.error("Failed to fetch approved and pending dates");
+      }
+    } catch (error) {
+      console.error("Error fetching approved and pending dates:", error);
+    }
+  },[staffId]);
+
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
     setSelectedRequest(request);
@@ -100,6 +132,50 @@ export default function PendingRequests() {
     setSelectedRequest(null);
     setFilteredRecords([]); // Clear the filtered records
     setOpenDetailsDialog(false);
+  };
+
+  const handleOpenChangeDialog = (id) => {
+    setSelectedRecordId(id);
+    setOpenChangeDialog(true);
+  };
+
+  const handleCloseChangeDialog = () => {
+    setSelectedRecordId(null);
+    setSelectedDate(new Date());
+    setOpenChangeDialog(false);
+  };
+  const submitChangeDate = async (recordId, date) => {
+
+    if (openReason) {
+      const reason = prompt("Please enter the reason for changing your request:");
+      setOpenReason(false);
+    }
+    try {
+      // to change the route
+      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId: recordId, // The specific record ID for the WFH request
+          date: date, // The specific date for withdrawal
+          reason: reason, // The reason entered by the user
+          staff_id: staffId, // The staff ID of the user withdrawing the request
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message); // Display success message
+      } else {
+        const result = await response.json();
+        alert(`Error submitting change to WFH request: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error withdrawing WFH request:", error);
+      alert("An error occurred while submitting the change request.");
+    }
   };
 
   // Function to handle withdrawn date
@@ -140,7 +216,8 @@ export default function PendingRequests() {
 
   const handleChangeDate = (recordId, date) => {
     // Handle the change logic for a specific WFH date
-    console.log("Change Date:", recordId, date);
+    console.log("Change Date:", recordId, date);  
+    
   };
 
   const isDateWithinTwoWeeks = (date) => {
@@ -213,14 +290,37 @@ export default function PendingRequests() {
                             >
                               Withdraw
                             </Button>
+
+                            {/* Change Button */}
                             <Button
                               variant="outlined"
                               color="primary"
                               sx={{ marginLeft: 1 }}
-                              onClick={() => handleChangeDate(record.requestid, record.wfh_date)}
+                              onClick={() => handleOpenChangeDialog(record.requestid)}
                             >
                               Change
                             </Button>
+
+                              {/* Change Request Dialog */}
+                              <Dialog open={openChangeDialog} onClose={handleCloseChangeDialog}>
+                                <DialogTitle>Change WFH Date</DialogTitle>
+                                <DialogContent>
+                                  <DatePicker
+                                    selected={selectedDate}
+                                    onChange={(date) => setSelectedDate(date)}
+                                    minDate={subMonths(new Date(), 2)}
+                                    maxDate={addMonths(new Date(), 3)}
+                                    filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+                                    inline
+                                  />
+                                </DialogContent>
+                                <DialogActions>
+                                  <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+                                  <Button onClick={submitChangeDate(record.requestid, record.wfh_date)} variant="contained" color="primary">
+                                    Submit Change
+                                  </Button>
+                                </DialogActions>
+                              </Dialog>
                           </>
                         )}
                       </TableCell>
@@ -237,12 +337,14 @@ export default function PendingRequests() {
           <Button onClick={handleCloseDetailsDialog}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      
     </>
   );
 }
 
 // Component to display Recurring Requests Table
-function RecurringRequestsTable({ requests, onViewDetails, applyChange }) {
+function RecurringRequestsTable({ requests, onViewDetails}) {
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
@@ -296,10 +398,6 @@ function RecurringRequestsTable({ requests, onViewDetails, applyChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
                   <Button variant="outlined" color="primary" onClick={() => onViewDetails(request)}>
                     View Details
-                  </Button>
-                  {/* remember to change the function */}
-                  <Button variant="outlined" color="secondary"  onClick={() => applyChange(request)}>
-                    Apply for Change
                   </Button>
                 </TableCell>
               </TableRow>
