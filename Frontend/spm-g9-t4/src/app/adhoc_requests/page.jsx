@@ -50,13 +50,7 @@ export default function PendingRequests() {
     }
   }, [router]);
 
-  useEffect(() => {
-    if (staffId !== null) {
-      fetchAdhocRequests();
-      fetchApprovedPendingDates();
-    }
-  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
-
+  
   // Fetch Ad-Hoc requests from the backend
   const fetchAdhocRequests = useCallback(async () => {
     try {
@@ -88,6 +82,14 @@ export default function PendingRequests() {
       console.error("Error fetching approved and pending dates:", error);
     }
   },[staffId]);
+
+  useEffect(() => {
+    if (staffId !== null) {
+      fetchAdhocRequests();
+      fetchApprovedPendingDates();
+    }
+  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
+
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {

@@ -242,7 +242,7 @@ export default function PendingRequests() {
 }
 
 // Component to display Recurring Requests Table
-function RecurringRequestsTable({ requests, onViewDetails }) {
+function RecurringRequestsTable({ requests, onViewDetails, applyChange }) {
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table sx={{ width: "100%", border: "1px solid #ccc" }}>
@@ -296,6 +296,10 @@ function RecurringRequestsTable({ requests, onViewDetails }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
                   <Button variant="outlined" color="primary" onClick={() => onViewDetails(request)}>
                     View Details
+                  </Button>
+                  {/* remember to change the function */}
+                  <Button variant="outlined" color="secondary"  onClick={() => applyChange(request)}>
+                    Apply for Change
                   </Button>
                 </TableCell>
               </TableRow>

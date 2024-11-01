@@ -59,6 +59,9 @@ router.post('/submit', async (req, res) => {
             return row.wfh_date.toISOString ? row.wfh_date.toLocaleDateString('en-CA').split('T')[0] : row.date; // Convert to string format if necessary
         }));
         
+        const sortedDates = Array.from(existingDates).sort((a, b) => new Date(a) - new Date(b));
+        console.log('Sorted Dates:' , sortedDates); // Debugging: Log existing dates
+
         console.log('Existing Dates:', Array.from(existingDates)); // Debugging: Log existing dates
         console.log('Calculated wfh_dates:', wfh_dates); // Debugging: Log calculated wfh_dates
         // Check for overlaps
@@ -689,5 +692,44 @@ router.get('/by-employee-ids', async (req, res) => {
     }
 });
 
+// route to apply change (staff side - recurring)
+router.patch('/change/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+    const { wfh_dates } = req.body;
+
+    console.log("Received request to modify ID:", requestid);
+    console.log("Update body:", req.body);
+
+    // Validate input
+    if (!Array.isArray(wfh_dates) || wfh_dates.length === 0) {
+        return res.status(400).json({ message: 'Invalid input: wfh_dates must be a non-empty array.' });
+    }
+
+    // Log the actual dates that are about to be passed to the query
+    
+
+    try {
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET wfh_dates = $1::DATE[]
+            WHERE requestid = $2
+            RETURNING *;
+        `, [wfh_dates, requestid]);
+
+        // Check if any rows were affected
+        if (result.rowCount === 0) {
+            console.log("No request found with the given request ID.");
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        console.log("Update successful:", result.rows[0]); // Log the updated record
+
+        // Send success response
+        res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
 
 module.exports = router;
