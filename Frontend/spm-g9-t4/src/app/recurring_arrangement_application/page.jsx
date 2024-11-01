@@ -76,8 +76,8 @@ const RecurringArrangementPage = () => {
     setOpen(true);
 
     try {
-    //   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
-        const response = await fetch(`http://localhost:4000/recurring_request/submit`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
+        // const response = await fetch(`http://localhost:4000/recurring_request/submit`, {
 
         method: 'POST',
 
