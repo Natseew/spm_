@@ -43,19 +43,11 @@ export default function PendingRequests() {
       if (storedUser) {
         setUser(storedUser);
         setStaffId(storedUser.staff_id);
-        console.log(user);
       } else {
         router.push("/");
       }
     }
   }, [router]);
-
-  useEffect(() => {
-    if (staffId !== null) {
-      fetchAdhocRequests();
-      fetchApprovedPendingDates();
-    }
-  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
 
   // Fetch Ad-Hoc requests from the backend
   const fetchAdhocRequests = useCallback(async () => {
@@ -69,7 +61,7 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching ad-hoc requests:", error);
     }
-  },[staffId]);
+  }, [staffId]);
 
   // Fetch approved and pending WFH dates
   const fetchApprovedPendingDates = useCallback(async () => {
@@ -87,7 +79,14 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching approved and pending dates:", error);
     }
-  },[staffId]);
+  }, [staffId]);
+
+  useEffect(() => {
+    if (staffId !== null) {
+      fetchAdhocRequests();
+      fetchApprovedPendingDates();
+    }
+  }, [staffId, fetchAdhocRequests, fetchApprovedPendingDates]);
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -237,20 +236,6 @@ export default function PendingRequests() {
     </>
   );
 }
-
-// Check if the WFH date is within two weeks of today
-const isWithinTwoWeeks = (date) => {
-  const today = new Date();
-  const wfhDate = new Date(date);
-  const twoWeeksBefore = new Date(today);
-  const twoWeeksAfter = new Date(today);
-
-  twoWeeksBefore.setDate(today.getDate() - 14);
-  twoWeeksAfter.setDate(today.getDate() + 14);
-
-  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
-};
-
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
@@ -311,3 +296,16 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
+
+// Helper function to check if the WFH date is within two weeks of today
+const isWithinTwoWeeks = (date) => {
+  const today = new Date();
+  const wfhDate = new Date(date);
+  const twoWeeksBefore = new Date(today);
+  const twoWeeksAfter = new Date(today);
+
+  twoWeeksBefore.setDate(today.getDate() - 14);
+  twoWeeksAfter.setDate(today.getDate() + 14);
+
+  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
+};
