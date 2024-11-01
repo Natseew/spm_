@@ -21,7 +21,10 @@
   },
   "rules": {
     "react/prop-types": 0,      // Using 0 instead of "off" (both work)
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "off",
+    "@next/next/no-img-element": "off"
   },
   "settings": {
     "react": {
