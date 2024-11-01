@@ -5,7 +5,7 @@ import Notification from './Notification';
 import ModifyRecurringRequestModal from './ModifyRecurringRequestModal';
 import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal';
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
 const ManagerID = '130002';
 // const ManagerID = '140001';
@@ -149,6 +149,7 @@ const RecurringSchedule = () => {
 
     const handleStatusChange = (status) => {
         setSelectedStatus(status);
+        console.log("selected status: " + status)
     };
 
     const handleDateChange = (event) => {
@@ -168,17 +169,31 @@ const RecurringSchedule = () => {
     };
 
     
+    // const filteredData = RecurringData.map(item => {
+    //     const filteredRecords = item.wfh_records.filter(record => record.status === selectedStatus);
+        
+    //     return filteredRecords.length ? {
+    //         ...item,
+    //         wfh_records: filteredRecords.map(record => ({
+    //             ...record,
+    //             wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format to DD/MM/YYYY
+    //         }))
+    //     } : null;
+    // }).filter(Boolean);
+    
     const filteredData = RecurringData.map(item => {
         const filteredRecords = item.wfh_records.filter(record => record.status === selectedStatus);
+        console.log(filteredRecords)
+
         return filteredRecords.length ? {
             ...item,
             wfh_records: filteredRecords.map(record => ({
                 ...record,
-                wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format to DD/MM/YYYY
-            }))
+                wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format
+            })),
+            
         } : null;
-    }).filter(Boolean);
-
+    }).filter(Boolean); // Filter out nulls.
 
     const getStaffName = (id) => employeeNameid[Number(id)] || 'Unknown';
 
@@ -402,6 +417,60 @@ const handleReject = async (requestid,reason) => {
     }
 };
 
+const handleAcceptWithdrawal = async (requestid) => {
+    console.log(`Accepting request with ID: ${requestid}`);
+    try {
+        const response = await fetch(`${path}recurring_request/approvewithdrawal/${requestid}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+
+        // Update the status for BOTH recurring request & wfh_records in displayed table
+        setRecurringData(prevData => 
+            prevData.map(item => 
+                item.requestid === requestid 
+                    ? { 
+                        ...item, 
+                        status: 'Pending Withdrawal', 
+                        wfh_records: item.wfh_records.map(record => ({ 
+                            ...record, 
+                            status: 'Pending Withdrawal' 
+                        })) 
+                    }
+                    : item
+            )
+        );
+        
+        setNotification('Withdrawal accepted successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error withdrawing request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
+
+
     return (
         <div>
             {notification && <Notification message={notification} onClose={() => setNotification('')} />}
@@ -511,6 +580,19 @@ const handleReject = async (requestid,reason) => {
                                     </>
                                 )}
                                 
+                                {selectedStatus === 'Pending Withdrawal' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAcceptWithdrawal(item.requestid)}>
+                                            Accept Withdrawal
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => handleAccept(item.requestid)}>
+                                            Reject Withdrawal
+                                        </button>
+                                    </>
+                                )}
+                            
                             </td>
                         </tr>
                     ))}

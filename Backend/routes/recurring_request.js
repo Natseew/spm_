@@ -210,6 +210,46 @@ router.patch('/approve/:requestid', async (req, res) => {
     }
 });
 
+//Handle Accept Withdrawal Request
+router.patch('/approvewithdrawal/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+    try {
+        await client.query('BEGIN');
+        // Update recurring request status to 'Approved'
+        const recurringRequestResult = await client.query(`
+            UPDATE recurring_request
+            SET status = 'Withdrawn'
+            WHERE requestid = $1
+            RETURNING *;
+        `, [requestid]);
+
+        if (recurringRequestResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Recurring request not found' });
+        }
+
+        // Update corresponding wfh_records status to 'Withdrawn'
+        const wfhRecordsResult = await client.query(`
+            UPDATE wfh_records
+            SET status = 'Withdrawn'
+            WHERE requestid = $1
+            RETURNING *;
+        `, [requestid]);
+
+        await client.query('COMMIT');
+
+        res.status(200).json({
+            message: 'Request and corresponding WFH records approved successfully',
+            recurringRequest: recurringRequestResult.rows[0],
+            wfhRecords: wfhRecordsResult.rows
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error approving request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
 
 // cancel approved recurring request 
 // withdraw entire recurring request (KIV this doesnt seem to be right, withdraw entire request should have its own endpoint) 
