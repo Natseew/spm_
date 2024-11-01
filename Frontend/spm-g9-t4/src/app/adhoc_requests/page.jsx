@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Navbar from '../../components/Navbar';
 import {
   Typography,
   Paper,
@@ -195,6 +196,7 @@ export default function PendingRequests() {
 
   return (
     <>
+    <Navbar /> {/* Added Navbar here */}
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
         <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: "100%" }}>
           <Typography variant="h6" gutterBottom textAlign="center">
