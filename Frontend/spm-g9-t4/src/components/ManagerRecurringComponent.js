@@ -79,7 +79,9 @@ const RecurringSchedule = () => {
 
         if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
-        } else if (selectedStatus === 'Pending') {
+        } 
+        // KIV: Is this needed?
+        else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
@@ -88,7 +90,7 @@ const RecurringSchedule = () => {
         setSomeData(data);
         setModalDates(filteredDates);
         setRejectModalOpen(true);
-        setRejectChangeModalOpen(false);  // Ensure change modal is closed
+        setRejectChangeModalOpen(false);  
     };
 
     const closeRejectModal = () => {
@@ -102,16 +104,20 @@ const RecurringSchedule = () => {
 
         if (selectedStatus === 'Pending Change') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
-        } else if (selectedStatus === 'Pending') {
+        } 
+        // KIV: Is this needed?
+        else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
-        } else {
+        } 
+        // KIV: Is this needed?
+        else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
         }
 
         setSomeData(data);
         setModalDates(filteredDates);
         setRejectChangeModalOpen(true);
-        setRejectModalOpen(false);  // Ensure reject modal is closed
+        setRejectModalOpen(false);  
     };
 
     const closeRejectChangeModal = () => {
@@ -149,21 +155,46 @@ const RecurringSchedule = () => {
         setSelectedDate(event.target.value);
     };
 
-    const filteredData = RecurringData.filter(item => {
-        const dateMatches = selectedDate ? new Date(item.start_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
-        let statusMatches = false;
-        if (selectedStatus === 'Pending Change') {
-            statusMatches = item.wfh_records.some(record => record.status === 'Pending Change');
-        } else if (selectedStatus === 'Pending') {
-            statusMatches = item.wfh_records.some(record => record.status === 'Pending');
-        } else if (selectedStatus === 'Pending Withdrawal') {
-            statusMatches = item.wfh_records.some(record => record.status === 'Pending Withdrawal');
-        } else {
-            statusMatches = item.status === selectedStatus;
-        }
+    // filter displays the entire recurring_request so long as one of the wfh_record matches the status  => so within approved, pending change records will be display cuz it shows whole recurring request
+    // const filteredData = RecurringData.filter(item => {
+    //     const dateMatches = selectedDate ? new Date(item.start_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
+    //     let statusMatches = false;
+    //     if (selectedStatus === 'Pending Change') {
+    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending Change');
+    //     } else if (selectedStatus === 'Pending') {
+    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending');
+    //     } else if (selectedStatus === 'Pending Withdrawal') {
+    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending Withdrawal');
+    //     } else {
+    //         statusMatches = item.status === selectedStatus;
+    //     }
 
-        return statusMatches && dateMatches;
-    });
+    //     return statusMatches && dateMatches;
+    // });
+
+    const addOneDayAndFormat = (dateString) => {
+        const date = new Date(dateString);
+        date.setUTCDate(date.getUTCDate() + 1); // Add one day in UTC
+
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Months are zero-based
+        const year = String(date.getUTCFullYear()).slice(-2); // Last two digits of the year
+
+        return `${year}/${month}/${day}`; // Return in YY/MM/DD format
+    };
+
+    
+    const filteredData = RecurringData.map(item => {
+        const filteredRecords = item.wfh_records.filter(record => record.status === selectedStatus);
+        return filteredRecords.length ? {
+            ...item,
+            wfh_records: filteredRecords.map(record => ({
+                ...record,
+                wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format to DD/MM/YYYY
+            }))
+        } : null;
+    }).filter(Boolean);
+
 
     const getStaffName = (id) => employeeNameid[Number(id)] || 'Unknown';
 
@@ -231,17 +262,17 @@ const RecurringSchedule = () => {
 
     // Handle Modify
     const handleModify = async (requestid, updatedData) => {
-        console.log('Request ID:', requestid); 
+        console.log('Request ID:', requestid);
         console.log('Data to be parsed in:', updatedData);
 
-        // Validate inputs
+        // Validate input parameters
         if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
-            console.error("Validation failed for inputs", requestid, updatedData);
+            console.error("Invalid inputs provided:", requestid, updatedData);
             return;
         }
-    
+
         try {
-            // Send the PATCH request
+            // Send PATCH request to update the recurring request
             const response = await fetch(`${path}recurring_request/modify/${requestid}`, {
                 method: 'PATCH',
                 headers: {
@@ -249,32 +280,30 @@ const RecurringSchedule = () => {
                 },
                 body: JSON.stringify(updatedData),
             });
-    
+
+            // Handle unsuccessful response
             if (!response.ok) {
                 const errorInfo = await response.json();
-                throw new Error(`Error modifying the request: ${errorInfo.message}`);
+                throw new Error(`Modification failed: ${errorInfo.message}`);
             }
-    
+
+            // Parse the response and log success
             const result = await response.json();
             console.log('Modification successful:', result);
 
-
-            // Option 1: Directly update the local state
-            // Assuming RecurringData is the state variable holding the requests
+            // Update the local state with new dates for the modified request
             setRecurringData(prevData =>
                 prevData.map(req =>
                     req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
                 )
             );
 
-            // Notify user of success
+            // Display success notification
             setNotification('Modification successful!');
             setTimeout(() => setNotification(''), 3000);
 
-
-            // Handle success, possibly update local state or provide user feedback
         } catch (error) {
-            console.error('Error handling modification:', error);
+            console.error('Error during modification:', error);
         }
     };
 
@@ -456,8 +485,8 @@ const handleReject = async (requestid,reason) => {
                         <th className="py-2 px-4 border-b border-gray-300">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {filteredData
+                {/*<tbody>
+                     {filteredData
                         .filter(item => item.status === selectedStatus) // Filter data by selected status
                         .map((item, index) => (
                         <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
@@ -523,7 +552,78 @@ const handleReject = async (requestid,reason) => {
                             </td>
                         </tr>
                     ))}
+                </tbody> */}
+
+                <tbody>
+                    {filteredData.map((item, index) => (
+                        <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.start_date}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.end_date}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">
+                                {item.wfh_records.length > 0 ? (
+                                    item.wfh_records.map(record => (
+                                        <div key={record.wfh_date}>
+                                            {record.wfh_date} - {record.status}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div>No WFH Records</div>
+                                )}
+                            </td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
+                            <td className="py-2 px-4 border-b border-gray-300">
+                                <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
+                                onClick={() => openModal(item)}>
+                                    View Details
+                                </button>
+                                {selectedStatus === 'Pending' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAccept(item.requestid)}>
+                                            Accept
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => openRejectModal(item)}>
+                                            Reject
+                                        </button>
+                                    </>
+                                )}
+                                {selectedStatus === 'Approved' && (
+                                    <>
+                                        <button 
+                                            className="bg-yellow-500 text-white px-2 py-1 rounded mr-2" 
+                                            onClick={() => openModifyModal(item)}
+                                        >
+                                            Modify
+                                        </button>
+                                        <button 
+                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                            onClick={() => openRejectModal(item)}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                )}
+                                {selectedStatus === 'Pending Change' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAcceptChange(item.requestid)}>
+                                            Accept
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => openRejectChangeModal(item)}>
+                                            Reject
+                                        </button>
+                                    </>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
+
             </table>
 
             <RecurringModal 
@@ -549,7 +649,7 @@ const handleReject = async (requestid,reason) => {
             <ModifyRecurringRequestModal 
             isOpen={modifyModalOpen} 
             onClose={closeModifyModal} 
-            onModify={handleAcceptChange} 
+            onModify={handleModify} 
             data={modifyData} 
             />
         </div>

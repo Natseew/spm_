@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
 const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Check if dateString is already in YY/MM/DD format
+    const dateParts = dateString.split('/');
+    if (dateParts.length === 3) {
+        // Parse the date as YY/MM/DD
+        const year = `20${dateParts[0]}`; // Assumes dates are in the 2000s
+        const month = dateParts[1];
+        const day = dateParts[2];
+        
+        return `${year}/${month}/${day}`;
+    }
 
-    const day = String(date.getUTCDate()).padStart(2, '0'); // Get day in UTC to avoid timezone adjustments
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Get month in UTC, adding 1 since it's zero-indexed
-    const year = date.getUTCFullYear(); // Get the full year in UTC
-    return `${day}/${month}/${year}`; // Return formatted date in DD/MM/YYYY format
+    // If the date string is in a different format, we could handle that separately or log an error.
+    console.error("Invalid date format:", dateString);
+    return null;
 };
 
 
@@ -32,18 +40,37 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
         );
     };
 
+    // const handleModifyConfirm = () => {
+    //     // Filter out selected dates from original wfh_dates
+    //     const updatedDates = data.wfh_dates.filter(date => !selectedDates.includes(date)); // Remove selected dates
+
+    //     console.log('These are the Updated Dates:', updatedDates); // Log the updated dates for verification
+
+    //     // Modify request with filtered dates
+    //     onModify(data.requestid, { wfh_dates: updatedDates });
+
+    //     // Close the modal
+    //     onClose();
+    // };
+
+    const formatToISO8601 = (dateString) => {
+        const [year, month, day] = dateString.split('/');
+        return `20${year}-${month}-${day}`; // Converts 'YY/MM/DD' to 'YYYY-MM-DD'
+    };
     const handleModifyConfirm = () => {
-        // Filter out selected dates from original wfh_dates
-        const updatedDates = data.wfh_dates.filter(date => !selectedDates.includes(date)); // Remove selected dates
-
-        console.log('These are the Updated Dates:', updatedDates); // Log the updated dates for verification
-
-        // Modify request with filtered dates
-        onModify(data.requestid, { wfh_dates: updatedDates });
-
+        // Convert only the selected dates to YYYY-MM-DD format
+        const datesToRemove = selectedDates.map(formatToISO8601); // Format dates to `YYYY-MM-DD`
+        
+        console.log('These are the Dates to Remove:', datesToRemove);
+        
+        // Modify request with dates to remove
+        onModify(data.requestid, { wfh_dates: datesToRemove });
+        
         // Close the modal
         onClose();
     };
+    
+    
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
