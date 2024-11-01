@@ -73,6 +73,7 @@ router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, re
                 wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
             WHERE 
                 e.reporting_manager = $1
+                AND e.staff_id <> $1
             `,
             [manager_id, date]
         );
@@ -827,6 +828,14 @@ router.patch('/reject/:id', async (req, res) => {
       if (result.rowCount === 0) {
           return res.status(404).json({ message: 'No records found for the given record ID.' });
       }
+
+        // Log the rejection action (optional)
+        await client.query(
+          `INSERT INTO activitylog (requestid, activity)
+          VALUES ($1, $2);`, // Use parameterized values to prevent SQL injection
+          [requestid, `Rejected Recurring Request: ${reason}`]
+      );
+
       res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
   } catch (error) {
       console.error('Update error:', error);
@@ -868,6 +877,28 @@ router.patch('/cancel/:recordID', async (req, res) => {
   } catch (error) {
       console.error('Error updating status:', error);
       res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+// Pending Withdrawal (Reject) of WFH request
+router.patch('/reject_withdrawal/:recordID', async (req, res) => {
+  const { recordID } = req.params;
+  const { reason } = req.body;
+
+  try {
+    const result = await client.query(
+      'UPDATE wfh_records SET status = $1, reject_reason = $3 WHERE recordid = $2 AND status = $4 RETURNING *',
+      ['Approved', recordID, reason, 'Pending Withdrawal'] // Update the status to 'Approved'
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'No records found for the given record ID.' });
+    }
+
+    res.status(200).json({ message: 'Status updated to Approved.', record: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ message: 'Internal server error.', error: error.message });
   }
 });
 

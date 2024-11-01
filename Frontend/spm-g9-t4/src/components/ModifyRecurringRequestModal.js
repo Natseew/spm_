@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 
-// Utility function to format the date from ISO format to DD/MM/YYYY
 const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month, pad it, adding 1 since it's zero-indexed
-    const year = date.getFullYear(); // Get the full year
-    return `${day}/${month}/${year}`; // Return formatted date
+    // Check if dateString is already in YY/MM/DD format
+    const dateParts = dateString.split('/');
+    if (dateParts.length === 3) {
+        // Parse the date as YY/MM/DD
+        const year = `20${dateParts[0]}`; // Assumes dates are in the 2000s
+        const month = dateParts[1];
+        const day = dateParts[2];
+        
+        return `${year}/${month}/${day}`;
+    }
+
+    // If the date string is in a different format, we could handle that separately or log an error.
+    console.error("Invalid date format:", dateString);
+    return null;
 };
 
+
 const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
-    const [selectedDates, setSelectedDates] = useState([]); // Initialized as empty array
+    const [selectedDates, setSelectedDates] = useState([]); // Initialize as empty array
 
     // Use effect to set the selected dates based on incoming data.wfh_dates
     useEffect(() => {
@@ -31,18 +40,37 @@ const ModifyRecurringRequestModal = ({ isOpen, onClose, onModify, data }) => {
         );
     };
 
+    // const handleModifyConfirm = () => {
+    //     // Filter out selected dates from original wfh_dates
+    //     const updatedDates = data.wfh_dates.filter(date => !selectedDates.includes(date)); // Remove selected dates
+
+    //     console.log('These are the Updated Dates:', updatedDates); // Log the updated dates for verification
+
+    //     // Modify request with filtered dates
+    //     onModify(data.requestid, { wfh_dates: updatedDates });
+
+    //     // Close the modal
+    //     onClose();
+    // };
+
+    const formatToISO8601 = (dateString) => {
+        const [year, month, day] = dateString.split('/');
+        return `20${year}-${month}-${day}`; // Converts 'YY/MM/DD' to 'YYYY-MM-DD'
+    };
     const handleModifyConfirm = () => {
-        // Filter out selected dates from original wfh_dates
-        const updatedDates = data.wfh_dates.filter(date => !selectedDates.includes(date)); // Remove selected dates
-
-        console.log('These are the Updated Dates:', updatedDates); // Log the updated dates for verification
-
-        // Modify request with filtered dates
-        onModify(data.requestid, { wfh_dates: updatedDates });
-
+        // Convert only the selected dates to YYYY-MM-DD format
+        const datesToRemove = selectedDates.map(formatToISO8601); // Format dates to `YYYY-MM-DD`
+        
+        console.log('These are the Dates to Remove:', datesToRemove);
+        
+        // Modify request with dates to remove
+        onModify(data.requestid, { wfh_dates: datesToRemove });
+        
         // Close the modal
         onClose();
     };
+    
+    
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">

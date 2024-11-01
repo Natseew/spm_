@@ -31,7 +31,7 @@ export default function PendingRequests() {
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
-  const [user, setUser] = useState(null);
+
   const [staffId, setStaffId] = useState(null);
 
   // Use useEffect to access window.sessionStorage on the client side
@@ -39,7 +39,7 @@ export default function PendingRequests() {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
       if (storedUser) {
-        setUser(storedUser);
+        
         setStaffId(storedUser.staff_id);
       } else {
         router.push("/"); // Navigate to login if not logged in
