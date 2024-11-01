@@ -7,8 +7,8 @@ import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
 const employeeNameid = {};
-// const ManagerID = '130002';
-const ManagerID = '140001';
+const ManagerID = '130002';
+// const ManagerID = '140001';
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -155,22 +155,6 @@ const RecurringSchedule = () => {
         setSelectedDate(event.target.value);
     };
 
-    // filter displays the entire recurring_request so long as one of the wfh_record matches the status  => so within approved, pending change records will be display cuz it shows whole recurring request
-    // const filteredData = RecurringData.filter(item => {
-    //     const dateMatches = selectedDate ? new Date(item.start_date).toLocaleDateString() === new Date(selectedDate).toLocaleDateString() : true;
-    //     let statusMatches = false;
-    //     if (selectedStatus === 'Pending Change') {
-    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending Change');
-    //     } else if (selectedStatus === 'Pending') {
-    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending');
-    //     } else if (selectedStatus === 'Pending Withdrawal') {
-    //         statusMatches = item.wfh_records.some(record => record.status === 'Pending Withdrawal');
-    //     } else {
-    //         statusMatches = item.status === selectedStatus;
-    //     }
-
-    //     return statusMatches && dateMatches;
-    // });
 
     const addOneDayAndFormat = (dateString) => {
         const date = new Date(dateString);
@@ -307,30 +291,6 @@ const RecurringSchedule = () => {
         }
     };
 
-        // handle Cancel
-        // const handleCancel = async (requestId) => {
-        //     console.log(`Canceling request with ID: ${requestId}`);
-        //     // API call or logic to cancel the request
-        //     try {
-        //         const response = await fetch(`${path}recurring_request/withdraw-entire/${requestId}`, {
-        //             method: 'PUT',
-        //         });
-    
-        //         if (!response.ok) {
-        //             throw new Error('Failed to cancel the request.');
-        //         }
-    
-        //         const result = await response.json();
-        //         console.log(result.message);
-        //         setRecurringData(prevData => prevData.filter(req => req.requestID !== requestId));
-        //         setNotification('Cancelled request successfully!');
-        //         setTimeout(() => setNotification(''), 3000);
-        //     } catch (error) {
-        //         console.error('Error during status update:', error);
-        //         setNotification(`Error  canceling request: ${error.message}`);
-        //         setTimeout(() => setNotification(''), 3000);
-        //     }
-        // };
 
 //Handle Accept
 // Action Handlers
@@ -485,75 +445,6 @@ const handleReject = async (requestid,reason) => {
                         <th className="py-2 px-4 border-b border-gray-300">Actions</th>
                     </tr>
                 </thead>
-                {/*<tbody>
-                     {filteredData
-                        .filter(item => item.status === selectedStatus) // Filter data by selected status
-                        .map((item, index) => (
-                        <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.start_date}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.end_date}</td>
-                            <td className="py-2 px-4 border-b border-gray-300">
-                                {item.wfh_records?.map(record => (
-                                    <div key={record.wfh_date}>
-                                        {record.wfh_date} - {record.status}
-                                    </div>
-                                )) || 'No WFH Records'}
-                            </td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.timeslot}</td>
-                            <td className="py-2 px-4 border-b border-gray-300">
-                                <button className="bg-blue-500 text-white px-2 py-1 rounded mx-6" 
-                                onClick={() => openModal(item)}>
-                                    View Details
-                                </button>
-                                {item.status === 'Pending' && (
-                                    <>
-                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                        onClick={() => handleAccept(item.requestid)}>
-                                            Accept
-                                        </button>
-                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => openRejectModal(item)}>
-                                            Reject
-                                        </button>
-                                    </>
-                                )}
-                                {item.status === 'Approved' && (
-                                    <>
-                                        <button 
-                                            className="bg-yellow-500 text-white px-2 py-1 rounded mr-2" 
-                                            onClick={() => openModifyModal(item)}
-                                        >
-                                            Modify
-                                        </button>
-                                        <button 
-                                            className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item)} // cancel button just route to rejectHandler
-                                        >
-                                            Cancel
-                                        </button>
-                                    </>
-                                )}
-                                {item.status === 'Withdrawn' || item.status === 'Rejected' ? null : null}
-                                {item.status === 'Pending Change' && (
-                                    <>
-                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                        onClick={() => handleAcceptChange(item.requestid)}>
-                                            Accept
-                                        </button>
-                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => openRejectChangeModal(item)}>
-                                            Reject
-                                        </button>
-                                    </>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody> */}
-
                 <tbody>
                     {filteredData.map((item, index) => (
                         <tr key={item.requestid || index} className="text-center hover:bg-blue-100 transition-colors">
@@ -619,6 +510,7 @@ const handleReject = async (requestid,reason) => {
                                         </button>
                                     </>
                                 )}
+                                
                             </td>
                         </tr>
                     ))}
