@@ -19,8 +19,8 @@ import {
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addMonths, subMonths, isSameDay } from "date-fns";
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function ArrangementForm() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function ArrangementForm() {
   const isSubmitDisabled = !wfhDate || !scheduleType || !reason.trim() || isSubmitting;
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
       if (storedUser) {
         setStaffId(storedUser.staff_id);
@@ -48,7 +48,7 @@ export default function ArrangementForm() {
         router.push("/");
       }
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (staffId) {
@@ -58,10 +58,11 @@ export default function ArrangementForm() {
 
   const fetchApprovedPendingDates = async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const dates = data.map((record) => new Date(record.wfh_date));
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
+      );
+      if (response.status === 200) {
+        const dates = response.data.map((record) => new Date(record.wfh_date));
         setApprovedPendingDates(dates);
       } else {
         console.error("Failed to fetch approved and pending dates");
@@ -77,7 +78,7 @@ export default function ArrangementForm() {
     setSuccessMessage("");
 
     const reqDate = new Date().toISOString().split("T")[0];
-    const schedDateFormatted = wfhDate ? wfhDate.toLocaleDateString('en-CA') : null; // Format to YYYY-MM-DD without timezone
+    const schedDateFormatted = wfhDate ? wfhDate.toLocaleDateString("en-CA") : null; // Format to YYYY-MM-DD without timezone
 
     const payload = {
       staff_id: staffId,
@@ -88,22 +89,20 @@ export default function ArrangementForm() {
     };
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/wfh_adhoc_request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_adhoc_request`,
+        payload,
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccessMessage(data.message || "WFH request submitted successfully.");
+      if (response.status === 200) {
+        setSuccessMessage(response.data.message || "WFH request submitted successfully.");
         setWfhDate(null); // Reset wfhDate to null
         setScheduleType("");
         setReason("");
         fetchApprovedPendingDates();
       } else {
-        setErrorMessage(data.message || "An error occurred. Please try again.");
+        setErrorMessage(response.data.message || "An error occurred. Please try again.");
       }
     } catch (error) {
       setErrorMessage(`An unexpected error occurred: ${error.message}`);
@@ -111,7 +110,6 @@ export default function ArrangementForm() {
       setIsSubmitting(false);
     }
   };
-
 
   const handleCancel = () => {
     setWfhDate(null); // Reset wfhDate to null
