@@ -3,6 +3,7 @@ import AdhocModal from './AdhocModal'; // Make sure to create or import the Moda
 // import CalendarComponent from "@/components/CalendarComponent";
 import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
+import emailjs from '@emailjs/browser';
 
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
@@ -21,6 +22,7 @@ const AdHocSchedule = () => {
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectPendingWithdrawalModalOpen, setRejectPendingWithdrawalModalOpen] = useState(false);
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
     const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL)
@@ -97,6 +99,16 @@ const AdHocSchedule = () => {
         setRejectData(null);
     };
 
+    const openRejectPendingWithdrawalModal = (data) => {
+        setRejectData(data);
+        setRejectPendingWithdrawalModalOpen(true);
+    };
+    
+    const closeRejectPendingWithdrawalModal = () => {
+        setRejectPendingWithdrawalModalOpen(false);
+        setRejectData(null);
+    };
+
     const openModal = (data) => {
         setModalData(data); // Set the data to be displayed in the modal
         setModalOpen(true); // Open the modal
@@ -160,6 +172,16 @@ const handleAccept = async (recordID) => {
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
 
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+
         // Update the state
         setAdhocData(prevData => 
             prevData.map(item => 
@@ -197,7 +219,7 @@ const handleReject = async (reqId, reject_reason) => {
         
         setAdhocData(prevData => 
             prevData.map(item => 
-                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reason } : item
+                item.recordid === reqId ? { ...item, status: 'Rejected', reject_reason: reject_reason } : item
             )
         );
 
@@ -242,11 +264,58 @@ const handleAcceptWithdraw = async (recordID) => {
     }
 };
 
+// Handle Reject Withdrawal
+const handleRejectPendingWithdrawal = async (reqId, reason) => {
+    console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
+    try {
+        const response = await fetch(`http://localhost:4000/wfh_records/reject_withdrawal/${reqId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason }), // Send the reason in the request body
+        });
 
+        if (!response.ok) {
+            throw new Error(`Error rejecting request: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Rejection recorded successfully:', updatedData);
+
+        // COMMENTED OUT - bc of email limits
+        // this is the data we can use to format email
+        // console.log(updatedData.record);
+
+        // const reqId = 290;
+        // const reject_reason = updatedData.record.reject_reason;
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_7x88wcp', {
+        //     user_name: "",
+        //     recordID: reqId,
+        //     reject_reason: reject_reason,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+        
+        setAdhocData(prevData => 
+            prevData.map(item => 
+                item.recordid === reqId ? { ...item, status: 'Approved', reject_reason: reason } : item
+            )
+        );
+
+        setNotification('Withdrawal request rejected!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during rejection update:', error);
+    }
+};
 
 // Handling modal for reject action
 const handleRejectOpen = (data) => {
     openRejectModal(data);
+    console.log(data);
 };
 
 // Handle Cancelling Request
@@ -414,12 +483,12 @@ const handleCancel = async (recordID) => {
                                         >
                                             Accept
                                         </button>
-                                        {/* <button 
+                                        <button 
                                             className="bg-red-500 text-white px-2 py-1 rounded" 
-                                            onClick={() => openRejectModal(item)} // Reject button for Pending Withdrawal
+                                            onClick={() => openRejectPendingWithdrawalModal(item)} // Reject button for Pending Withdrawal
                                         >
                                             Reject
-                                        </button> */}
+                                        </button>
                                     </>
                                 )}
                             </td>
@@ -437,6 +506,13 @@ const handleCancel = async (recordID) => {
                 isOpen={rejectModalOpen} 
                 onClose={closeRejectModal} 
                 onReject={handleReject} // Pass OnReject as the function to call
+                data={rejectData} // Pass the relevant data to the modal
+            />
+            
+            <HandleRejectModal
+                isOpen={rejectPendingWithdrawalModalOpen} 
+                onClose={closeRejectPendingWithdrawalModal} 
+                onReject={handleRejectPendingWithdrawal} // Pass OnReject as the function to call
                 data={rejectData} // Pass the relevant data to the modal
             />
 
