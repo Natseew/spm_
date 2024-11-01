@@ -25,7 +25,7 @@ import axios from "axios";
 export default function ArrangementForm() {
   const router = useRouter();
   const [staffId, setStaffId] = useState(null);
-  const [wfhDate, setWfhDate] = useState(null); // Set initial state to null
+  const [wfhDate, setWfhDate] = useState(null);
   const [scheduleType, setScheduleType] = useState("");
   const [reason, setReason] = useState("");
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
@@ -78,7 +78,7 @@ export default function ArrangementForm() {
     setSuccessMessage("");
 
     const reqDate = new Date().toISOString().split("T")[0];
-    const schedDateFormatted = wfhDate ? wfhDate.toLocaleDateString("en-CA") : null; // Format to YYYY-MM-DD without timezone
+    const schedDateFormatted = wfhDate ? wfhDate.toLocaleDateString("en-CA") : null;
 
     const payload = {
       staff_id: staffId,
@@ -95,24 +95,27 @@ export default function ArrangementForm() {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      if (response.status === 200) {
+      if (response.status === 201) { // Check for status code 201 if backend returns success as 201
         setSuccessMessage(response.data.message || "WFH request submitted successfully.");
-        setWfhDate(null); // Reset wfhDate to null
+        setErrorMessage(""); // Clear any existing error messages
+        setWfhDate(null); // Reset form fields
         setScheduleType("");
         setReason("");
         fetchApprovedPendingDates();
       } else {
         setErrorMessage(response.data.message || "An error occurred. Please try again.");
+        setSuccessMessage(""); // Clear any existing success messages
       }
     } catch (error) {
       setErrorMessage(`An unexpected error occurred: ${error.message}`);
+      setSuccessMessage("");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setWfhDate(null); // Reset wfhDate to null
+    setWfhDate(null);
     setScheduleType("");
     setReason("");
     setErrorMessage("");
@@ -125,7 +128,6 @@ export default function ArrangementForm() {
     return isWeekend || isApprovedOrPending;
   };
 
-  // Tab change handler
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     if (newValue === 1) {
@@ -170,7 +172,7 @@ export default function ArrangementForm() {
               dateFormat="yyyy/MM/dd"
               placeholderText="Select WFH Date"
               inline
-              openToDate={today} // Set the initial view without selecting a date
+              openToDate={today}
             />
           </Box>
           <FormControl fullWidth margin="normal" required>
