@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import axios from 'axios';
 import { uuid } from 'uuidv4';
 import dayjs from 'dayjs';  // For date formatting
+import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 export default function Page() {
   const [events, setEvents] = useState([
@@ -22,7 +23,6 @@ export default function Page() {
   //     createdBy: "Kristina Mayer"
   //   }
   ]);
-  const [isLoading, setIsLoading] = useState(true);
   const eventsRef = useRef(events)
 
   const Scheduler = dynamic(
@@ -53,7 +53,6 @@ export default function Page() {
           eventsArray.push(eventItem);
         }
         setEvents(eventsArray);
-        setIsLoading(false);
       };
       fetchStaffSchedule();
     } catch (error) {
@@ -86,40 +85,18 @@ export default function Page() {
       showDatePicker: true
     }
   })
-  
-  const handleCellClick = (event, row, day) => {
-    // Do something...
-  }
-  
-  const handleEventClick = (event, item) => {
-    // Do something...
-  }
-  
-  const handleEventsChange = (item) => {
-    // Do something...
-  }
-  
-  const handleAlertCloseButtonClicked = (item) => {
-    // Do something...
-  }
-  // if (isLoading){
-  //   return(
-  //     <div>Loading</div>
-  //   )
-  // }
 
   return (
-    <Scheduler
-      locale="en"
-      events={events}
-      legacyStyle={false}
-      options={state?.options}
-      user="Current"
-      toolbarProps={state?.toolbarProps}
-      onEventsChange={handleEventsChange}
-      onCellClick={handleCellClick}
-      onTaskClick={handleEventClick}
-      onAlertCloseButtonClicked={handleAlertCloseButtonClicked}
-    />
+    <>
+      <Navbar></Navbar>
+      <Scheduler
+        locale="en"
+        events={events}
+        legacyStyle={false}
+        options={state?.options}
+        user="Current"
+        toolbarProps={state?.toolbarProps}
+      />
+    </>
   )
 }

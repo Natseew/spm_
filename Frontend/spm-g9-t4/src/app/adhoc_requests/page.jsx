@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Paper,
@@ -34,30 +34,23 @@ export default function PendingRequests() {
   const router = useRouter();
 
   // Retrieve user data and initialize
-  const [user, setUser] = useState(null);
+  
   const [staffId, setStaffId] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
       if (storedUser) {
-        setUser(storedUser);
+        
         setStaffId(storedUser.staff_id);
       } else {
         router.push("/");
       }
     }
-  }, []);
-
-  useEffect(() => {
-    if (staffId !== null) {
-      fetchAdhocRequests();
-      fetchApprovedPendingDates();
-    }
-  }, [staffId]);
+  }, [router]);
 
   // Fetch Ad-Hoc requests from the backend
-  const fetchAdhocRequests = async () => {
+  const fetchAdhocRequests = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:4000/wfh_records`);
       const data = await response.json();
@@ -68,10 +61,10 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching ad-hoc requests:", error);
     }
-  };
+  }, [staffId]);
 
   // Fetch approved and pending WFH dates
-  const fetchApprovedPendingDates = async () => {
+  const fetchApprovedPendingDates = useCallback(async () => {
     try {
       const response = await fetch(
         `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
@@ -86,7 +79,14 @@ export default function PendingRequests() {
     } catch (error) {
       console.error("Error fetching approved and pending dates:", error);
     }
-  };
+  }, [staffId]);
+
+  useEffect(() => {
+    if (staffId !== null) {
+      fetchAdhocRequests();
+      fetchApprovedPendingDates();
+    }
+  }, [staffId, fetchAdhocRequests, fetchApprovedPendingDates]);
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -122,6 +122,9 @@ export default function PendingRequests() {
       return;
     }
 
+    // Format the selected date as YYYY-MM-DD
+    const formattedDate = selectedDate.toISOString().split("T")[0];
+
     try {
       const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
         method: "POST",
@@ -130,7 +133,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           recordID: selectedRecordId,
-          new_wfh_date: selectedDate,
+          new_wfh_date: formattedDate, // Send only the date in YYYY-MM-DD format
           reason,
           staff_id: staffId,
         }),
@@ -161,7 +164,7 @@ export default function PendingRequests() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_wfh`, {
+      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_adhoc_wfh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -195,6 +198,7 @@ export default function PendingRequests() {
         <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: "100%" }}>
           <Typography variant="h6" gutterBottom textAlign="center">
             Staff ID: {staffId}
+            
           </Typography>
 
           <Tabs value={activeTab} onChange={handleTabChange} centered>
@@ -233,20 +237,6 @@ export default function PendingRequests() {
     </>
   );
 }
-
-// Check if the WFH date is within two weeks of today
-const isWithinTwoWeeks = (date) => {
-  const today = new Date();
-  const wfhDate = new Date(date);
-  const twoWeeksBefore = new Date(today);
-  const twoWeeksAfter = new Date(today);
-
-  twoWeeksBefore.setDate(today.getDate() - 14);
-  twoWeeksAfter.setDate(today.getDate() + 14);
-
-  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
-};
-
 function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
@@ -307,3 +297,16 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
     </TableContainer>
   );
 }
+
+// Helper function to check if the WFH date is within two weeks of today
+const isWithinTwoWeeks = (date) => {
+  const today = new Date();
+  const wfhDate = new Date(date);
+  const twoWeeksBefore = new Date(today);
+  const twoWeeksAfter = new Date(today);
+
+  twoWeeksBefore.setDate(today.getDate() - 14);
+  twoWeeksAfter.setDate(today.getDate() + 14);
+
+  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
+};

@@ -20,11 +20,12 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addMonths, subMonths, isSameDay } from "date-fns";
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 export default function ArrangementForm() {
   const router = useRouter();
   const [staffId, setStaffId] = useState(null);
-  const [wfhDate, setWfhDate] = useState(new Date());
+  const [wfhDate, setWfhDate] = useState(null); // Set initial state to null
   const [scheduleType, setScheduleType] = useState("");
   const [reason, setReason] = useState("");
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
@@ -57,7 +58,7 @@ export default function ArrangementForm() {
 
   const fetchApprovedPendingDates = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`);
       if (response.ok) {
         const data = await response.json();
         const dates = data.map((record) => new Date(record.wfh_date));
@@ -76,10 +77,12 @@ export default function ArrangementForm() {
     setSuccessMessage("");
 
     const reqDate = new Date().toISOString().split("T")[0];
+    const schedDateFormatted = wfhDate ? wfhDate.toLocaleDateString('en-CA') : null; // Format to YYYY-MM-DD without timezone
+
     const payload = {
       staff_id: staffId,
       req_date: reqDate,
-      sched_date: wfhDate ? wfhDate.toISOString().split("T")[0] : null,
+      sched_date: schedDateFormatted,
       timeSlot: scheduleType === "Full Day" ? "FD" : scheduleType,
       reason,
     };
@@ -95,7 +98,7 @@ export default function ArrangementForm() {
 
       if (response.ok) {
         setSuccessMessage(data.message || "WFH request submitted successfully.");
-        setWfhDate(new Date());
+        setWfhDate(null); // Reset wfhDate to null
         setScheduleType("");
         setReason("");
         fetchApprovedPendingDates();
@@ -109,8 +112,9 @@ export default function ArrangementForm() {
     }
   };
 
+
   const handleCancel = () => {
-    setWfhDate(new Date());
+    setWfhDate(null); // Reset wfhDate to null
     setScheduleType("");
     setReason("");
     setErrorMessage("");
@@ -168,9 +172,9 @@ export default function ArrangementForm() {
               dateFormat="yyyy/MM/dd"
               placeholderText="Select WFH Date"
               inline
+              openToDate={today} // Set the initial view without selecting a date
             />
           </Box>
-
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Schedule Type</InputLabel>
             <Select
