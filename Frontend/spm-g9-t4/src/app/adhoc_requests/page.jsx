@@ -34,14 +34,14 @@ export default function PendingRequests() {
   const router = useRouter();
 
   // Retrieve user data and initialize
-  const [user, setUser] = useState(null);
+  
   const [staffId, setStaffId] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = JSON.parse(window.sessionStorage.getItem("user"));
       if (storedUser) {
-        setUser(storedUser);
+        
         setStaffId(storedUser.staff_id);
       } else {
         router.push("/");
@@ -198,6 +198,7 @@ export default function PendingRequests() {
         <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: "100%" }}>
           <Typography variant="h6" gutterBottom textAlign="center">
             Staff ID: {staffId}
+            
           </Typography>
 
           <Tabs value={activeTab} onChange={handleTabChange} centered>
