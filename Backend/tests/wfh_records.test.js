@@ -206,3 +206,191 @@ describe('WFH Records API - Department Schedule', () => {
     });
   });
 });
+
+// New Code //
+
+// Retrieve WFH Records by Staff ID
+describe('GET /wfh_records/:staffid', () => {
+  it('should handle non-existent staff ID gracefully', async () => {
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Mock no records found
+
+    const response = await request(app).get('/wfh_records/999999');
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toEqual({ message: 'No approved or pending WFH requests found for this employee.' });
+  });
+
+  // Further tests for unapproved records can be added here if necessary
+});
+
+// Team Schedule
+describe('GET /wfh_records/team-schedule/:manager_id/:start_date/:end_date', () => {
+  it('should return an error for incorrect date format', async () => {
+    const response = await request(app).get('/wfh_records/team-schedule/140944/2024-13-01/2024-09-06');
+    expect(response.statusCode).toBe(400);  // Assuming 400 for validation errors
+    expect(response.body.message).toContain('Invalid date format');
+  });
+
+  it('should handle if manager has no subordinates', async () => {
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    
+    const response = await request(app).get('/wfh_records/team-schedule/140955/2024-09-04/2024-09-06');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      total_team_members: 0,
+      team_schedule: {
+        '2024-09-04': [],
+        '2024-09-05': [],
+        '2024-09-06': []
+      }
+    });
+  });
+});
+
+// Department Schedule
+describe('GET /wfh_records/schedule/:departments/:start_date/:end_date', () => {
+  it('should return an error for non-existent department', async () => {
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    
+    const response = await request(app).get('/wfh_records/schedule/NonExistentDept/2024-09-04/2024-09-06');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      total_staff: 0,
+      staff_schedules: {}
+    });
+  });
+
+  it('should handle multiple departments with mixed WFH statuses', async () => {
+    const mockData = {
+      '2024-09-04': [
+        { staff_id: 140003, staff_fname: 'John', staff_lname: 'Doe', dept: 'Sales', wfh_date: '2024-09-04', timeslot: 'FD', status: 'Approved' },
+        { staff_id: 140004, staff_fname: 'Jane', staff_lname: 'Doe', dept: 'HR', wfh_date: null, schedule_status: 'Office' }
+      ]
+    };
+
+    client.query.mockResolvedValueOnce({ rows: [].concat(...Object.values(mockData)), rowCount: 2 });
+
+    const response = await request(app).get('/wfh_records/schedule/Sales,HR/2024-09-04/2024-09-05');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      total_staff: 2,
+      staff_schedules: mockData
+    });
+  });
+});
+
+// WFH Ad-Hoc Request
+describe('POST /wfh_records/wfh_adhoc_request', () => {
+  it('should prevent duplicate WFH requests for the same date', async () => {
+    client.query.mockResolvedValueOnce({ rows: [1], rowCount: 1 }); // Mock existing request
+
+    const response = await request(app)
+      .post('/wfh_records/wfh_adhoc_request')
+      .send({
+        staff_id: 140911,
+        req_date: "2024-01-01",
+        sched_date: "2024-09-06",
+        timeSlot: 'FD',
+        reason: 'Personal work'
+      });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body.message).toContain('A WFH request for this date already exists');
+  });
+});
+
+// Withdrawal Requests
+describe('POST /wfh_records/withdraw_wfh', () => {
+  it('should not allow withdrawal of requests that are already rejected', async () => {
+    client.query.mockResolvedValueOnce({ rows: [{ status: 'Rejected' }], rowCount: 1 });
+
+    const response = await request(app)
+      .post('/wfh_records/withdraw_wfh')
+      .send({ recordID: 123, reason: 'No longer needed', staff_id: 140911 });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body.message).toContain('Invalid request status for withdrawal.');
+  });
+
+  it('should successfully process a withdrawal for pending requests', async () => {
+    client.query.mockResolvedValueOnce({ rows: [{ status: 'Pending' }], rowCount: 1 });
+    client.query.mockResolvedValueOnce({ rows: [{ recordid: 123 }], rowCount: 1 }); // Mock update
+
+    const response = await request(app)
+      .post('/wfh_records/withdraw_wfh')
+      .send({ recordID: 123, reason: 'No longer needed', staff_id: 140911 });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toContain('WFH request withdrawn successfully.');
+  });
+});
+
+// Approving/Rejecting Requests
+describe('PATCH /wfh_records/accept/:recordID', () => {
+  it('should successfully approve a WFH request', async () => {
+    client.query.mockResolvedValueOnce({ rows: [{ recordid: 101, status: 'Approved' }], rowCount: 1 });
+
+    const response = await request(app).patch('/wfh_records/accept/101');
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toBe('Status updated to approved.');
+  });
+
+  it('should return an error for non-existent request ID', async () => {
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Mock no record found
+
+    const response = await request(app).patch('/wfh_records/accept/999');
+    expect(response.statusCode).toBe(404);
+    expect(response.body.message).toBe('No records found for the given record ID.');
+  });
+});
+
+describe('PATCH /wfh_records/reject/:id', () => {
+  it('should correctly reject a WFH request with a reason', async () => {
+    client.query.mockResolvedValueOnce({ rows: [{ recordid: 102, status: 'Rejected' }], rowCount: 1 });
+
+    const response = await request(app)
+      .patch('/wfh_records/reject/102')
+      .send({ reason: 'Not applicable' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toContain('Rejection reason updated successfully.');
+  });
+});
+
+// Recurring WFH Requests
+describe('POST /wfh_records/withdraw_recurring_request', () => {
+  it('should handle withdrawal from a recurring WFH request correctly', async () => {
+    client.query.mockResolvedValueOnce({
+      rows: [{ wfh_dates: ['2024-09-04', '2024-09-05'], status: 'Pending' }],
+      rowCount: 1
+    });
+    client.query.mockResolvedValueOnce({ rowCount: 1 }); // Mock update for successful date removal
+
+    const response = await request(app)
+      .post('/wfh_records/withdraw_recurring_request')
+      .send({
+        requestId: 500,
+        date: '2024-09-04',
+        reason: 'Planning changes',
+        staff_id: 140911
+      });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toContain('WFH request for the date 2024-09-05 has been withdrawn successfully.');
+  });
+
+  it('should return an error if no matches are found for the withdrawal', async () => {
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // No records found
+
+    const response = await request(app)
+      .post('/wfh_records/withdraw_recurring_request')
+      .send({
+        requestId: 501,
+        date: '2024-09-10',
+        reason: 'Not required',
+        staff_id: 140911
+      });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body.message).toContain('Error withdrawing recurring WFH request');
+  });
+});
