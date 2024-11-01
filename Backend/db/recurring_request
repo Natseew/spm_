@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS recurring_request (
     staff_id INT NOT NULL,
     day_of_week INT CHECK (day_of_week BETWEEN 1 AND 5) NOT NULL, -- 1=Monday, 2=Tuesday, ..., 5=Friday
     request_reason TEXT,
-    status VARCHAR(10) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn')) NOT NULL,
+    status VARCHAR(10) CHECK (status IN ('Approved', 'Pending', 'Rejected', 'Withdrawn', 'Pending Withdrawal', 'Pending Change')) NOT NULL,
     timeslot VARCHAR(2) CHECK (timeslot IN ('AM', 'PM', 'FD')) NOT NULL,
     wfh_dates DATE[],
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
