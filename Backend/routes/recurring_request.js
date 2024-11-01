@@ -123,7 +123,7 @@ router.post('/submit', async (req, res) => {
         res.status(201).json({ message: 'Recurring WFH request submitted successfully', requestID });
     } catch (error) {
         console.error('Error submitting recurring WFH request:', error);
-        res.status(500).json({ message: 'Please fill up the form. ' + error.message });
+        res.status(500).json({ message: 'Please fill up the form again. ' + error.message });
     }
 });
 
