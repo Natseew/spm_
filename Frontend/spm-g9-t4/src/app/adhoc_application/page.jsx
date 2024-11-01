@@ -20,6 +20,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addMonths, subMonths, isSameDay } from "date-fns";
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 export default function ArrangementForm() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function ArrangementForm() {
 
   const fetchApprovedPendingDates = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`);
       if (response.ok) {
         const data = await response.json();
         const dates = data.map((record) => new Date(record.wfh_date));
