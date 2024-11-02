@@ -4,8 +4,56 @@ const client = require('../databasepg');
 const dayjs = require('dayjs');
 const isSameOrBefore = require('dayjs/plugin/isSameOrBefore'); 
 dayjs.extend(isSameOrBefore);
-// Import the map_team_hierarchy function from employee.js
+
+// Import functions from employee.js
 const map_team_hierarchy = require('../routes/employee').map_team_hierarchy;
+const immediate_team = require('../routes/employee').getImmediateTeam;
+
+// calculate percentage in office [team level]
+async function calculateInOfficePercentage(staffId, dates, wfhRecords) {
+  try {
+      // Step 1: Retrieve immediate team members of the given staff
+      const teamMembers = await immediate_team(staffId);
+      const teamMemberIds = teamMembers.map(member => member.staff_id);
+
+      // Initialize an object to store the in-office percentage for each date and timeslot
+      const inOfficePercentages = {};
+
+      // Step 2: Loop over each date in the dates array
+      for (const date of dates) {
+          inOfficePercentages[date] = {};
+
+          // Step 3: Filter WFH records for each timeslot (AM, PM, FD)
+          const timeslots = ['AM', 'PM', 'FD'];
+          for (const timeslot of timeslots) {
+              // Filter WFH records by team member, date, and timeslot
+              const wfhRecordsForDateAndSlot = wfhRecords.filter(record =>
+                  teamMemberIds.includes(record.staffID) &&
+                  record.wfh_date === date &&
+                  record.timeslot === timeslot &&
+                  record.status === 'Approved'
+              );
+
+              // Count total team members and those working from home
+              const totalTeamCount = teamMemberIds.length;
+              const wfhCount = wfhRecordsForDateAndSlot.length;
+
+              // Calculate in-office percentage
+              const inOfficePercentage = ((totalTeamCount - wfhCount) / totalTeamCount) * 100;
+
+              // Store the result in the output object
+              inOfficePercentages[date][timeslot] = inOfficePercentage;
+          }
+      }
+
+      return inOfficePercentages;
+  } catch (error) {
+      console.error('Error calculating in-office percentage:', error);
+      return {};
+  }
+}
+
+// calculate percentage in office [dept level]
 
 // Route to get all WFH records
 router.get('/', async (req, res) => {
@@ -293,8 +341,7 @@ router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
       return acc;
     }, {});
     
-    // Log the constructed WFH map for staff_id 140918 (for debugging purposes)
-    console.log('wfhMap for 140918:', wfhMap[140918]);  // Log this to verify the entry for staff_id: 140918
+    console.log('Constructed WFH map:', wfhMap); // Debugging purposes
 
     // Step 5: Loop through employees and assign them to each date in the date range
     employees.forEach(employee => {
@@ -338,7 +385,33 @@ router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
       });
     });
 
-    // Step 6: Query to count total employees in selected departments
+    // Step 6: Calculate in-office percentage for each date and timeslot
+    const inOfficePercentages = {};
+    for (const date of dateRange) {
+      inOfficePercentages[date] = {};
+      const timeslots = ['AM', 'PM', 'FD'];
+
+      for (const timeslot of timeslots) {
+        // Filter WFH records by date and timeslot
+        const wfhRecordsForDateAndSlot = wfhRecords.filter(record =>
+          dayjs(record.wfh_date).format('YYYY-MM-DD') === date &&
+          record.timeslot === timeslot &&
+          record.status === 'Approved'
+        );
+
+        // Calculate total team count and WFH count
+        const totalTeamCount = employees.length;
+        const wfhCount = wfhRecordsForDateAndSlot.length;
+
+        // Calculate in-office percentage
+        const inOfficePercentage = ((totalTeamCount - wfhCount) / totalTeamCount) * 100;
+        inOfficePercentages[date][timeslot] = inOfficePercentage;
+      }
+    }
+
+    console.log('Calculated in-office percentages:', inOfficePercentages); // Log calculated percentages
+
+    // Step 7: Query to count total employees in selected departments
     const employeeCountResult = await client.query(
       `SELECT dept, COUNT(*) AS total_employees 
        FROM employee
@@ -349,23 +422,22 @@ router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
 
     console.log('Total employee count per department:', employeeCountResult.rows);
 
-    // Step 7: Return the final response with schedules nested by date
+    // Step 8: Return the final response with schedules and in-office percentages
     res.status(200).json({
       total_staff: employees.length,
       staff_schedules: scheduleByDate, // Grouped by date
+      in_office_percentages: inOfficePercentages, // In-office percentages per date and timeslot
       total_employees: employeeCountResult.rows, // Count of employees in each department
       selected_start_date: start_date,
       selected_end_date: end_date
     });
     
-    // Log the final schedule by date for 2024-09-06
-    console.log('Final schedule for 2024-09-06:', scheduleByDate['2024-09-06']);  // Log this to verify the schedule for that date
-
   } catch (error) {
     console.error('Error fetching staff schedule by department:', error);
     res.status(500).json({ message: 'Internal server error. ' + error.message });
   }
 });
+
 
 
 // Route to submit a WFH ad-hoc request
@@ -902,3 +974,5 @@ router.patch('/reject_withdrawal/:recordID', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.calculateInOfficePercentage=calculateInOfficePercentage;  
+

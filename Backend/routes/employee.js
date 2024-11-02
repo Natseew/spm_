@@ -61,6 +61,20 @@ router.get('/by-manager/:managerId', async (req, res) => {
   }
 });
 
+// Get immediate team members of a given manager
+async function getImmediateTeam(managerId) {
+    try {
+        const result = await client.query(
+            'SELECT * FROM employee WHERE reporting_manager = $1',
+            [managerId]
+        );
+        return result.rows;
+    } catch (error) {
+        console.error('Error retrieving employees by reporting manager:', error);
+        return [];
+    }
+}
+
 // Define your map_team_hierarchy function
 async function map_team_hierarchy(manager_id, client) {
   const team = [];
@@ -96,3 +110,4 @@ async function map_team_hierarchy(manager_id, client) {
 // Export router and map_team_hierarchy correctly
 module.exports = router;  // Default export for router
 module.exports.map_team_hierarchy = map_team_hierarchy;  // Named export for map_team_hierarchy
+module.exports.getImmediateTeam = getImmediateTeam;  // Named export for getImmediateTeam

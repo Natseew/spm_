@@ -12,6 +12,9 @@ const employeeNameid = {};
 const ManagerID = '140001';
 
 const RecurringSchedule = () => {
+    const [override50Percent, setOverride50Percent] = useState(false);
+    const [showOverridePrompt, setShowOverridePrompt] = useState(false);
+    const [overrideData, setOverrideData] = useState(null); // Stores data for the override prompt
     const [RecurringData, setRecurringData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -67,7 +70,11 @@ const RecurringSchedule = () => {
     }, [path]);
 
     const openModal = (data) => {
-        setModalData(data);
+        const updatedData = {
+            ...data,
+            inOfficePercentage: data.inOfficePercentage, 
+        };
+        setModalData(updatedData);
         setModalOpen(true);
     };
 
@@ -331,21 +338,27 @@ const RecurringSchedule = () => {
 
 //Pending Accept
 const handleAccept = async (requestid) => {
-    console.log(`Accepting request with ID: ${requestid}`);
+    console.log(`Accepting request with ID: ${requestid} with override flag: ${override50Percent}`);
     try {
         const response = await fetch(`${path}recurring_request/approve/${requestid}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ override_50_percent: override50Percent }) // Include override flag
         });
 
-        if (!response.ok) {
-            throw new Error(`Error updating status: ${response.status}`);
+        const result = await response.json();
+
+        // Check if backend requires confirmation for override
+        if (result.requireOverride) {
+            setShowOverridePrompt(true);  // Show confirmation prompt
+            setOverrideData({ requestid, ...result });  // Store data needed for prompt
+            return;  // Exit to wait for manager's decision
         }
 
-        const updatedData = await response.json();
-        console.log('Record updated successfully:', updatedData);
+        // If no override required, proceed as usual
+        console.log('Record updated successfully:', result);
 
         // COMMENTED OUT - because of email limits 
         // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
@@ -373,7 +386,6 @@ const handleAccept = async (requestid) => {
             )
         );
         
-
         setNotification('Request accepted successfully!');
         setTimeout(() => setNotification(''), 3000);
     } catch (error) {
@@ -488,6 +500,19 @@ const handleAcceptWithdrawal = async (requestid) => {
         setTimeout(() => setNotification(''), 3000);
     }
 };
+
+const confirmOverride = (requestid) => {
+    setOverride50Percent(true);  // Set override flag to true
+    setShowOverridePrompt(false); // Close the override prompt
+    handleAccept(requestid);      // Re-attempt the accept request with override
+};
+
+const cancelOverride = () => {
+    setShowOverridePrompt(false); // Close the prompt
+    setOverrideData(null);        // Clear stored data for override
+    setOverride50Percent(false);  // Ensure override flag is reset
+};
+
 
 
 
@@ -619,6 +644,33 @@ const handleAcceptWithdrawal = async (requestid) => {
                 </tbody>
 
             </table>
+
+            {showOverridePrompt && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-700 bg-opacity-50">
+                    <div className="bg-white p-6 rounded shadow-lg">
+                        <h2 className="text-lg font-semibold mb-4">Confirm Override</h2>
+                        <p>
+                            The in-office percentage is below 50% for {overrideData.date} during {overrideData.timeslot}.
+                            Are you sure you want to approve this request?
+                        </p>
+                        <div className="mt-4 flex justify-end space-x-4">
+                            <button 
+                                className="bg-green-500 text-white px-4 py-2 rounded"
+                                onClick={() => confirmOverride(overrideData.requestid)}
+                            >
+                                Confirm Override
+                            </button>
+                            <button 
+                                className="bg-red-500 text-white px-4 py-2 rounded"
+                                onClick={() => cancelOverride()}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             <RecurringModal 
             isOpen={modalOpen} 
