@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Button,
   Box,
   Tabs,
@@ -19,6 +20,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import DatePicker from "react-datepicker";
@@ -37,6 +39,7 @@ export default function PendingRequests() {
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
   const [openReason, setOpenReason] = useState(false);
+  const [change_reason, setReason] = useState('');
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -145,39 +148,43 @@ export default function PendingRequests() {
     setSelectedDate(new Date());
     setOpenChangeDialog(false);
   };
-  const submitChangeDate = async (recordId, date) => {
 
-    if (openReason) {
-      const reason = prompt("Please enter the reason for changing your request:");
-      setOpenReason(false);
-    }
-    try {
-      // to change the route
-      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          requestId: recordId, // The specific record ID for the WFH request
-          date: date, // The specific date for withdrawal
-          reason: reason, // The reason entered by the user
-          staff_id: staffId, // The staff ID of the user withdrawing the request
-        }),
-      });
+  const submitChangeDate = async (recordId, date, change_reason) => {
+    return;
+  }
+  // const submitChangeDate = async (recordId, date) => {
 
-      if (response.ok) {
-        const result = await response.json();
-        alert(result.message); // Display success message
-      } else {
-        const result = await response.json();
-        alert(`Error submitting change to WFH request: ${result.message}`);
-      }
-    } catch (error) {
-      console.error("Error withdrawing WFH request:", error);
-      alert("An error occurred while submitting the change request.");
-    }
-  };
+  //   if (openReason) {
+  //     const reason = prompt("Please enter the reason for changing your request:");
+  //     setOpenReason(false);
+  //   }
+  //   try {
+  //     // to change the route
+  //     const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         requestId: recordId, // The specific record ID for the WFH request
+  //         date: date, // The specific date for withdrawal
+  //         reason: reason, // The reason entered by the user
+  //         staff_id: staffId, // The staff ID of the user withdrawing the request
+  //       }),
+  //     });
+
+  //     if (response.ok) {
+  //       const result = await response.json();
+  //       alert(result.message); // Display success message
+  //     } else {
+  //       const result = await response.json();
+  //       alert(`Error submitting change to WFH request: ${result.message}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error withdrawing WFH request:", error);
+  //     alert("An error occurred while submitting the change request.");
+  //   }
+  // };
 
   // Function to handle withdrawn date
   const handleWithdrawDate = async (recordId, date) => {
@@ -305,8 +312,9 @@ export default function PendingRequests() {
 
                               {/* Change Request Dialog */}
                               <Dialog open={openChangeDialog} onClose={handleCloseChangeDialog}>
-                                <DialogTitle>Change WFH Date</DialogTitle>
-                                <DialogContent>
+                              <DialogTitle>Change WFH Date</DialogTitle>
+                              <DialogContent>
+                                <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
                                   <DatePicker
                                     selected={selectedDate}
                                     onChange={(date) => setSelectedDate(date)}
@@ -315,14 +323,27 @@ export default function PendingRequests() {
                                     filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
                                     inline
                                   />
-                                </DialogContent>
-                                <DialogActions>
-                                  <Button onClick={handleCloseChangeDialog}>Cancel</Button>
-                                  <Button onClick={submitChangeDate(record.requestid, record.wfh_date)} variant="contained" color="primary">
-                                    Submit Change
-                                  </Button>
-                                </DialogActions>
-                              </Dialog>
+                                  <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
+                                  <Typography variant="subtitle1">Reason for Changing</Typography>
+                                  <TextField
+                                    label="Reason"
+                                    value={change_reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    fullWidth
+                                    multiline
+                                    rows={4}
+                                    margin="normal"
+                                    required
+                                  />
+                                </Box>
+                              </DialogContent>
+                              <DialogActions>
+                                <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+                                <Button onClick={() => submitChangeDate(record.requestid, selectedDate, change_reason)} variant="contained" color="primary">
+                                  Submit Change
+                                </Button>
+                              </DialogActions>
+                            </Dialog>
                           </>
                         )}
                       </TableCell>
