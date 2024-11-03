@@ -56,56 +56,66 @@ export default function RecurringArrangementPage() {
     setSuccessMessage("");
 
     const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
-    
-    const formattedStartDate = formatDate(startDate);
-    const formattedEndDate = formatDate(endDate);
 
-    setStartDate(formattedStartDate);
-    setEndDate(formattedEndDate);
-    console.log("Start Date:", formattedStartDate);
-    console.log("End Date:", formattedEndDate);
+    // Ensure startDate and endDate are valid Date objects
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+
+    // Check if the dates are valid
+    if (isNaN(startDateObj) || isNaN(endDateObj)) {
+        setErrorMessage("Please provide valid start and end dates.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    const formattedStartDate = formatDate(startDateObj);
+    const formattedEndDate = formatDate(endDateObj);
+
+    console.log("Formatted Start Date:", formattedStartDate);
+    console.log("Formatted End Date:", formattedEndDate);
 
     const payload = {
-      staff_id: staffId,
-      start_date: formattedStartDate,
-      end_date: formattedEndDate,
-      day_of_week: dayOfWeek,
-      request_reason: reason,
-      timeslot: timeslot
+        staff_id: staffId,
+        start_date: formattedStartDate,
+        end_date: formattedEndDate,
+        day_of_week: dayOfWeek,
+        request_reason: reason,
+        timeslot: timeslot
     };
-    console.log("Payload: ",payload);
+    console.log("Payload:", payload);
 
     try {
-      // const response = await fetch(`http://localhost:4000/recurring_request/submit`, {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (response.ok) {
-        setSuccessMessage(data.message || "Recurring WFH request submitted successfully.");
-        setStartDate(null);
-        setEndDate(null);
-        setDayOfWeek("");
-        setTimeSlot("");
-        setReason("");
-      } else {
-        setErrorMessage(data.message || "An error occurred. Please try again.");
-      }
+        if (response.ok) {
+            setSuccessMessage(data.message || "Recurring WFH request submitted successfully.");
+            // Reset form fields
+            setStartDate(null);
+            setEndDate(null);
+            setDayOfWeek("");
+            setTimeSlot("");
+            setReason("");
+        } else {
+            setErrorMessage(data.message || "An error occurred. Please try again.");
+        }
     } catch (error) {
-      setErrorMessage(`An unexpected error occurred: ${error.message}`);
+        setErrorMessage(`An unexpected error occurred: ${error.message}`);
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
-  };
+};
+
 
   const handleCancel = () => {
     setStartDate(null);
