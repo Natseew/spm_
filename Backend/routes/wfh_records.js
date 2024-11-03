@@ -85,7 +85,7 @@ router.get('/:staffid', async (req, res) => {
     }
 });
 
-
+// Did not test this //
 // Route to get approved staff schedule for a team based on Reporting Manager ID and date
 router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, res) => {
   const { manager_id, start_date, end_date } = req.params;
@@ -162,6 +162,8 @@ const flattenHierarchy = (team) => {
   return ids;
 };
 
+
+// Did not test this //
 // Route to get approved staff schedule for a team based on Reporting Manager ID and date range
 router.get('/team-schedule/:manager_id/:start_date/:end_date', async (req, res) => {
   const { manager_id, start_date, end_date } = req.params;
@@ -289,9 +291,7 @@ router.get('/team-schedule/:manager_id/:start_date/:end_date', async (req, res) 
   }
 });
 
-
-
-
+// Did not test this //
 // Route to get staff schedule by department(s) and date range
 router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
   const { departments, start_date, end_date } = req.params;
@@ -439,7 +439,7 @@ router.get('/schedule/:departments/:start_date/:end_date', async (req, res) => {
 });
 
 
-
+// Failed Test (Refer to Test Case 13) //
 // Route to submit a WFH ad-hoc request
 router.post('/wfh_adhoc_request', async (req, res) => {
   const { staff_id, req_date, sched_date, timeSlot, reason } = req.body;
@@ -574,7 +574,7 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
 });
 
 
-
+// Failed Test (Refer to Test Case 4)
 // Withdraw an ad-hoc WFH request
 router.post('/withdraw_adhoc_wfh', async (req, res) => {
   const { recordID, reason,staff_id} = req.body;
@@ -891,27 +891,31 @@ router.patch('/accept/:recordID', async (req, res) => {
 router.patch('/reject/:id', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
+
   try {
-      const result = await client.query(
-          'UPDATE wfh_records SET status = $1, reject_reason = $2 WHERE recordid = $3 RETURNING *',
-          ['Rejected', reason, id]
+    const result = await client.query(
+        'UPDATE wfh_records SET status = $1, reject_reason = $2 WHERE recordid = $3 RETURNING *',
+        ['Rejected', reason, id]
+    );
+
+    if (result.rowCount === 0) {
+        return res.status(404).json({ message: 'No records found for the given record ID.' });
+    }
+
+      // Log the rejection action (using correct variable)
+      await client.query(
+          `INSERT INTO activitylog (recordID, activity)
+          VALUES ($1, $2);`,
+          [id, `Rejected Recurring Request: ${reason}`]
       );
-      if (result.rowCount === 0) {
-          return res.status(404).json({ message: 'No records found for the given record ID.' });
+      res.status(200).json({
+        message: 'Rejection reason updated successfully.',
+        record: result.rows[0]
+    });
+      } catch (error) {
+          console.error('Error rejecting WFH request:', error);
+          res.status(500).json({ message: 'Internal server error. ' + error.message });
       }
-
-        // Log the rejection action (optional)
-        await client.query(
-          `INSERT INTO activitylog (requestid, activity)
-          VALUES ($1, $2);`, // Use parameterized values to prevent SQL injection
-          [requestid, `Rejected Recurring Request: ${reason}`]
-      );
-
-      res.status(200).json({ message: 'Rejection reason updated successfully.', record: result.rows[0] });
-  } catch (error) {
-      console.error('Update error:', error);
-      res.status(500).json({ message: 'Internal server error. ' + error.message });
-  }
 });
 
 
