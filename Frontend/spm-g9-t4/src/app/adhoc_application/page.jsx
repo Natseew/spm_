@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Navbar from '../../components/Navbar';
 import {
   Button,
   Typography,
@@ -138,6 +139,8 @@ export default function ArrangementForm() {
   };
 
   return (
+    <>
+    <Navbar /> {/* Added Navbar here */}
     <Container maxWidth="sm">
       {/* Tab Navigation */}
       <Tabs value={activeTab} onChange={handleTabChange} centered>
@@ -210,5 +213,6 @@ export default function ArrangementForm() {
         </form>
       </Paper>
     </Container>
+    </>
   );
 }

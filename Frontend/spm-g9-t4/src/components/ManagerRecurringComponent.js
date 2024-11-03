@@ -3,12 +3,13 @@ import RecurringModal from './RecurringModal';
 import HandleReccuringRejectModal from './HandleReccuringRejectModal';
 import Notification from './Notification';
 import ModifyRecurringRequestModal from './ModifyRecurringRequestModal';
+import HandleRecurringAcceptChangeModal from './HandleRecurringAcceptChangeModal';
 import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal';
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
-const ManagerID = '130002';
-// const ManagerID = '140001';
+// const ManagerID = '130002'; 
+const ManagerID = '140001';
 
 const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
@@ -17,6 +18,7 @@ const RecurringSchedule = () => {
     const [employeeIds, setEmployeeIds] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [AcceptChangeModalOpen, setAcceptChangeModalOpen] = useState(false);
     const [rejectChangeModalOpen, setRejectChangeModalOpen] = useState(false);
     const [modifyModalOpen, setModifyModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
@@ -139,6 +141,18 @@ const RecurringSchedule = () => {
         setModifyData(null);
     };
 
+    const AcceptChangeModal = (data) => {
+        let AcceptChangefilteredDates = [];
+        AcceptChangefilteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
+        setModifyData({ ...data, wfh_dates: AcceptChangefilteredDates });
+        setAcceptChangeModalOpen(true);
+    };
+
+    const closeAcceptChangeModal = () => {
+        setAcceptChangeModalOpen(false);
+        setModifyData(null);
+    };
+
     if (loading) {
         return <p>Loading...</p>;
     }
@@ -149,6 +163,7 @@ const RecurringSchedule = () => {
 
     const handleStatusChange = (status) => {
         setSelectedStatus(status);
+        console.log("selected status: " + status)
     };
 
     const handleDateChange = (event) => {
@@ -159,89 +174,114 @@ const RecurringSchedule = () => {
     const addOneDayAndFormat = (dateString) => {
         const date = new Date(dateString);
         date.setUTCDate(date.getUTCDate() + 1); // Add one day in UTC
-
+    
         const day = String(date.getUTCDate()).padStart(2, '0');
         const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Months are zero-based
-        const year = String(date.getUTCFullYear()).slice(-2); // Last two digits of the year
-
-        return `${year}/${month}/${day}`; // Return in YY/MM/DD format
-    };
-
+        const year = String(date.getUTCFullYear()); // Full year (4 digits)
+    
+        return `${year}/${month}/${day}`; // Return in YYYY/MM/DD format
+    };    
     
     const filteredData = RecurringData.map(item => {
         const filteredRecords = item.wfh_records.filter(record => record.status === selectedStatus);
+        console.log(filteredRecords)
+
         return filteredRecords.length ? {
             ...item,
             wfh_records: filteredRecords.map(record => ({
                 ...record,
-                wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format to DD/MM/YYYY
-            }))
+                wfh_date: addOneDayAndFormat(record.wfh_date) // Add one day and format
+            })),
+            
         } : null;
-    }).filter(Boolean);
-
+    }).filter(Boolean); // Filter out nulls.
 
     const getStaffName = (id) => employeeNameid[Number(id)] || 'Unknown';
 
-    // For pending change functionality
-    const handleAcceptChange = async (reqId) => {
-        const reqData = RecurringData.find(item => item.requestid === reqId);
-
-        if (!reqData || !reqData.wfh_records) return;
-
-        const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
-        if (!wfhRecord) return;
-
-        const wfhDate = wfhRecord.wfh_date;
-        const response = await fetch(`${path}recurring_request/accept-change`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requestID: reqId, wfhDate }),
-        });
-
-        if (!response.ok) {
-            setNotification('Error accepting change request');
+    // Accept Pending change
+    const handleAcceptChange = async (reqId, changeDates) => {
+        if (!reqId || !changeDates || !Array.isArray(changeDates)) {
+            console.error("Invalid inputs provided:", reqId, changeDates);
             return;
         }
-
-        setNotification('Change request accepted successfully');
-        const updatedData = RecurringData.map(item => {
-            if (item.requestid === reqId) {
-                const updatedRecords = item.wfh_records.map(record => record.status === 'Pending Change' ? { ...record, status: 'Approved' } : record);
-                return { ...item, wfh_records: updatedRecords };
+        try {
+            const response = await fetch(`${path}recurring_request/accept-change`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ requestID: reqId, changeDates }),
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Change accepted successfully:", data);
+    
+                // Update table
+                setRecurringData(prevData => 
+                    prevData.map(item => 
+                        item.requestid === reqId 
+                            ? { 
+                                ...item, 
+                                status: 'Approved', 
+                                wfh_records: item.wfh_records.map(record => ({ 
+                                    ...record, 
+                                    status: 'Approved' 
+                                })) 
+                            }
+                            : item
+                    )
+                );
+            } else {
+                console.error("Failed to accept change:", response.statusText);
             }
-            return item;
-        });
-        setRecurringData(updatedData);
+        } catch (error) {
+            console.error("Error accepting change:", error);
+        }
     };
+    
 
-    const handleRejectChange = async (reqId, reason) => {
+    const handleRejectChange = async (reqId, rejectDates, reason) => {
+        // Find the request data in RecurringData using the request ID
         const reqData = RecurringData.find(item => item.requestid === reqId);
         if (!reqData) return;
-
-        const wfhRecord = reqData.wfh_records.find(record => record.status === 'Pending Change');
-        const wfhDate = wfhRecord?.wfh_date;
-
-        const response = await fetch(`${path}recurring_request/reject-change`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requestid: reqId, wfhDate, reason }),
-        });
-
-        if (!response.ok) {
-            setNotification('Error rejecting change request');
-            return;
-        }
-
-        setNotification('Change request rejected');
-        const updatedData = RecurringData.map(item => {
-            if (item.requestid === reqId) {
-                const updatedRecords = item.wfh_records.map(record => record.status === 'Pending Change' ? { ...record, status: 'Rejected', reject_reason: reason } : record);
-                return { ...item, wfh_records: updatedRecords };
+    
+        try {
+            // Send the rejection request to the server with the request ID, dates, and reason
+            const response = await fetch(`${path}recurring_request/reject-change`, {
+                method: 'PATCH', // Using PATCH since we're only modifying part of the resource
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestID: reqId, changeDates: rejectDates, reject_reason: reason })
+            });
+    
+            if (!response.ok) {
+                setNotification('Error rejecting change request');
+                return;
             }
-            return item;
-        });
-        setRecurringData(updatedData);
+    
+            // Update the RecurringData state to reflect the rejected status and reason for the selected dates
+            const updatedData = RecurringData.map(item => {
+                if (item.requestid === reqId) {
+                    const updatedRecords = item.wfh_records.map(record => 
+                        rejectDates.includes(record.wfh_date) && record.status === 'Pending Change'
+                            ? { ...record, status: 'Rejected', reject_reason: reason } // Update status and reason for selected dates
+                            : record // Keep other records as is
+                    );
+                    return { ...item, wfh_records: updatedRecords }; // Return updated item with modified records
+                }
+                return item; // Keep other items as is
+            });
+    
+            setRecurringData(updatedData); // Update the main state with the modified data
+            setNotification('Change request rejected'); // Display success notification
+        } catch (error) {
+            console.error('Error rejecting change request:', error);
+            setNotification('Error rejecting change request');
+        }
     };
+    
+
+
 
 
     // Handle Modify
@@ -249,7 +289,6 @@ const RecurringSchedule = () => {
         console.log('Request ID:', requestid);
         console.log('Data to be parsed in:', updatedData);
 
-        // Validate input parameters
         if (!requestid || !updatedData || !Array.isArray(updatedData.wfh_dates)) {
             console.error("Invalid inputs provided:", requestid, updatedData);
             return;
@@ -265,13 +304,11 @@ const RecurringSchedule = () => {
                 body: JSON.stringify(updatedData),
             });
 
-            // Handle unsuccessful response
             if (!response.ok) {
                 const errorInfo = await response.json();
                 throw new Error(`Modification failed: ${errorInfo.message}`);
             }
 
-            // Parse the response and log success
             const result = await response.json();
             console.log('Modification successful:', result);
 
@@ -292,9 +329,7 @@ const RecurringSchedule = () => {
     };
 
 
-//Handle Accept
-// Action Handlers
-// Changed "recordID" to "requestID" to match the API
+//Pending Accept
 const handleAccept = async (requestid) => {
     console.log(`Accepting request with ID: ${requestid}`);
     try {
@@ -348,7 +383,7 @@ const handleAccept = async (requestid) => {
     }
 };
 
-// Added reason parameter to async function
+// Pending Reject
 const handleReject = async (requestid,reason) => {
     console.log(`Rejecting request with ID: ${requestid} for reason: ${reason}`);
     try {
@@ -401,6 +436,60 @@ const handleReject = async (requestid,reason) => {
         setTimeout(() => setNotification(''), 3000);
     }
 };
+
+const handleAcceptWithdrawal = async (requestid) => {
+    console.log(`Accepting request with ID: ${requestid}`);
+    try {
+        const response = await fetch(`${path}recurring_request/approvewithdrawal/${requestid}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error updating status: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        console.log('Record updated successfully:', updatedData);
+
+        // COMMENTED OUT - because of email limits 
+        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
+        //     user_name: "",
+        //     recordID: recordID,
+        //     }, 
+        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
+
+        // console.log("Email Updates");
+        // console.log('Email sent successfully:', emailResponse);
+
+        // Update the status for BOTH recurring request & wfh_records in displayed table
+        setRecurringData(prevData => 
+            prevData.map(item => 
+                item.requestid === requestid 
+                    ? { 
+                        ...item, 
+                        status: 'Pending Withdrawal', 
+                        wfh_records: item.wfh_records.map(record => ({ 
+                            ...record, 
+                            status: 'Pending Withdrawal' 
+                        })) 
+                    }
+                    : item
+            )
+        );
+        
+        setNotification('Withdrawal accepted successfully!');
+        setTimeout(() => setNotification(''), 3000);
+    } catch (error) {
+        console.error('Error during status update:', error);
+        setNotification(`Error withdrawing request: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
+
 
     return (
         <div>
@@ -501,7 +590,7 @@ const handleReject = async (requestid,reason) => {
                                 {selectedStatus === 'Pending Change' && (
                                     <>
                                         <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                        onClick={() => handleAcceptChange(item.requestid)}>
+                                        onClick={() => AcceptChangeModal(item)}>
                                             Accept
                                         </button>
                                         <button className="bg-red-500 text-white px-2 py-1 rounded" 
@@ -511,6 +600,19 @@ const handleReject = async (requestid,reason) => {
                                     </>
                                 )}
                                 
+                                {selectedStatus === 'Pending Withdrawal' && (
+                                    <>
+                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                        onClick={() => handleAcceptWithdrawal(item.requestid)}>
+                                            Accept Withdrawal
+                                        </button>
+                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
+                                        onClick={() => handleAccept(item.requestid)}>
+                                            Reject Withdrawal
+                                        </button>
+                                    </>
+                                )}
+                            
                             </td>
                         </tr>
                     ))}
@@ -542,6 +644,13 @@ const handleReject = async (requestid,reason) => {
             isOpen={modifyModalOpen} 
             onClose={closeModifyModal} 
             onModify={handleModify} 
+            data={modifyData} 
+            />
+
+            <HandleRecurringAcceptChangeModal
+            isOpen={AcceptChangeModalOpen} 
+            onClose={closeAcceptChangeModal} 
+            onAcceptChange={handleAcceptChange} 
             data={modifyData} 
             />
         </div>
