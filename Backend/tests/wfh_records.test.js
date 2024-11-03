@@ -25,7 +25,7 @@ const testApiResponse = async (url, expectedStatusCode, expectedBody) => {
 };
 
 // Test 1: Test for Team Schedule (Single Day and Range of Dates)
-describe('WFH Records API - Team Schedule', () => {
+describe('WFH Ad Hoc Records API', () => {
   afterEach(() => {
     jest.clearAllMocks(); // Clear any previous mocks after each test
   });
