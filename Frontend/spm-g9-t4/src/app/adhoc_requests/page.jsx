@@ -24,7 +24,7 @@ import { addMonths, subMonths, isSameDay } from 'date-fns';
 import DatePicker from "react-datepicker";
 import { useRouter } from 'next/navigation';
 import 'react-datepicker/dist/react-datepicker.css';
-import axios from "axios";
+
 
 
 export default function PendingRequests() {
@@ -274,7 +274,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {["Pending", "Approved"].includes(request.status) && isWithinTwoWeeks(request.wfh_date) && (
+                  {shouldShowActionButton(request.status, request.wfh_date) && (
                     <>
                       <Button
                         variant="outlined"
@@ -294,6 +294,7 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                     </>
                   )}
                 </TableCell>
+
               </TableRow>
             ))
           ) : (
@@ -309,15 +310,23 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
   );
 }
 
-// Helper function to check if the WFH date is within two weeks of today
-const isWithinTwoWeeks = (date) => {
-  const today = new Date();
-  const wfhDate = new Date(date);
-  const twoWeeksBefore = new Date(today);
-  const twoWeeksAfter = new Date(today);
 
-  twoWeeksBefore.setDate(today.getDate() - 14);
-  twoWeeksAfter.setDate(today.getDate() + 14);
 
-  return wfhDate >= twoWeeksBefore && wfhDate <= twoWeeksAfter;
+// Helper function to determine if the action button should be shown
+const shouldShowActionButton = (status, date) => {
+  if (status === "Pending") return true; // Show button regardless of date if status is pending
+
+  if (status === "Approved") {
+    const today = new Date();
+    const targetDate = new Date(date);
+    const twoWeeksBack = new Date(today);
+    twoWeeksBack.setDate(today.getDate() - 14);
+    const twoWeeksForward = new Date(today);
+    twoWeeksForward.setDate(today.getDate() + 14);
+
+    return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
+  }
+
+  return false; // Button not shown for other statuses
 };
+

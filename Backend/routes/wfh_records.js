@@ -1031,7 +1031,7 @@ router.patch('/reject_withdrawal/:recordID', async (req, res) => {
   }
 });
 
-// route to apply change - wfh_records (staff side)
+// route to apply recurring change - wfh_records (staff side)
 router.patch('/change/:requestid', async (req, res) => {
   const { requestid } = req.params;
   const { selected_date, actual_wfh_date } = req.body;
