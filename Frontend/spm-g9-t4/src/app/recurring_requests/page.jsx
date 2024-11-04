@@ -98,28 +98,39 @@ export default function PendingRequests() {
   }, []);
 
 
+  // const isDateDisabled = (date) => {
+  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+  //   return isWeekend || isApprovedOrPending;
+  // };
+
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending;
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending || wouldExceedLimit;
   };
 
-  const fetchApprovedPendingDates = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const dates = data.map((record) => new Date(record.wfh_date));
-        setApprovedPendingDates(dates);
-      } else {
-        console.error("Failed to fetch approved and pending dates");
+  useEffect(() => {
+    const fetchApprovedPendingDates = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const dates = data.map((record) => new Date(record.wfh_date));
+          setApprovedPendingDates(dates);
+        } else {
+          console.error("Failed to fetch approved and pending dates");
+        }
+      } catch (error) {
+        console.error("Error fetching approved and pending dates:", error);
       }
-    } catch (error) {
-      console.error("Error fetching approved and pending dates:", error);
-    }
-  },[staffId]);
+    };
+    // Fetch the data when staffId changes
+    fetchApprovedPendingDates();
+  }, [staffId]);  // Dependency array: runs the effect when staffId changes
 
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
