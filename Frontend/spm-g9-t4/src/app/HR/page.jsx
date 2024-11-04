@@ -218,7 +218,13 @@ const HRPage = () => {
             />
           ))}
         </Paper>
-        <DateRange ranges={dateRange} onChange={(ranges) => setDateRange([ranges.selection])} />
+        <DateRange
+          ranges={dateRange}
+          onChange={(ranges) => setDateRange([ranges.selection])}
+          minDate={dayjs().subtract(2, 'months').toDate()}  // Lock 2 months back
+          maxDate={dayjs().add(3, 'months').toDate()}       // Lock 3 months forward
+          showDateDisplay={false}                           // Optional: Hide date display if needed
+        />
         <Button variant="contained" color="primary" onClick={fetchStaffSchedule} sx={{ marginBottom: '20px' }}>
           {loading ? <CircularProgress size={24} /> : 'Submit'}
         </Button>
