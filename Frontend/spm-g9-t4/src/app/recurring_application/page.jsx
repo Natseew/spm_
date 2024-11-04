@@ -55,40 +55,67 @@ export default function RecurringArrangementPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const payload = {
-      staff_id: staffId,
-      start_date: startDate,
-      end_date: endDate,
-      day_of_week: dayOfWeek,
-      timeslot,
-      reason,
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    // Ensure startDate and endDate are valid Date objects
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccessMessage(data.message || "Recurring WFH request submitted successfully.");
-        setStartDate(null);
-        setEndDate(null);
-        setDayOfWeek("");
-        setTimeSlot("");
-        setReason("");
-      } else {
-        setErrorMessage(data.message || "An error occurred. Please try again.");
-      }
-    } catch (error) {
-      setErrorMessage(`An unexpected error occurred: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
+    // Check if the dates are valid
+    if (isNaN(startDateObj) || isNaN(endDateObj)) {
+        setErrorMessage("Please provide valid start and end dates.");
+        setIsSubmitting(false);
+        return;
     }
-  };
+
+    const formattedStartDate = formatDate(startDateObj);
+    const formattedEndDate = formatDate(endDateObj);
+
+    console.log("Formatted Start Date:", formattedStartDate);
+    console.log("Formatted End Date:", formattedEndDate);
+
+    const payload = {
+        staff_id: staffId,
+        start_date: formattedStartDate,
+        end_date: formattedEndDate,
+        day_of_week: dayOfWeek,
+        request_reason: reason,
+        timeslot: timeslot
+    };
+    console.log("Payload:", payload);
+
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            setSuccessMessage(data.message || "Recurring WFH request submitted successfully.");
+            // Reset form fields
+            setStartDate(null);
+            setEndDate(null);
+            setDayOfWeek("");
+            setTimeSlot("");
+            setReason("");
+        } else {
+            setErrorMessage(data.message || "An error occurred. Please try again.");
+        }
+    } catch (error) {
+        setErrorMessage(`An unexpected error occurred: ${error.message}`);
+    } finally {
+        setIsSubmitting(false);
+    }
+};
+
 
   const handleCancel = () => {
     setStartDate(null);
@@ -168,11 +195,11 @@ export default function RecurringArrangementPage() {
               onChange={(e) => setDayOfWeek(e.target.value)}
               label="Day of the Week"
             >
-              <MenuItem value="Monday">Monday</MenuItem>
-              <MenuItem value="Tuesday">Tuesday</MenuItem>
-              <MenuItem value="Wednesday">Wednesday</MenuItem>
-              <MenuItem value="Thursday">Thursday</MenuItem>
-              <MenuItem value="Friday">Friday</MenuItem>
+              <MenuItem value="1">Monday</MenuItem>
+              <MenuItem value="2">Tuesday</MenuItem>
+              <MenuItem value="3">Wednesday</MenuItem>
+              <MenuItem value="4">Thursday</MenuItem>
+              <MenuItem value="5">Friday</MenuItem>
             </Select>
           </FormControl>
 

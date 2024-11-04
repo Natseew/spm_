@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Navbar from '../../components/Navbar';
 import {
   Typography,
   Paper,
@@ -23,6 +24,8 @@ import { addMonths, subMonths, isSameDay } from 'date-fns';
 import DatePicker from "react-datepicker";
 import { useRouter } from 'next/navigation';
 import 'react-datepicker/dist/react-datepicker.css';
+import axios from "axios";
+
 
 export default function PendingRequests() {
   const [adhocRequests, setAdhocRequests] = useState([]);
@@ -32,6 +35,7 @@ export default function PendingRequests() {
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
   const router = useRouter();
+  
 
   // Retrieve user data and initialize
   
@@ -52,7 +56,7 @@ export default function PendingRequests() {
   // Fetch Ad-Hoc requests from the backend
   const fetchAdhocRequests = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records`);
       const data = await response.json();
       const filteredData = data
         .filter((request) => request.staffid === parseInt(staffId) && !request.recurring)
@@ -66,9 +70,7 @@ export default function PendingRequests() {
   // Fetch approved and pending WFH dates
   const fetchApprovedPendingDates = useCallback(async () => {
     try {
-      const response = await fetch(
-        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`);
       if (response.ok) {
         const data = await response.json();
         const dates = data.map((record) => new Date(record.wfh_date));
@@ -126,7 +128,7 @@ export default function PendingRequests() {
     const formattedDate = selectedDate.toISOString().split("T")[0];
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/change_adhoc_wfh`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/change_adhoc_wfh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -164,7 +166,7 @@ export default function PendingRequests() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/wfh_records/withdraw_adhoc_wfh`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/withdraw_adhoc_wfh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,6 +196,7 @@ export default function PendingRequests() {
 
   return (
     <>
+    <Navbar /> {/* Added Navbar here */}
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
         <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: "100%" }}>
           <Typography variant="h6" gutterBottom textAlign="center">

@@ -121,6 +121,7 @@ router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, re
                 wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
             WHERE 
                 e.reporting_manager = $1
+                AND e.staff_id <> $1
             `,
             [manager_id, date]
         );

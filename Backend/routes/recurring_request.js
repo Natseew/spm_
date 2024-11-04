@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
+const { addMonths, subMonths } = require('date-fns');
+
 const calculateInOfficePercentage = require('../routes/wfh_records').calculateInOfficePercentage;
 const { addMonths, subMonths } = require('date-fns');
 // Get all recurring requests
@@ -31,6 +33,22 @@ router.post('/submit', async (req, res) => {
     if (!['AM', 'PM', 'FD'].includes(timeslot)) {
         return res.status(400).json({ message: 'Timeslot must be either AM, PM, or FD (Full Day).' });
     }
+    const start_Date = new Date(start_date);
+    const end_Date = new Date(end_date);
+    const currentDate = new Date();
+
+    // Check if the start_date is more than 2 months before the current date
+    const twoMonthsAgo = subMonths(currentDate, 2);
+    if (start_Date < twoMonthsAgo) {
+        return res.status(400).json({ message: 'Start date cannot be more than 2 months before the current date.' });
+    }
+
+    // Check if the end_date is more than 3 months after the current date
+    const threeMonthsFromNow = addMonths(currentDate, 3);
+    if (end_Date > threeMonthsFromNow) {
+        return res.status(400).json({ message: 'End date cannot be more than 3 months after the current date.' });
+    }
+
     // Calculate wfh_dates
     const wfh_dates = [];
     const startDate = new Date(start_date);
@@ -60,8 +78,10 @@ router.post('/submit', async (req, res) => {
         const existingDates = new Set(existingDatesResult.rows.map(row => {
             return row.wfh_date.toISOString ? row.wfh_date.toLocaleDateString('en-CA').split('T')[0] : row.date; // Convert to string format if necessary
         }));
+
+        const sortedExistingDates = Array.from(existingDates).sort((a, b) => new Date(a) - new Date(b));
         
-        console.log('Existing Dates:', Array.from(existingDates)); // Debugging: Log existing dates
+        console.log('Sorted Existing Dates:', Array.from(sortedExistingDates)); // Debugging: Log existing dates
         console.log('Calculated wfh_dates:', wfh_dates); // Debugging: Log calculated wfh_dates
         // Check for overlaps
         const overlaps = wfh_dates.some(date => existingDates.has(date));
@@ -105,7 +125,7 @@ router.post('/submit', async (req, res) => {
         res.status(201).json({ message: 'Recurring WFH request submitted successfully', requestID });
     } catch (error) {
         console.error('Error submitting recurring WFH request:', error);
-        res.status(500).json({ message: 'Please fill up the form. ' + error.message });
+        res.status(500).json({ message: 'Please fill up the form again. ' + error.message });
     }
 });
 
