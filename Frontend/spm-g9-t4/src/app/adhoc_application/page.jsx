@@ -34,6 +34,7 @@ export default function ArrangementForm() {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState([]);
 
   const today = new Date();
   const minDate = subMonths(today, 2);
@@ -51,11 +52,27 @@ export default function ArrangementForm() {
     }
   }, [router]);
 
-  useEffect(() => {
-    if (staffId) {
-      fetchApprovedPendingDates();
+ 
+
+
+  // Fetch dates that would exceed the 50% WFH rule with an additional request
+const fetchPotentialExceedingDates = async () => {
+  try {
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`
+    );
+    if (response.status === 200) {
+      const dates = response.data.map(dateString => new Date(dateString));
+      setPotentialExceedingDates(dates);
+    } else {
+      console.error("Failed to fetch potential exceeding WFH dates");
     }
-  }, [staffId]);
+  } catch (error) {
+    console.error("Error fetching potential exceeding WFH dates:", error);
+  }
+};
+
+
 
   const fetchApprovedPendingDates = async () => {
     try {
@@ -72,6 +89,13 @@ export default function ArrangementForm() {
       console.error("Error fetching approved and pending dates:", error);
     }
   };
+
+  useEffect(() => {
+    if (staffId) {
+      fetchApprovedPendingDates();
+      fetchPotentialExceedingDates(); // Fetch dates where WFH rule would be exceeded
+    }
+  }, [staffId]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -126,7 +150,8 @@ export default function ArrangementForm() {
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending;
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending || wouldExceedLimit;
   };
 
   const handleTabChange = (event, newValue) => {

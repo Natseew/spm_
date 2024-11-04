@@ -225,8 +225,9 @@ export default function PendingRequests() {
         }
 
         const recurringRequestData = await recurringRequestResponse.json();
-        console.log(recurringRequestData.message);
+        alert(recurringRequestData.message);
 
+        window.location.reload(); // Force full page reload after successful Change
     } catch (error) {
         console.error('Error submitting change date:', error);
         // Handle the error (e.g., display a message to the user)
@@ -255,13 +256,18 @@ export default function PendingRequests() {
         body: JSON.stringify({
           requestID: recordId,
           wfhDate: formattedDate, // Use the correctly formatted local date
-          reason: reason
+          reason: reason,
+          staff_id: staffId
         }),
       });
   
       if (response.ok) {
         const result = await response.json();
+        // Refresh page after a successful change
         alert(result.message); // Display success message
+        window.location.reload(); // Force full page reload after successful withdrawal
+        
+
       } else {
         const result = await response.json();
         alert(`Error withdrawing WFH request: ${result.message}`);

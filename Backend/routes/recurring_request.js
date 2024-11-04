@@ -541,13 +541,39 @@ router.patch('/auto-reject/:reason', async (req, res) => {
 
 // For staff: Withdraw a date from a recurring WFH request
 router.post('/withdraw_recurring_wfh', async (req, res) => {
-    const { requestID, wfhDate, reason } = req.body;
+    const { requestID, wfhDate, reason, staff_id } = req.body;
     console.log("Requested WFH date to remove:", wfhDate);
   
     try {
         // Start a transaction to ensure atomicity
         await client.query('BEGIN');
+
+          // Check if the staff_id is 130002 for instant withdrawal
+          if (staff_id === 130002) {
+            // Immediately set status to 'Withdrawn' in wfh_records for the specified date
+            await client.query(
+                `UPDATE wfh_records SET status = 'Withdrawn' WHERE wfh_date = $1 AND requestID = $2`,
+                [wfhDate, requestID]
+            );
+
+            // Set the status to 'Withdrawn' in the recurring_request
+            await client.query(
+                `UPDATE recurring_request SET status = 'Withdrawn' WHERE requestID = $1`,
+                [requestID]
+            );
+
+            // Insert a new activity log entry for the direct withdrawal
+            await client.query(
+                `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+                [requestID, `Withdrawn - ${reason}`]
+            );
+
+            // Commit the transaction and respond
+            await client.query('COMMIT');
+            return res.status(200).json({ message: 'Request withdrawn successfully.' });
+        }
   
+        // Continue with the regular logic if staff_id is not 130002
         // 1. Fetch the recurring request to modify the wfh_dates array
         const result = await client.query(
             `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
@@ -558,6 +584,7 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Recurring request not found.' });
         }
+
   
         const { wfh_dates, status } = result.rows[0];
   

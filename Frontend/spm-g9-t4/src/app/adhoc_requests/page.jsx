@@ -34,6 +34,7 @@ export default function PendingRequests() {
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState([]);
   const router = useRouter();
   
 
@@ -83,19 +84,32 @@ export default function PendingRequests() {
     }
   }, [staffId]);
 
-  useEffect(() => {
-    if (staffId !== null) {
-      fetchAdhocRequests();
-      fetchApprovedPendingDates();
+
+  const fetchPotentialExceedingDates = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const dates = data.map((dateString) => new Date(dateString));
+        setPotentialExceedingDates(dates);
+      } else {
+        console.error("Failed to fetch potential exceeding WFH dates");
+      }
+    } catch (error) {
+      console.error("Error fetching potential exceeding WFH dates:", error);
     }
-  }, [staffId, fetchAdhocRequests, fetchApprovedPendingDates]);
+  }, [staffId]);
+  
+
 
   useEffect(() => {
     if (staffId !== null) {
       fetchAdhocRequests();
       fetchApprovedPendingDates();
+      fetchPotentialExceedingDates();
     }
-  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
+  }, [staffId, fetchAdhocRequests, fetchApprovedPendingDates, fetchPotentialExceedingDates]);
+  
 
 
   // Handle tab change
@@ -132,8 +146,11 @@ export default function PendingRequests() {
       return;
     }
 
-    // Format the selected date as YYYY-MM-DD
-    const formattedDate = selectedDate.toISOString().split("T")[0];
+    
+    // Format selectedDate to YYYY-MM-DD in local time
+    const formattedDate = `${selectedDate.getFullYear()}-${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}-${selectedDate.getDate().toString().padStart(2, '0')}`;
+
+    console.log(formattedDate)
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/change_adhoc_wfh`, {
@@ -152,6 +169,7 @@ export default function PendingRequests() {
       if (response.ok) {
         const result = await response.json();
         alert(result.message);
+        window.location.reload(); // Reload the page after successful change
         handleCloseChangeDialog();
       } else {
         const result = await response.json();
@@ -186,6 +204,7 @@ export default function PendingRequests() {
         const result = await response.json();
         alert(result.message);
         setAdhocRequests((prev) => prev.filter((req) => req.recordid !== id));
+        window.location.reload(); // Reload the page after successful withdrawal
       } else {
         const result = await response.json();
         alert(`Error withdrawing WFH request: ${result.message}`);
@@ -195,12 +214,14 @@ export default function PendingRequests() {
     }
   };
 
-  // Disable weekends and already approved/pending WFH dates
+  // Disable weekends and already approved/pending WFH dates and 50% wfh dates
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending;
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending || wouldExceedLimit;
   };
+  
 
   return (
     <>
