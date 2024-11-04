@@ -40,6 +40,7 @@ export default function PendingRequests() {
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
   const [openReason, setOpenReason] = useState(false);
   const [change_reason, setReason] = useState('');
+  const [existingDate, setExistingDate] = useState(new Date());
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -138,53 +139,99 @@ export default function PendingRequests() {
     setOpenDetailsDialog(false);
   };
 
-  const handleOpenChangeDialog = (id) => {
+  const handleOpenChangeDialog = (id, date) => {
     setSelectedRecordId(id);
     setOpenChangeDialog(true);
+    setExistingDate(date);
   };
 
   const handleCloseChangeDialog = () => {
     setSelectedRecordId(null);
     setSelectedDate(new Date());
     setOpenChangeDialog(false);
+    setReason("");
   };
 
-  const submitChangeDate = async (recordId, date, change_reason) => {
-    return;
+
+  function formatDate(dateString) {
+    // Create a new Date object from the input date string
+    const date = new Date(dateString);
+  
+    // Format the date as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+  
+    return `${year}-${month}-${day}`; // Returns the date in YYYY-MM-DD format
   }
-  // const submitChangeDate = async (recordId, date) => {
 
-  //   if (openReason) {
-  //     const reason = prompt("Please enter the reason for changing your request:");
-  //     setOpenReason(false);
-  //   }
-  //   try {
-  //     // to change the route
-  //     const response = await fetch(`http://localhost:4000/wfh_records/withdraw_recurring_request`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         requestId: recordId, // The specific record ID for the WFH request
-  //         date: date, // The specific date for withdrawal
-  //         reason: reason, // The reason entered by the user
-  //         staff_id: staffId, // The staff ID of the user withdrawing the request
-  //       }),
-  //     });
+  function convertToDateFormat(dateString) {
+    // Create a new Date object from the input date string
+    const date = new Date(dateString);
+  
+    // Format the date as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+  
+    return `${year}-${month}-${day}`; // Returns the date in YYYY-MM-DD format
+  }
 
-  //     if (response.ok) {
-  //       const result = await response.json();
-  //       alert(result.message); // Display success message
-  //     } else {
-  //       const result = await response.json();
-  //       alert(`Error submitting change to WFH request: ${result.message}`);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error withdrawing WFH request:", error);
-  //     alert("An error occurred while submitting the change request.");
-  //   }
-  // };
+  const submitChangeDate = async (requestID, actual_wfh_date, selectedDate, change_reason) => {
+    const correct_date = formatDate(actual_wfh_date);
+    const formatted_selected_date = convertToDateFormat(selectedDate);
+    
+    console.log("RequestID:", requestID);
+    console.log("Selected Date:", formatted_selected_date);
+    console.log("Actual WFH Date:", correct_date);
+    console.log("Reason:", change_reason);
+
+    try {
+        // First, update the wfh_records table
+        const wfhRecordsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/change/${requestID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                selected_date: formatted_selected_date,
+                actual_wfh_date: correct_date,
+            }),
+        });
+
+        if (!wfhRecordsResponse.ok) {
+            const errorData = await wfhRecordsResponse.json();
+            throw new Error(`Error updating wfh_records: ${errorData.message}`);
+        }
+
+        const wfhRecordsData = await wfhRecordsResponse.json();
+        console.log(wfhRecordsData.message);
+
+        // Then, update the recurring_request table
+        const recurringRequestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/change/${requestID}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                selected_date: formatted_selected_date,
+                actual_wfh_date: correct_date,
+            }),
+        });
+
+        if (!recurringRequestResponse.ok) {
+            const errorData = await recurringRequestResponse.json();
+            throw new Error(`Error updating recurring_request: ${errorData.message}`);
+        }
+
+        const recurringRequestData = await recurringRequestResponse.json();
+        console.log(recurringRequestData.message);
+
+    } catch (error) {
+        console.error('Error submitting change date:', error);
+        // Handle the error (e.g., display a message to the user)
+    }
+};
 
   // Function to handle withdrawn date
   const handleWithdrawDate = async (recordId, date) => {
@@ -222,11 +269,11 @@ export default function PendingRequests() {
     }
   };
 
-  const handleChangeDate = (recordId, date) => {
-    // Handle the change logic for a specific WFH date
-    console.log("Change Date:", recordId, date);  
+  // const handleChangeDate = (recordId, date) => {
+  //   // Handle the change logic for a specific WFH date
+  //   console.log("Change Date:", recordId, date);  
     
-  };
+  // };
 
   const isDateWithinTwoWeeks = (date) => {
     const today = new Date();
@@ -305,7 +352,7 @@ export default function PendingRequests() {
                               variant="outlined"
                               color="primary"
                               sx={{ marginLeft: 1 }}
-                              onClick={() => handleOpenChangeDialog(record.requestid)}
+                              onClick={() => handleOpenChangeDialog(record.requestid, record.wfh_date)}
                             >
                               Change
                             </Button>
@@ -339,7 +386,7 @@ export default function PendingRequests() {
                               </DialogContent>
                               <DialogActions>
                                 <Button onClick={handleCloseChangeDialog}>Cancel</Button>
-                                <Button onClick={() => submitChangeDate(record.requestid, selectedDate, change_reason)} variant="contained" color="primary">
+                                <Button onClick={() => submitChangeDate(record.requestid, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
                                   Submit Change
                                 </Button>
                               </DialogActions>

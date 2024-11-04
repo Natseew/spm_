@@ -902,4 +902,43 @@ router.patch('/reject_withdrawal/:recordID', async (req, res) => {
   }
 });
 
+// route to apply change - wfh_records (staff side)
+router.patch('/change/:requestid', async (req, res) => {
+  const { requestid } = req.params;
+  const { selected_date, actual_wfh_date } = req.body;
+
+  console.log("Received request to modify wfh_records for ID:", requestid);
+  console.log("Update body:", req.body);
+
+  // Validate input
+  if (!selected_date || !actual_wfh_date) {
+      return res.status(400).json({ message: 'Invalid input: selected_date and actual_wfh_date are required.' });
+  }
+
+  try {
+      // Update the wfh_date in the wfh_records table
+      const result = await client.query(`
+          UPDATE wfh_records
+          SET wfh_date = $1, status = 'Pending Change'
+          WHERE requestid = $2 AND wfh_date = $3
+          RETURNING *
+      `, [selected_date, requestid, actual_wfh_date]);
+
+      // Check if any rows were affected
+      if (result.rowCount === 0) {
+          console.log("No records found to update for the given request ID.");
+          return res.status(404).json({ message: 'No records found to update' });
+      }
+
+      console.log("Update successful:", result.rows); // Log the updated records
+
+      // Send success response
+      res.status(200).json({ message: 'WFH records updated successfully', records: result.rows });
+  } catch (error) {
+      console.error('Error updating wfh_records:', error);
+      res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
 module.exports = router;
