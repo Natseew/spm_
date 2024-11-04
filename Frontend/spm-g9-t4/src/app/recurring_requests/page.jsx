@@ -235,27 +235,30 @@ export default function PendingRequests() {
 
   // Function to handle withdrawn date
   const handleWithdrawDate = async (recordId, date) => {
+    // Create a new Date object and adjust to local time, then format as `YYYY-MM-DD`
+    const localDate = new Date(date);
+    const formattedDate = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+    console.log("Formatted local date to withdraw:", formattedDate); 
+  
     const reason = prompt("Please enter the reason for withdrawal:");
-
     if (!reason) {
       alert("Withdrawal reason is required.");
       return;
     }
-
+  
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/withdraw_recurring_request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/withdraw_recurring_wfh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          requestId: recordId, // The specific record ID for the WFH request
-          date: date, // The specific date for withdrawal
-          reason: reason, // The reason entered by the user
-          staff_id: staffId, // The staff ID of the user withdrawing the request
+          requestID: recordId,
+          wfhDate: formattedDate, // Use the correctly formatted local date
+          reason: reason
         }),
       });
-
+  
       if (response.ok) {
         const result = await response.json();
         alert(result.message); // Display success message
@@ -268,6 +271,8 @@ export default function PendingRequests() {
       alert("An error occurred while withdrawing the request.");
     }
   };
+  
+
 
   // const handleChangeDate = (recordId, date) => {
   //   // Handle the change logic for a specific WFH date
