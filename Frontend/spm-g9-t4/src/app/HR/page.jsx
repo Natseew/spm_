@@ -13,25 +13,31 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 
 dayjs.extend(isSameOrBefore);
 
-const StaffCountBox = ({ officeCount, homeCount, totalEmployees }) => (
+const StaffCountBox = ({ officeCount, homeCount, totalEmployees, inOfficePercentageAM, inOfficePercentagePM }) => (
   <Paper elevation={3} sx={{ padding: '20px', borderRadius: '10px', backgroundColor: '#f5f5f5' }}>
     <Typography variant="h5" align="center">Staff Count for Selected Date</Typography>
     <Grid container spacing={2}>
-      <Grid item xs={4}>
+      <Grid item xs={3}>
         <Typography variant="h6" align="center">Total Employees</Typography>
         <Typography variant="h4" align="center">{totalEmployees}</Typography>
       </Grid>
-      <Grid item xs={4}>
+      <Grid item xs={3}>
         <Typography variant="h6" align="center">In Office</Typography>
         <Typography variant="h4" align="center">{officeCount}</Typography>
       </Grid>
-      <Grid item xs={4}>
+      <Grid item xs={3}>
         <Typography variant="h6" align="center">At Home</Typography>
         <Typography variant="h4" align="center">{homeCount}</Typography>
+      </Grid>
+      <Grid item xs={3}>
+        <Typography variant="h6" align="center">In-Office %</Typography>
+        <Typography variant="body1" align="center">AM: {inOfficePercentageAM}%</Typography>
+        <Typography variant="body1" align="center">PM: {inOfficePercentagePM}%</Typography>
       </Grid>
     </Grid>
   </Paper>
 );
+
 
 const getStatusLabel = (scheduleStatus) => {
   switch (scheduleStatus) {
@@ -151,21 +157,34 @@ const HRPage = () => {
 
   const calculateStaffCounts = (selectedDate) => {
     const filteredData = staffSchedules[selectedDate] || [];
+    
+    // Calculate home and office staff counts
     const homeStaff = filteredData.filter(staff => staff.schedule_status !== 'Office').length;
     const officeStaff = filteredData.filter(staff => staff.schedule_status === 'Office').length;
-
+  
     const totalEmployeeCount = employeeCount
       .filter(entry => selectedDepartments.includes(entry.dept))
       .reduce((sum, entry) => sum + parseInt(entry.total_employees, 10), 0);
-
+  
+    // Calculate in-office percentages for AM and PM
+    const amCount = filteredData.filter(staff => staff.schedule_status === 'AM').length;
+    const pmCount = filteredData.filter(staff => staff.schedule_status === 'PM').length;
+  
+    const inOfficePercentageAM = totalEmployeeCount ? ((totalEmployeeCount - amCount) / totalEmployeeCount) * 100 : 100;
+    const inOfficePercentagePM = totalEmployeeCount ? ((totalEmployeeCount - pmCount) / totalEmployeeCount) * 100 : 100;
+  
     return {
       officeStaff,
       homeStaff,
       totalEmployeeCount,
+      inOfficePercentageAM,
+      inOfficePercentagePM,
     };
   };
+  
 
-  const { officeStaff, homeStaff, totalEmployeeCount } = calculateStaffCounts(selectedDate);
+  const { officeStaff, homeStaff, totalEmployeeCount, inOfficePercentageAM, inOfficePercentagePM } = calculateStaffCounts(selectedDate);
+  
 
   return (
     <div>
@@ -199,7 +218,13 @@ const HRPage = () => {
             />
           ))}
         </Paper>
-        <DateRange ranges={dateRange} onChange={(ranges) => setDateRange([ranges.selection])} />
+        <DateRange
+          ranges={dateRange}
+          onChange={(ranges) => setDateRange([ranges.selection])}
+          minDate={dayjs().subtract(2, 'months').toDate()}  // Lock 2 months back
+          maxDate={dayjs().add(3, 'months').toDate()}       // Lock 3 months forward
+          showDateDisplay={false}                           // Optional: Hide date display if needed
+        />
         <Button variant="contained" color="primary" onClick={fetchStaffSchedule} sx={{ marginBottom: '20px' }}>
           {loading ? <CircularProgress size={24} /> : 'Submit'}
         </Button>
@@ -215,7 +240,13 @@ const HRPage = () => {
         </Box>
         {!loading && (
           <>
-            <StaffCountBox officeCount={officeStaff} homeCount={homeStaff} totalEmployees={totalEmployeeCount} />
+          <StaffCountBox
+            officeCount={officeStaff}
+            homeCount={homeStaff}
+            totalEmployees={totalEmployeeCount}
+            inOfficePercentageAM={inOfficePercentageAM}
+            inOfficePercentagePM={inOfficePercentagePM}
+          />
             <StaffListTable staffDataForDate={staffSchedules[selectedDate]} />
           </>
         )}

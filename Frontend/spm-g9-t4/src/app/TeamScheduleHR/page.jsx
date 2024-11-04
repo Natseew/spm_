@@ -99,9 +99,13 @@ const ManagerIDPage = () => {
   }, []);
 
   const fetchStaffSchedule = async () => {
-    if (!selectedManagerID) return;
+    if (!selectedManagerID) {
+      setError('No manager selected. Please select a manager to view the schedule.');
+      return;
+    }
 
     try {
+      setError(''); // Clear previous error messages
       setLoading(true);
       const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
       const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
@@ -158,14 +162,18 @@ const ManagerIDPage = () => {
             ))}
           </Select>
         }
-        label="Manager"
         sx={{ marginBottom: '20px' }}
       />
 
+    <Box sx={{ marginBottom: '20px' }}>
       <DateRange
         ranges={dateRange}
         onChange={(ranges) => setDateRange([ranges.selection])}
+        minDate={dayjs().subtract(2, 'months').toDate()}  // Lock 2 months back
+        maxDate={dayjs().add(3, 'months').toDate()}       // Lock 3 months forward
+        showDateDisplay={false}
       />
+    </Box>
 
       <Button variant="contained" color="primary" onClick={fetchStaffSchedule} sx={{ marginBottom: '20px' }}>
         {loading ? <CircularProgress size={24} /> : 'Submit'}

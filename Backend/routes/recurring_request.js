@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const client = require('../databasepg');
+const calculateInOfficePercentage = require('../routes/wfh_records').calculateInOfficePercentage;
 const { addMonths, subMonths } = require('date-fns');
+const dayjs = require('dayjs');
 
 // Get all recurring requests
 router.get('/', async (req, res) => {
@@ -127,32 +129,90 @@ router.post('/submit', async (req, res) => {
     }
 });
 
-// Delete recurring WFH request
-router.delete('/:requestID', async (req, res) => {
-    const { requestID } = req.params;
-    // Validate requestID
-    if (!requestID) {
-        return res.status(400).json({ message: 'Request ID is required.' });
-    }
-    try {
-        // Delete from recurring_request table
-        const result = await client.query(
-            `
-            DELETE FROM recurring_request
-            WHERE requestID = $1
-            RETURNING requestID;
-            `,
-            [requestID]
-        );
-        // Check if any rows were deleted
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Request not found.' });
-        }
-        res.status(200).json({ message: 'Recurring WFH request deleted successfully', requestID });
-    } catch (error) {
-        console.error('Error deleting recurring WFH request:', error);
-    }
-});
+// Delete recurring WFH request: REDUNDANT ?  
+// router.delete('/:requestID', async (req, res) => {
+//     const { requestID } = req.params;
+//     // Validate requestID
+//     if (!requestID) {
+//         return res.status(400).json({ message: 'Request ID is required.' });
+//     }
+//     try {
+//         // Delete from recurring_request table
+//         const result = await client.query(
+//             `
+//             DELETE FROM recurring_request
+//             WHERE requestID = $1
+//             RETURNING requestID;
+//             `,
+//             [requestID]
+//         );
+//         // Check if any rows were deleted
+//         if (result.rowCount === 0) {
+//             return res.status(404).json({ message: 'Request not found.' });
+//         }
+//         res.status(200).json({ message: 'Recurring WFH request deleted successfully', requestID });
+//     } catch (error) {
+//         console.error('Error deleting recurring WFH request:', error);
+//     }
+// });
+// router.delete('/:requestID', async (req, res) => {
+//     const { requestID } = req.params;
+
+//     // Validate requestID
+//     if (!requestID) {
+//         return res.status(400).json({ message: 'Request ID is required.' });
+//     }
+
+//     try {
+//         // Start a transaction to ensure both updates succeed or fail together
+//         await client.query('BEGIN');
+
+//         // Update status to "Deleted" in recurring_request table
+//         const recurringResult = await client.query(
+//             `
+//             UPDATE recurring_request
+//             SET status = 'Deleted'
+//             WHERE requestID = $1
+//             RETURNING requestID;
+//             `,
+//             [requestID]
+//         );
+
+//         // Check if any rows were updated in recurring_request
+//         if (recurringResult.rowCount === 0) {
+//             await client.query('ROLLBACK');
+//             return res.status(404).json({ message: 'Request not found.' });
+//         }
+
+//         // Update status to "Deleted" for corresponding records in wfh_records
+//         const wfhResult = await client.query(
+//             `
+//             UPDATE wfh_records
+//             SET status = 'Deleted'
+//             WHERE requestID = $1
+//             RETURNING recordID;
+//             `,
+//             [requestID]
+//         );
+
+//         // Commit the transaction
+//         await client.query('COMMIT');
+
+//         res.status(200).json({ 
+//             message: 'Recurring WFH request and corresponding records marked as Deleted successfully', 
+//             requestID, 
+//             deletedRecords: wfhResult.rows.map(row => row.recordID) 
+//         });
+//     } catch (error) {
+//         // Roll back the transaction in case of an error
+//         await client.query('ROLLBACK');
+//         console.error('Error marking recurring WFH request and records as Deleted:', error);
+//         res.status(500).json({ message: 'An error occurred while deleting the request.' });
+//     }
+// });
+
+
+
 
 // Get recurring requests by employee IDs with WFH records
 router.get('/by-employee-ids', async (req, res) => {
@@ -169,32 +229,100 @@ router.get('/by-employee-ids', async (req, res) => {
         const recurringResult = await client.query(recurringQuery, employeeIds);
         const recurring_request_data = recurringResult.rows;
 
+        // Fetch team-wide WFH records to calculate in-office percentages
+        const allWfhRecordsResult = await client.query(`
+            SELECT staffID, wfh_date, timeslot, status 
+            FROM wfh_records 
+            WHERE status = 'Approved' AND staffID = ANY($1::int[])
+        `, [employeeIds]);
+        const allWfhRecords = allWfhRecordsResult.rows;
+
+        // Map recurring requests with WFH records and in-office percentages
         const combinedDataPromises = recurring_request_data.map(async (recurringRequest) => {
-            const wfhQuery = `SELECT wfh_date, status FROM wfh_records WHERE requestID = $1`;
+            const wfhQuery = `SELECT wfh_date, timeslot, status FROM wfh_records WHERE requestID = $1`;
             const wfhResult = await client.query(wfhQuery, [recurringRequest.requestid]);
+
+            const wfhRecords = wfhResult.rows;
+
+            // Calculate in-office percentages for each date and timeslot in this request's WFH records
+            const dates = wfhRecords.map(record => record.wfh_date);
+            const inOfficePercentages = await calculateInOfficePercentage(recurringRequest.staff_id, dates, allWfhRecords);
+
+            // Prepare inOfficePercentage as a separate key-value pair, with date and timeslot information
+            const inOfficePercentageRecords = wfhRecords.map(record => ({
+                wfh_date: record.wfh_date,
+                timeslot: record.timeslot,
+                inOfficePercentage: inOfficePercentages[record.wfh_date]?.[record.timeslot] || 100 // Default to 100% if no data
+            }));
+
             return {
-                ...recurringRequest,
-                wfh_records: wfhResult.rows
+                ...recurringRequest, // Preserve all fields in recurring_request
+                wfh_records: wfhRecords, // Keep the original wfh_records array
+                inOfficePercentage: inOfficePercentageRecords // Add a new inOfficePercentage array
             };
         });
 
         const combinedData = await Promise.all(combinedDataPromises);
         res.status(200).json(combinedData);
-        console.log(combinedData)
+        console.log(combinedData);
     } catch (error) {
         console.error('Error retrieving recurring requests by employee IDs:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
 
-
-// Manager approve recurring request
-// Need add : check if <50% in office and prompt manager for confirmation to overide the limit
+// Manager approve recurring request 
 router.patch('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
+    const { override_50_percent } = req.body; // Extract override flag from request body
 
     try {
         await client.query('BEGIN');
+
+        // Step 1: Retrieve the recurring request details including staff_id and wfh_dates
+        const recurringRequestDetails = await client.query(`
+            SELECT staffID, wfh_date, timeslot
+            FROM wfh_records
+            WHERE requestid = $1 AND status = 'Pending'
+        `, [requestid]);
+
+        if (recurringRequestDetails.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Recurring request not found or already approved' });
+        }
+
+        const { staffid, wfh_dates } = recurringRequestDetails.rows[0];
+        const dates = recurringRequestDetails.rows.map(record => record.wfh_date);
+        
+        // Retrieve all WFH records for the team for the specified dates
+        const allWfhRecords = await client.query(`
+            SELECT * FROM wfh_records
+            WHERE wfh_date = ANY($1) AND status = 'Approved'
+        `, [dates]);
+
+        // Step 2: Calculate the in-office percentage for each date and timeslot
+        const inOfficePercentages = await calculateInOfficePercentage(staffid, dates, allWfhRecords.rows);
+        console.log('In-office percentages:', inOfficePercentages);
+
+        // Step 3: Check if in-office percentage is below 50% for any date-timeslot combination
+        if (!override_50_percent) {
+            for (const [date, timeslots] of Object.entries(inOfficePercentages)) {
+                for (const [timeslot, percentage] of Object.entries(timeslots)) {
+                    if (percentage < 50) {
+                        await client.query('ROLLBACK');
+                        return res.status(200).json({
+                            message: 'In-office percentage is below 50% for certain dates or timeslots',
+                            date,
+                            timeslot,
+                            inOfficePercentage: percentage,
+                            requireOverride: true
+                        });
+                    }
+                }
+            }
+        }
+
+        // Step 4: Proceed with approval if override or percentages are above 50%
         // Update recurring request status to 'Approved'
         const recurringRequestResult = await client.query(`
             UPDATE recurring_request
@@ -203,18 +331,27 @@ router.patch('/approve/:requestid', async (req, res) => {
             RETURNING *;
         `, [requestid]);
 
-        if (recurringRequestResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Recurring request not found' });
-        }
+        // Log activity for approving the recurring request
+        await client.query(`
+            INSERT INTO ActivityLog (requestID, activity)
+            VALUES ($1, $2)
+        `, [requestid, 'Recurring request approved by manager']);
 
-        // Update corresponding wfh_records status to 'Approved'
+        // Update corresponding WFH records status to 'Approved'
         const wfhRecordsResult = await client.query(`
             UPDATE wfh_records
             SET status = 'Approved'
             WHERE requestid = $1
             RETURNING *;
         `, [requestid]);
+
+        // Log activity for each WFH record approval
+        for (const record of wfhRecordsResult.rows) {
+            await client.query(`
+                INSERT INTO ActivityLog (requestID, recordID, activity)
+                VALUES ($1, $2, $3)
+            `, [requestid, record.recordid, 'WFH record approved']);
+        }
 
         await client.query('COMMIT');
 
@@ -272,7 +409,6 @@ router.patch('/approvewithdrawal/:requestid', async (req, res) => {
 
 
 // cancel approved recurring request 
-// withdraw entire recurring request (KIV this doesnt seem to be right, withdraw entire request should have its own endpoint) 
 // Reject a recurring request
 router.patch('/reject/:requestid', async (req, res) => {
     const { requestid } = req.params; 
@@ -333,84 +469,238 @@ router.patch('/reject/:requestid', async (req, res) => {
     }
 });
 
+// Endpoint to auto-reject old pending recurring requests and update corresponding wfh_records
+router.patch('/auto-reject/:reason', async (req, res) => {
+    const { reason } = req.params;
+
+    try {
+        await client.query('BEGIN');
+
+        // Select old pending recurring requests older than two months
+        const result = await client.query(`
+            SELECT * FROM recurring_request
+            WHERE status = 'Pending' AND start_date < NOW() - INTERVAL '2 months'
+        `);
+
+        if (result.rows.length === 0) {
+            await client.query('COMMIT');
+            return res.status(200).json({ message: 'No pending recurring requests to auto-reject.' });
+        }
+
+        const updatedRecurringRequests = [];
+        const updatedWFHRecords = [];
+
+        // Update each old pending recurring request and corresponding wfh_records
+        const updatePromises = result.rows.map(async row => {
+            // Update the status in recurring_request to 'Rejected'
+            const recurringUpdateResult = await client.query(`
+                UPDATE recurring_request
+                SET status = 'Rejected', reject_reason = $2
+                WHERE requestid = $1
+                RETURNING *;
+            `, [row.requestid, reason]);
+
+            updatedRecurringRequests.push(recurringUpdateResult.rows[0]);
+
+            // Update corresponding wfh_records entries to 'Rejected'
+            const wfhRecordsResult = await client.query(`
+                UPDATE wfh_records
+                SET status = 'Rejected', reject_reason = $2
+                WHERE requestID = $1
+                RETURNING *;
+            `, [row.requestid, reason]);
+
+            updatedWFHRecords.push(...wfhRecordsResult.rows);
+
+            // Log each rejected wfh_records entry in ActivityLog
+            const logPromises = wfhRecordsResult.rows.map(({ recordid }) => {
+                return client.query(`
+                    INSERT INTO activitylog (requestid, recordid, activity, timestamp)
+                    VALUES ($1, $2, $3, NOW())
+                `, [row.requestid, recordid, `Auto-rejected recurring request: ${reason}`]);
+            });
+
+            await Promise.all(logPromises);
+        });
+
+        await Promise.all(updatePromises);
+        await client.query('COMMIT');
+
+        res.status(200).json({
+            message: 'Old pending recurring requests and corresponding wfh_records auto-rejected successfully',
+            updatedRecurringRequests: updatedRecurringRequests,
+            updatedWFHRecords: updatedWFHRecords
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error auto-rejecting recurring requests:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
 
 // For staff : Withdraw a date from a recurring WFH request 
+// router.post('/withdraw_recurring_wfh', async (req, res) => {
+//     const { requestID, wfhDate, reason } = req.body;
+  
+//     try {
+//       // Start a transaction to ensure atomicity
+//       await client.query('BEGIN');
+  
+//       // 1. Fetch the recurring request to modify the wfh_dates array
+//       const result = await client.query(
+//         `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
+//         [requestID]
+//       );
+  
+//       if (result.rows.length === 0) {
+//         await client.query('ROLLBACK');
+//         return res.status(404).json({ message: 'Recurring request not found.' });
+//       }
+  
+//       const { wfh_dates, status } = result.rows[0];
+  
+//       // Convert the input date to the correct format and check if it exists in the array
+//       const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
+  
+//       if (!wfh_dates.includes(dateToRemove)) {
+//         await client.query('ROLLBACK');
+//         return res.status(404).json({ message: 'WFH date not found in the request.' });
+//       }
+  
+//       // Remove the date from the wfh_dates array
+//       const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
+  
+//       // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
+//       if (status === 'Pending') {
+//         await client.query(
+//           `UPDATE recurring_request SET wfh_dates = $1 WHERE requestID = $2`,
+//           [updatedDates, requestID]
+//         );
+  
+//         // 3. Insert a new activity log entry for the withdrawal
+//         await client.query(
+//           `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+//           [requestID, `Withdrawn - ${reason}`]
+//         );
+//       }
+  
+//       // 4. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
+//       if (status === 'Approved') {
+//         // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
+//         await client.query(
+//           `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
+//           [wfhDate, requestID]
+//         );
+  
+//         // 5. Also update the status of the recurring request itself
+//         await client.query(
+//           `UPDATE recurring_request SET status = 'Pending Withdrawal' WHERE requestID = $1`,
+//           [requestID]
+//         );
+  
+//         // 6. Insert a new activity log entry for the withdrawal
+//         await client.query(
+//           `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+//           [requestID, `Pending Withdrawal - ${reason}`]
+//         );
+//       }
+  
+//       // Commit the transaction
+//       await client.query('COMMIT');
+//       res.status(200).json({ message: 'Withdrawal successfully processed.' });
+//     } catch (error) {
+//       // Rollback the transaction in case of errors
+//       await client.query('ROLLBACK');
+//       console.error('Error withdrawing WFH date from recurring request:', error);
+//       res.status(500).json({ message: 'Internal server error.' });
+//     }
+//   });
+// For staff: Withdraw a date from a recurring WFH request
 router.post('/withdraw_recurring_wfh', async (req, res) => {
     const { requestID, wfhDate, reason } = req.body;
   
     try {
-      // Start a transaction to ensure atomicity
-      await client.query('BEGIN');
+        // Start a transaction to ensure atomicity
+        await client.query('BEGIN');
   
-      // 1. Fetch the recurring request to modify the wfh_dates array
-      const result = await client.query(
-        `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
-        [requestID]
-      );
-  
-      if (result.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'Recurring request not found.' });
-      }
-  
-      const { wfh_dates, status } = result.rows[0];
-  
-      // Convert the input date to the correct format and check if it exists in the array
-      const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
-  
-      if (!wfh_dates.includes(dateToRemove)) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'WFH date not found in the request.' });
-      }
-  
-      // Remove the date from the wfh_dates array
-      const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
-  
-      // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
-      if (status === 'Pending') {
-        await client.query(
-          `UPDATE recurring_request SET wfh_dates = $1 WHERE requestID = $2`,
-          [updatedDates, requestID]
+        // 1. Fetch the recurring request to modify the wfh_dates array
+        const result = await client.query(
+            `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
+            [requestID]
         );
   
-        // 3. Insert a new activity log entry for the withdrawal
-        await client.query(
-          `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-          [requestID, `Withdrawn - ${reason}`]
-        );
-      }
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Recurring request not found.' });
+        }
   
-      // 4. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
-      if (status === 'Approved') {
-        // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
-        await client.query(
-          `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
-          [wfhDate, requestID]
-        );
+        const { wfh_dates, status } = result.rows[0];
   
-        // 5. Also update the status of the recurring request itself
-        await client.query(
-          `UPDATE recurring_request SET status = 'Pending Withdrawal' WHERE requestID = $1`,
-          [requestID]
-        );
+        // Convert the input date to the correct format and check if it exists in the array
+        const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
   
-        // 6. Insert a new activity log entry for the withdrawal
-        await client.query(
-          `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-          [requestID, `Pending Withdrawal - ${reason}`]
-        );
-      }
+        if (!wfh_dates.includes(dateToRemove)) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'WFH date not found in the request.' });
+        }
   
-      // Commit the transaction
-      await client.query('COMMIT');
-      res.status(200).json({ message: 'Withdrawal successfully processed.' });
+        // Remove the date from the wfh_dates array
+        const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
+  
+        // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
+        if (status === 'Pending') {
+            await client.query(
+                `UPDATE recurring_request SET wfh_dates = $1 WHERE requestID = $2`,
+                [updatedDates, requestID]
+            );
+  
+            // 3. Update the corresponding wfh_record entry to 'Withdrawn' for the specified date
+            await client.query(
+                `UPDATE wfh_records SET status = 'Withdrawn' WHERE wfh_date = $1 AND requestID = $2`,
+                [wfhDate, requestID]
+            );
+
+            // 4. Insert a new activity log entry for the withdrawal
+            await client.query(
+                `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+                [requestID, `Withdrawn - ${reason}`]
+            );
+        }
+  
+        // 5. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
+        if (status === 'Approved') {
+            // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
+            await client.query(
+                `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
+                [wfhDate, requestID]
+            );
+  
+            // 6. Also update the status of the recurring request itself
+            await client.query(
+                `UPDATE recurring_request SET status = 'Pending Withdrawal' WHERE requestID = $1`,
+                [requestID]
+            );
+  
+            // 7. Insert a new activity log entry for the withdrawal
+            await client.query(
+                `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+                [requestID, `Pending Withdrawal - ${reason}`]
+            );
+        }
+  
+        // Commit the transaction
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'Withdrawal successfully processed.' });
     } catch (error) {
-      // Rollback the transaction in case of errors
-      await client.query('ROLLBACK');
-      console.error('Error withdrawing WFH date from recurring request:', error);
-      res.status(500).json({ message: 'Internal server error.' });
+        // Rollback the transaction in case of errors
+        await client.query('ROLLBACK');
+        console.error('Error withdrawing WFH date from recurring request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
-  });
+});
+
+
 
 // Manager accepts pending change 
 router.post('/accept-change', async (req, res) => {
@@ -569,6 +859,8 @@ const formatToISO8601 = (dateString) => {
     return date.toISOString(); // Formats date to "YYYY-MM-DDTHH:mm:ss.sssZ" with UTC time
 };
 
+
+// Modify recurring WFH request by updating dates and soft-deleting records
 router.patch('/modify/:requestid', async (req, res) => {
     const { requestid } = req.params;
     const { wfh_dates } = req.body;
@@ -605,20 +897,21 @@ router.patch('/modify/:requestid', async (req, res) => {
         // Convert the dates to ISO 8601 format for wfh_records operations
         const isoWfhDates = wfh_dates.map(formatToISO8601);
 
-        // 2. Delete corresponding records from `wfh_records` that match the dates to be removed
+        // 2. Update the status to 'Deleted' in `wfh_records` for matching dates instead of deleting them
         const wfhRecordResult = await client.query(`
-            DELETE FROM wfh_records
+            UPDATE wfh_records
+            SET status = 'Deleted'
             WHERE requestID = $1 AND wfh_date = ANY($2::DATE[])
             RETURNING recordID, wfh_date;
         `, [requestid, wfh_dates]);
 
-        // 3. Log each removed date in ActivityLog with both requestID and recordID
+        // 3. Log each updated date in ActivityLog with both requestID and recordID
         const logPromises = wfhRecordResult.rows.map(row => {
             const { recordID, wfh_date } = row;
             return client.query(`
                 INSERT INTO ActivityLog (requestID, recordID, activity)
                 VALUES ($1, $2, $3)
-            `, [requestid, recordID, `Removed WFH date: ${wfh_date}`]);
+            `, [requestid, recordID, `Soft deleted WFH date: ${wfh_date}`]);
         });
         await Promise.all(logPromises);
 
@@ -636,81 +929,6 @@ router.patch('/modify/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
-
-
-
-// route to apply change (staff side - recurring)
-// router.patch('/change/:requestid', async (req, res) => {
-//     const { requestid } = req.params;
-//     const { selected_date, actual_wfh_date } = req.body;
-
-//     console.log("Received request to modify ID:", requestid);
-//     console.log("Update body:", req.body);
-
-//     // Validate input
-//     if (!selected_date || !actual_wfh_date) {
-//         return res.status(400).json({ message: 'Invalid input: selected_date and actual_wfh_date are required.' });
-//     }
-
-//     // Convert dates to the required format
-//     // const actualDate = new Date(actual_wfh_date).toISOString(); // Convert actual_wfh_date to ISO format
-//     // const selectedDate = new Date(selected_date).toISOString(); // Convert selected_date to ISO format
-
-//     const actualDate = new Date(actual_wfh_date); // Ensure this is a Date object
-//     const selectedDate = new Date(selected_date); // Ensure this is a Date object
-
-//     const adjustedActualDate = new Date(actualDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
-//     const adjustedSelectedDate = new Date(selectedDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
-
-//     console.log("Adjusted Actual Date:", adjustedActualDate);
-//     console.log("Adjusted Selected Date:", adjustedSelectedDate);
-
-//     try {
-//         // Fetch the existing wfh_dates for the specified requestid
-//         const existingRequest = await client.query(`
-//             SELECT wfh_dates FROM recurring_request
-//             WHERE requestid = $1
-//         `, [requestid]);
-
-//         // Check if any request was found
-//         if (existingRequest.rowCount === 0) {
-//             console.log("No request found with the given request ID.");
-//             return res.status(404).json({ message: 'Request not found' });
-//         }
-
-//         const wfh_dates = existingRequest.rows[0].wfh_dates;
-//         console.log("Current WFH Dates: ", wfh_dates);
-//         console.log("Actual Date that im trying to remove:", adjustedActualDate);
-
-//         const formattedActualDate = new Date(actualDate.getTime() - 8 * 60 * 60 * 1000);
-//         console.log("Formatted Time:", formattedActualDate);
-
-//         const formattedWfhDates = wfh_dates.map(date => new Date(date).toISOString());
-
-//         // Update the wfh_dates array - Remove the actual_wfh_date and add the selected_date
-//         const updatedWfhDates = formattedWfhDates.filter(date => date !== adjustedActualDate); // Remove actual_wfh_date
-//         console.log("Updated WFH Dates (after removing): ", updatedWfhDates);
-        
-//         updatedWfhDates.push(adjustedSelectedDate); // Add selected_date to the end
-//         console.log("Updated WFH Dates: ", updatedWfhDates);
-
-//         // Update the status and wfh_dates in the database
-//         const result = await client.query(`
-//             UPDATE recurring_request
-//             SET wfh_dates = $1::DATE[], status = 'Pending Change'
-//             WHERE requestid = $2
-//             RETURNING *;
-//         `, [updatedWfhDates, requestid]);
-
-//         console.log("Update successful:", result.rows[0]); // Log the updated record
-
-//         // Send success response
-//         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
-//     } catch (error) {
-//         console.error('Error updating request:', error);
-//         res.status(500).json({ message: 'Internal server error.' });
-//     }
-// });
 
 router.patch('/change/:requestid', async (req, res) => {
     const { requestid } = req.params;
@@ -791,8 +1009,5 @@ router.patch('/change/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
-
-
-
 
 module.exports = router;

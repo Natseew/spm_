@@ -12,6 +12,9 @@ const employeeNameid = {};
 const ManagerID = '140001';
 
 const RecurringSchedule = () => {
+    const [override50Percent, setOverride50Percent] = useState(false);
+    const [showOverridePrompt, setShowOverridePrompt] = useState(false);
+    const [overrideData, setOverrideData] = useState(null); // Stores data for the override prompt
     const [RecurringData, setRecurringData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -29,6 +32,7 @@ const RecurringSchedule = () => {
     const [notification, setNotification] = useState('');
     const [modifyData, setModifyData] = useState(null);
     const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         const fetchEmployeeAndRecurringData = async () => {
@@ -64,10 +68,16 @@ const RecurringSchedule = () => {
             }
         };
         fetchEmployeeAndRecurringData();
-    }, [path]);
+    }, [path,refreshKey]);
+
+    const refreshData = () => setRefreshKey(prev => prev + 1); // Function to trigger refresh
 
     const openModal = (data) => {
-        setModalData(data);
+        const updatedData = {
+            ...data,
+            inOfficePercentage: data.inOfficePercentage, 
+        };
+        setModalData(updatedData);
         setModalOpen(true);
     };
 
@@ -82,7 +92,6 @@ const RecurringSchedule = () => {
         if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
@@ -107,11 +116,9 @@ const RecurringSchedule = () => {
         if (selectedStatus === 'Pending Change') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
         }
@@ -217,21 +224,22 @@ const RecurringSchedule = () => {
                 const data = await response.json();
                 console.log("Change accepted successfully:", data);
     
-                // Update table
-                setRecurringData(prevData => 
-                    prevData.map(item => 
-                        item.requestid === reqId 
-                            ? { 
-                                ...item, 
-                                status: 'Approved', 
-                                wfh_records: item.wfh_records.map(record => ({ 
-                                    ...record, 
-                                    status: 'Approved' 
-                                })) 
-                            }
-                            : item
-                    )
-                );
+                // // Update table
+                // setRecurringData(prevData => 
+                //     prevData.map(item => 
+                //         item.requestid === reqId 
+                //             ? { 
+                //                 ...item, 
+                //                 status: 'Approved', 
+                //                 wfh_records: item.wfh_records.map(record => ({ 
+                //                     ...record, 
+                //                     status: 'Approved' 
+                //                 })) 
+                //             }
+                //             : item
+                //     )
+                // );
+                refreshData(); // Refresh data 
             } else {
                 console.error("Failed to accept change:", response.statusText);
             }
@@ -259,20 +267,20 @@ const RecurringSchedule = () => {
                 return;
             }
     
-            // Update the RecurringData state to reflect the rejected status and reason for the selected dates
-            const updatedData = RecurringData.map(item => {
-                if (item.requestid === reqId) {
-                    const updatedRecords = item.wfh_records.map(record => 
-                        rejectDates.includes(record.wfh_date) && record.status === 'Pending Change'
-                            ? { ...record, status: 'Rejected', reject_reason: reason } // Update status and reason for selected dates
-                            : record // Keep other records as is
-                    );
-                    return { ...item, wfh_records: updatedRecords }; // Return updated item with modified records
-                }
-                return item; // Keep other items as is
-            });
-    
-            setRecurringData(updatedData); // Update the main state with the modified data
+            // // Update the RecurringData state to reflect the rejected status and reason for the selected dates
+            // const updatedData = RecurringData.map(item => {
+            //     if (item.requestid === reqId) {
+            //         const updatedRecords = item.wfh_records.map(record => 
+            //             rejectDates.includes(record.wfh_date) && record.status === 'Pending Change'
+            //                 ? { ...record, status: 'Rejected', reject_reason: reason } // Update status and reason for selected dates
+            //                 : record // Keep other records as is
+            //         );
+            //         return { ...item, wfh_records: updatedRecords }; // Return updated item with modified records
+            //     }
+            //     return item; // Keep other items as is
+            // });
+            // setRecurringData(updatedData); // Update the main state with the modified data
+            refreshData(); // Refresh data 
             setNotification('Change request rejected'); // Display success notification
         } catch (error) {
             console.error('Error rejecting change request:', error);
@@ -312,12 +320,13 @@ const RecurringSchedule = () => {
             const result = await response.json();
             console.log('Modification successful:', result);
 
-            // Update the local state with new dates for the modified request
-            setRecurringData(prevData =>
-                prevData.map(req =>
-                    req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
-                )
-            );
+            // // Update the local state with new dates for the modified request
+            // setRecurringData(prevData =>
+            //     prevData.map(req =>
+            //         req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
+            //     )
+            // );
+            refreshData(); // Refresh data 
 
             // Display success notification
             setNotification('Modification successful!');
@@ -331,21 +340,27 @@ const RecurringSchedule = () => {
 
 //Pending Accept
 const handleAccept = async (requestid) => {
-    console.log(`Accepting request with ID: ${requestid}`);
+    console.log(`Accepting request with ID: ${requestid} with override flag: ${override50Percent}`);
     try {
         const response = await fetch(`${path}recurring_request/approve/${requestid}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ override_50_percent: override50Percent }) // Include override flag
         });
 
-        if (!response.ok) {
-            throw new Error(`Error updating status: ${response.status}`);
+        const result = await response.json();
+
+        // Check if backend requires confirmation for override
+        if (result.requireOverride) {
+            setShowOverridePrompt(true);  // Show confirmation prompt
+            setOverrideData({ requestid, ...result });  // Store data needed for prompt
+            return;  // Exit to wait for manager's decision
         }
 
-        const updatedData = await response.json();
-        console.log('Record updated successfully:', updatedData);
+        // If no override required, proceed as usual
+        console.log('Record updated successfully:', result);
 
         // COMMENTED OUT - because of email limits 
         // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
@@ -358,22 +373,22 @@ const handleAccept = async (requestid) => {
         // console.log('Email sent successfully:', emailResponse);
 
         // Update the status for BOTH recurring request & wfh_records in displayed table
-        setRecurringData(prevData => 
-            prevData.map(item => 
-                item.requestid === requestid 
-                    ? { 
-                        ...item, 
-                        status: 'Approved', 
-                        wfh_records: item.wfh_records.map(record => ({ 
-                            ...record, 
-                            status: 'Approved' 
-                        })) 
-                    }
-                    : item
-            )
-        );
+        // setRecurringData(prevData => 
+        //     prevData.map(item => 
+        //         item.requestid === requestid 
+        //             ? { 
+        //                 ...item, 
+        //                 status: 'Approved', 
+        //                 wfh_records: item.wfh_records.map(record => ({ 
+        //                     ...record, 
+        //                     status: 'Approved' 
+        //                 })) 
+        //             }
+        //             : item
+        //     )
+        // );
+        refreshData(); 
         
-
         setNotification('Request accepted successfully!');
         setTimeout(() => setNotification(''), 3000);
     } catch (error) {
@@ -413,20 +428,21 @@ const handleReject = async (requestid,reason) => {
         // console.log('Email sent successfully:', emailResponse);
 
         // Update the status in displayed table
-        setRecurringData(prevData => 
-            prevData.map(item => 
-                item.requestid === requestid 
-                    ? { 
-                        ...item, 
-                        status: 'Rejected', // Updates the status of the recurring_request
-                        wfh_records: item.wfh_records.map(record => ({ 
-                            ...record, 
-                            status: 'Rejected' // Updates the status of each corresponding wfh_record
-                        })) 
-                    }
-                    : item
-            )
-        );
+        // setRecurringData(prevData => 
+        //     prevData.map(item => 
+        //         item.requestid === requestid 
+        //             ? { 
+        //                 ...item, 
+        //                 status: 'Rejected', // Updates the status of the recurring_request
+        //                 wfh_records: item.wfh_records.map(record => ({ 
+        //                     ...record, 
+        //                     status: 'Rejected' // Updates the status of each corresponding wfh_record
+        //                 })) 
+        //             }
+        //             : item
+        //     )
+        // );
+        refreshData(); 
 
         setNotification('Request Rejected successfully!');
         setTimeout(() => setNotification(''), 3000);
@@ -465,20 +481,21 @@ const handleAcceptWithdrawal = async (requestid) => {
         // console.log('Email sent successfully:', emailResponse);
 
         // Update the status for BOTH recurring request & wfh_records in displayed table
-        setRecurringData(prevData => 
-            prevData.map(item => 
-                item.requestid === requestid 
-                    ? { 
-                        ...item, 
-                        status: 'Pending Withdrawal', 
-                        wfh_records: item.wfh_records.map(record => ({ 
-                            ...record, 
-                            status: 'Pending Withdrawal' 
-                        })) 
-                    }
-                    : item
-            )
-        );
+        // setRecurringData(prevData => 
+        //     prevData.map(item => 
+        //         item.requestid === requestid 
+        //             ? { 
+        //                 ...item, 
+        //                 status: 'Pending Withdrawal', 
+        //                 wfh_records: item.wfh_records.map(record => ({ 
+        //                     ...record, 
+        //                     status: 'Pending Withdrawal' 
+        //                 })) 
+        //             }
+        //             : item
+        //     )
+        // );
+        refreshData(); // Refresh data 
         
         setNotification('Withdrawal accepted successfully!');
         setTimeout(() => setNotification(''), 3000);
@@ -489,6 +506,17 @@ const handleAcceptWithdrawal = async (requestid) => {
     }
 };
 
+const confirmOverride = (requestid) => {
+    setOverride50Percent(true);  // Set override flag to true
+    setShowOverridePrompt(false); // Close the override prompt
+    handleAccept(requestid);      // Re-attempt the accept request with override
+};
+
+const cancelOverride = () => {
+    setShowOverridePrompt(false); // Close the prompt
+    setOverrideData(null);        // Clear stored data for override
+    setOverride50Percent(false);  // Ensure override flag is reset
+};
 
 
     return (
@@ -619,6 +647,33 @@ const handleAcceptWithdrawal = async (requestid) => {
                 </tbody>
 
             </table>
+
+            {showOverridePrompt && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-700 bg-opacity-50">
+                    <div className="bg-white p-6 rounded shadow-lg">
+                        <h2 className="text-lg font-semibold mb-4">Confirm Override</h2>
+                        <p>
+                            The in-office percentage is below 50% for {overrideData.date} during {overrideData.timeslot}.
+                            Are you sure you want to approve this request?
+                        </p>
+                        <div className="mt-4 flex justify-end space-x-4">
+                            <button 
+                                className="bg-green-500 text-white px-4 py-2 rounded"
+                                onClick={() => confirmOverride(overrideData.requestid)}
+                            >
+                                Confirm Override
+                            </button>
+                            <button 
+                                className="bg-red-500 text-white px-4 py-2 rounded"
+                                onClick={() => cancelOverride()}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             <RecurringModal 
             isOpen={modalOpen} 
