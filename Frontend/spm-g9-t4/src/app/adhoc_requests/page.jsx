@@ -90,6 +90,14 @@ export default function PendingRequests() {
     }
   }, [staffId, fetchAdhocRequests, fetchApprovedPendingDates]);
 
+  useEffect(() => {
+    if (staffId !== null) {
+      fetchAdhocRequests();
+      fetchApprovedPendingDates();
+    }
+  }, [staffId,fetchAdhocRequests,fetchApprovedPendingDates]);
+
+
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);

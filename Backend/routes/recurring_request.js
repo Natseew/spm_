@@ -96,7 +96,7 @@ router.post('/submit', async (req, res) => {
         }
         if (wfh_dates.length === 0){
             console.log("Actual WFH dates is empty");
-            return res.status(409).json({ message: 'Your start date cannot be after your end date/the day you selected is not in the date range'});
+            return res.status(409).json({ message: 'Your start date cannot be after your end date / The day you selected is not in the date range'});
         }
         // Insert into recurring_request table
         const result = await client.query(
@@ -930,5 +930,84 @@ router.patch('/modify/:requestid', async (req, res) => {
     }
 });
 
+router.patch('/change/:requestid', async (req, res) => {
+    const { requestid } = req.params;
+    const { selected_date, actual_wfh_date } = req.body;
+
+    console.log("Received request to modify ID:", requestid);
+    console.log("Update body:", req.body);
+
+    // Validate input
+    if (!selected_date || !actual_wfh_date) {
+        return res.status(400).json({ message: 'Invalid input: selected_date and actual_wfh_date are required.' });
+    }
+
+    // Convert dates to Date objects and adjust for GMT+8
+    const actualDate = new Date(actual_wfh_date);
+    const selectedDate = new Date(selected_date);
+
+    const adjustedActualDate = new Date(actualDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
+    const adjustedSelectedDate = new Date(selectedDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
+
+    console.log("Adjusted Actual Date:", adjustedActualDate);
+    console.log("Adjusted Selected Date:", adjustedSelectedDate);
+
+    try {
+        // Fetch the existing wfh_dates for the specified requestid
+        const existingRequest = await client.query(`
+            SELECT wfh_dates FROM recurring_request
+            WHERE requestid = $1
+        `, [requestid]);
+
+        // Check if any request was found
+        if (existingRequest.rowCount === 0) {
+            console.log("No request found with the given request ID.");
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        const wfh_dates = existingRequest.rows[0].wfh_dates;
+        console.log("Current WFH Dates: ", wfh_dates);
+
+        // Convert existing dates to ISO strings
+        const formattedWfhDates = wfh_dates.map(date => new Date(date).toISOString());
+        console.log("Formatted WFH Dates: ", formattedWfhDates);
+
+        // Update the wfh_dates array - Remove the actual_wfh_date and add the selected_date
+        const updatedWfhDates = formattedWfhDates.filter(date => date !== adjustedActualDate); // Remove actual_wfh_date
+        console.log("Updated WFH Dates (after removing): ", updatedWfhDates);
+
+        // Add the selected date
+        const newSelectedDate = new Date(adjustedSelectedDate);
+        const adjustedNewSelectedDate = newSelectedDate.toISOString(); // Convert to ISO string format
+
+        updatedWfhDates.push(adjustedNewSelectedDate); // Add new selected date to the end
+        console.log("Updated WFH Dates: ", updatedWfhDates);
+
+        const updatedWfhDatesPlusOne = updatedWfhDates.map(date => {
+            const newDate = new Date(date); // Create a new Date object
+            newDate.setDate(newDate.getDate() + 1); // Increment by one day
+            return newDate.toISOString(); // Convert back to ISO string format
+        });
+        
+        // Log the new dates
+        console.log("Updated WFH Dates (plus one day): ", updatedWfhDatesPlusOne);
+
+        // Update the status and wfh_dates in the database
+        const result = await client.query(`
+            UPDATE recurring_request
+            SET wfh_dates = $1::DATE[], status = 'Pending Change'
+            WHERE requestid = $2
+            RETURNING *;
+        `, [updatedWfhDatesPlusOne, requestid]);
+
+        console.log("Update successful:", result.rows[0]); // Log the updated record
+
+        // Send success response
+        res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
 
 module.exports = router;

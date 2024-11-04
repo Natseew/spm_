@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Navbar from '../../components/Navbar';
 import {
   TextField,
   Button,
@@ -137,6 +138,8 @@ export default function RecurringArrangementPage() {
   };
 
   return (
+    <>
+    <Navbar /> {/* Added Navbar here */}
     <Container maxWidth="sm">
       {/* Tab Navigation */}
       <Tabs value={activeTab} onChange={handleTabChange} centered>
@@ -238,5 +241,6 @@ export default function RecurringArrangementPage() {
         </form>
       </Paper>
     </Container>
+    </>
   );
 }
