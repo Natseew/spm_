@@ -89,7 +89,6 @@ const RecurringSchedule = () => {
         if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
@@ -114,11 +113,9 @@ const RecurringSchedule = () => {
         if (selectedStatus === 'Pending Change') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending Change').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } 
-        // KIV: Is this needed?
         else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
         }
