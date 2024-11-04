@@ -53,8 +53,6 @@ async function calculateInOfficePercentage(staffId, dates, wfhRecords) {
   }
 }
 
-// calculate percentage in office [dept level]
-
 // Route to get all WFH records
 router.get('/', async (req, res) => {
     try {
@@ -739,7 +737,7 @@ router.post('/change_adhoc_wfh', async (req, res) => {
 
 
 
-
+// REMOVE !!!!!??????
 router.post('/withdraw_recurring_request', async (req, res) => {
   const { requestId, date, reason, staff_id } = req.body;
 
