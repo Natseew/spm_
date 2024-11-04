@@ -919,6 +919,61 @@ router.patch('/reject/:id', async (req, res) => {
       }
 });
 
+// Endpoint to auto-reject old pending ad-hoc requests in wfh_records
+router.patch('/auto-reject/:reason', async (req, res) => {
+  const { reason } = req.params;
+
+  try {
+      await client.query('BEGIN');
+
+      // Select old pending ad-hoc requests older than two months
+      const result = await client.query(`
+          SELECT * FROM wfh_records
+          WHERE status = 'Pending' AND recurring = false AND wfh_date < NOW() - INTERVAL '2 months'
+      `);
+
+      if (result.rows.length === 0) {
+          await client.query('COMMIT');
+          return res.status(200).json({ message: 'No pending ad-hoc WFH requests to auto-reject.' });
+      }
+
+      const updatedRecords = [];
+
+      // Update each old pending ad-hoc request in wfh_records
+      const updatePromises = result.rows.map(async row => {
+          // Update the status in wfh_records to 'Rejected'
+          const updateResult = await client.query(`
+              UPDATE wfh_records
+              SET status = 'Rejected', reject_reason = $2
+              WHERE recordID = $1
+              RETURNING *;
+          `, [row.recordid, reason]);
+
+          // Add updated record to response data
+          updatedRecords.push(updateResult.rows[0]);
+
+          // Log the action in ActivityLog
+          await client.query(`
+              INSERT INTO activitylog (recordid, activity, timestamp)
+              VALUES ($1, $2, NOW())
+          `, [row.recordid, `Auto-rejected ad-hoc WFH request: ${reason}`]);
+      });
+
+      await Promise.all(updatePromises);
+      await client.query('COMMIT');
+
+      res.status(200).json({
+          message: 'Old pending ad-hoc WFH requests auto-rejected successfully',
+          updatedRecords: updatedRecords
+      });
+  } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error auto-rejecting ad-hoc WFH requests:', error);
+      res.status(500).json({ message: 'Internal server error. ' + error.message });
+  }
+});
+
+
 
 // Pending Withdrawal (Accept) of WFH request
 router.patch('/acceptwithdrawal/:recordID', async (req, res) => {

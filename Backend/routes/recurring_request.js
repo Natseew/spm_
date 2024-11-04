@@ -3,6 +3,8 @@ const router = express.Router();
 const client = require('../databasepg');
 const calculateInOfficePercentage = require('../routes/wfh_records').calculateInOfficePercentage;
 const { addMonths, subMonths } = require('date-fns');
+const dayjs = require('dayjs');
+
 // Get all recurring requests
 router.get('/', async (req, res) => {
     try{
@@ -211,107 +213,7 @@ router.get('/by-employee-ids', async (req, res) => {
     }
 });
 
-
-
-
-
-// Manager approve recurring request (DO NOT REMOVE BELOW CODE)
-// router.patch('/approve/:requestid', async (req, res) => {
-//     const { requestid } = req.params;
-//     const { override_50_percent } = req.body; // Extract override flag from request body
-
-//     try {
-//         await client.query('BEGIN');
-
-//         // Step 1: Retrieve the recurring request details including staff_id and wfh_dates
-//         const recurringRequestDetails = await client.query(`
-//             SELECT staffID, wfh_date, timeslot
-//             FROM wfh_records
-//             WHERE requestid = $1 AND status = 'Pending'
-//         `, [requestid]);
-
-//         if (recurringRequestDetails.rowCount === 0) {
-//             await client.query('ROLLBACK');
-//             return res.status(404).json({ message: 'Recurring request not found or already approved' });
-//         }
-
-//         const { staffid, wfh_dates } = recurringRequestDetails.rows[0];
-//         const dates = recurringRequestDetails.rows.map(record => record.wfh_date);
-        
-//         // Retrieve all WFH records for the team for the specified dates
-//         const allWfhRecords = await client.query(`
-//             SELECT * FROM wfh_records
-//             WHERE wfh_date = ANY($1) AND status = 'Approved'
-//         `, [dates]);
-
-//         // Step 2: Calculate the in-office percentage for each date and timeslot
-//         const inOfficePercentages = await calculateInOfficePercentage(staffid, dates, allWfhRecords.rows);
-//         console.log('In-office percentages:', inOfficePercentages);
-
-//         // Step 3: Check if in-office percentage is below 50% for any date-timeslot combination
-//         if (!override_50_percent) {
-//             for (const [date, timeslots] of Object.entries(inOfficePercentages)) {
-//                 for (const [timeslot, percentage] of Object.entries(timeslots)) {
-//                     if (percentage < 50) {
-//                         await client.query('ROLLBACK');
-//                         return res.status(200).json({
-//                             message: 'In-office percentage is below 50% for certain dates or timeslots',
-//                             date,
-//                             timeslot,
-//                             inOfficePercentage: percentage,
-//                             requireOverride: true
-//                         });
-//                     }
-//                 }
-//             }
-//         }
-
-//         // Step 4: Proceed with approval if override or percentages are above 50%
-//         // Update recurring request status to 'Approved'
-//         const recurringRequestResult = await client.query(`
-//             UPDATE recurring_request
-//             SET status = 'Approved'
-//             WHERE requestid = $1
-//             RETURNING *;
-//         `, [requestid]);
-
-//         // Log activity for approving the recurring request
-//         await client.query(`
-//             INSERT INTO ActivityLog (requestID, activity)
-//             VALUES ($1, $2)
-//         `, [requestid, 'Recurring request approved by manager']);
-
-//         // Update corresponding WFH records status to 'Approved'
-//         const wfhRecordsResult = await client.query(`
-//             UPDATE wfh_records
-//             SET status = 'Approved'
-//             WHERE requestid = $1
-//             RETURNING *;
-//         `, [requestid]);
-
-//         // Log activity for each WFH record approval
-//         // for (const record of wfhRecordsResult.rows) {
-//         //     await client.query(`
-//         //         INSERT INTO ActivityLog (requestID, recordID, activity)
-//         //         VALUES ($1, $2, $3)
-//         //     `, [requestid, record.recordid, 'WFH record approved']);
-//         // }
-
-//         await client.query('COMMIT');
-
-//         res.status(200).json({
-//             message: 'Request and corresponding WFH records approved successfully',
-//             recurringRequest: recurringRequestResult.rows[0],
-//             wfhRecords: wfhRecordsResult.rows
-//         });
-//     } catch (error) {
-//         await client.query('ROLLBACK');
-//         console.error('Error approving request:', error);
-//         res.status(500).json({ message: 'Internal server error.' });
-//     }
-// });
-
-// Mocked Manager approve recurring request (for testing)
+// Manager approve recurring request 
 router.patch('/approve/:requestid', async (req, res) => {
     const { requestid } = req.params;
     const { override_50_percent } = req.body; // Extract override flag from request body
@@ -344,20 +246,9 @@ router.patch('/approve/:requestid', async (req, res) => {
         const inOfficePercentages = await calculateInOfficePercentage(staffid, dates, allWfhRecords.rows);
         console.log('In-office percentages:', inOfficePercentages);
 
-        // Mocking a scenario where December 10 AM has an in-office percentage below 50%
-        const mockedInOfficePercentages = {
-            ...inOfficePercentages,
-            '2024-12-10': {
-                ...inOfficePercentages['2024-12-10'],
-                'AM': 45 // Force below 50% for testing
-            }
-        };
-
-        console.log('Mocked in-office percentages:', mockedInOfficePercentages);
-
         // Step 3: Check if in-office percentage is below 50% for any date-timeslot combination
         if (!override_50_percent) {
-            for (const [date, timeslots] of Object.entries(mockedInOfficePercentages)) {
+            for (const [date, timeslots] of Object.entries(inOfficePercentages)) {
                 for (const [timeslot, percentage] of Object.entries(timeslots)) {
                     if (percentage < 50) {
                         await client.query('ROLLBACK');
@@ -396,6 +287,14 @@ router.patch('/approve/:requestid', async (req, res) => {
             RETURNING *;
         `, [requestid]);
 
+        // Log activity for each WFH record approval
+        for (const record of wfhRecordsResult.rows) {
+            await client.query(`
+                INSERT INTO ActivityLog (requestID, recordID, activity)
+                VALUES ($1, $2, $3)
+            `, [requestid, record.recordid, 'WFH record approved']);
+        }
+
         await client.query('COMMIT');
 
         res.status(200).json({
@@ -409,7 +308,6 @@ router.patch('/approve/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
-
 
 //Handle Accept Withdrawal Request
 router.patch('/approvewithdrawal/:requestid', async (req, res) => {
@@ -509,6 +407,75 @@ router.patch('/reject/:requestid', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error rejecting recurring request:', error);
+        res.status(500).json({ message: 'Internal server error. ' + error.message });
+    }
+});
+
+// Endpoint to auto-reject old pending recurring requests and update corresponding wfh_records
+router.patch('/auto-reject/:reason', async (req, res) => {
+    const { reason } = req.params;
+
+    try {
+        await client.query('BEGIN');
+
+        // Select old pending recurring requests older than two months
+        const result = await client.query(`
+            SELECT * FROM recurring_request
+            WHERE status = 'Pending' AND start_date < NOW() - INTERVAL '2 months'
+        `);
+
+        if (result.rows.length === 0) {
+            await client.query('COMMIT');
+            return res.status(200).json({ message: 'No pending recurring requests to auto-reject.' });
+        }
+
+        const updatedRecurringRequests = [];
+        const updatedWFHRecords = [];
+
+        // Update each old pending recurring request and corresponding wfh_records
+        const updatePromises = result.rows.map(async row => {
+            // Update the status in recurring_request to 'Rejected'
+            const recurringUpdateResult = await client.query(`
+                UPDATE recurring_request
+                SET status = 'Rejected', reject_reason = $2
+                WHERE requestid = $1
+                RETURNING *;
+            `, [row.requestid, reason]);
+
+            updatedRecurringRequests.push(recurringUpdateResult.rows[0]);
+
+            // Update corresponding wfh_records entries to 'Rejected'
+            const wfhRecordsResult = await client.query(`
+                UPDATE wfh_records
+                SET status = 'Rejected', reject_reason = $2
+                WHERE requestID = $1
+                RETURNING *;
+            `, [row.requestid, reason]);
+
+            updatedWFHRecords.push(...wfhRecordsResult.rows);
+
+            // Log each rejected wfh_records entry in ActivityLog
+            const logPromises = wfhRecordsResult.rows.map(({ recordid }) => {
+                return client.query(`
+                    INSERT INTO activitylog (requestid, recordid, activity, timestamp)
+                    VALUES ($1, $2, $3, NOW())
+                `, [row.requestid, recordid, `Auto-rejected recurring request: ${reason}`]);
+            });
+
+            await Promise.all(logPromises);
+        });
+
+        await Promise.all(updatePromises);
+        await client.query('COMMIT');
+
+        res.status(200).json({
+            message: 'Old pending recurring requests and corresponding wfh_records auto-rejected successfully',
+            updatedRecurringRequests: updatedRecurringRequests,
+            updatedWFHRecords: updatedWFHRecords
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error auto-rejecting recurring requests:', error);
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
