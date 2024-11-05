@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use('/wfh_records', router);
 
-// Mock the database queries
+// Mock the database queries 
 jest.mock('../databasepg', () => ({
   query: jest.fn(),
 }));
