@@ -8,14 +8,12 @@ import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
-const user = JSON.parse(window.sessionStorage.getItem("user"))
-const ManagerID = user.staff_id;
-
 
 const RecurringSchedule = () => {
     const [override50Percent, setOverride50Percent] = useState(false);
     const [showOverridePrompt, setShowOverridePrompt] = useState(false);
-    const [overrideData, setOverrideData] = useState(null); // Stores data for the override prompt
+    const [ManagerID, setManagerID] = useState(null);
+    const [overrideData, setOverrideData] = useState(null);
     const [RecurringData, setRecurringData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -34,7 +32,19 @@ const RecurringSchedule = () => {
     const [path] = useState(process.env.NEXT_PUBLIC_API_URL);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // Fetch user and set ManagerID
     useEffect(() => {
+        const storedUser = window.sessionStorage.getItem("user");
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setManagerID(parsedUser.staff_id);
+        }
+    }, []);
+
+    // Fetch employee and recurring data
+    useEffect(() => {
+        if (!ManagerID) return; // Ensure ManagerID is defined before making the fetch request
+
         const fetchEmployeeAndRecurringData = async () => {
             try {
                 const idResponse = await fetch(`${path}employee/by-manager/${ManagerID}`);
@@ -51,7 +61,7 @@ const RecurringSchedule = () => {
                 const wfhResponse = await fetch(`${path}recurring_request/by-employee-ids?employeeIds=${ids.join(',')}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
-                });      
+                });
 
                 if (!wfhResponse.ok) {
                     throw new Error(`Error fetching Recurring WFH records: ${wfhResponse.status}`);
@@ -66,8 +76,9 @@ const RecurringSchedule = () => {
                 setLoading(false);
             }
         };
+
         fetchEmployeeAndRecurringData();
-    }, [path,refreshKey]);
+    }, [ManagerID, path, refreshKey]);
 
     const refreshData = () => setRefreshKey(prev => prev + 1); // Function to trigger refresh
 
