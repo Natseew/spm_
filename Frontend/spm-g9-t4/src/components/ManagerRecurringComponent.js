@@ -320,16 +320,6 @@ const handleAccept = async (requestid) => {
 
         // If no override required, proceed as usual
         console.log('Record updated successfully:', result);
-
-        // COMMENTED OUT - because of email limits 
-        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
-        //     user_name: "",
-        //     recordID: recordID,
-        //     }, 
-        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
-
-        // console.log("Email Updates");
-        // console.log('Email sent successfully:', emailResponse);
         refreshData(); 
         
         setNotification('Request accepted successfully!');
@@ -359,17 +349,6 @@ const handleReject = async (requestid,reason) => {
 
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
-
-        // COMMENTED OUT - because of email limits 
-        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
-        //     user_name: "",
-        //     recordID: recordID,
-        //     }, 
-        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
-
-        // console.log("Email Updates");
-        // console.log('Email sent successfully:', emailResponse);
-
         refreshData(); 
 
         setNotification('Request Rejected successfully!');
@@ -397,16 +376,6 @@ const handleAcceptWithdrawal = async (requestid) => {
 
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
-
-        // COMMENTED OUT - because of email limits 
-        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
-        //     user_name: "",
-        //     recordID: recordID,
-        //     }, 
-        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
-
-        // console.log("Email Updates");
-        // console.log('Email sent successfully:', emailResponse);
 
         refreshData(); // Refresh data 
         
