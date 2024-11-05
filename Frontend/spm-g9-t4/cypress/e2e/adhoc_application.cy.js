@@ -2,7 +2,7 @@ describe('ArrangementForm Component', () => {
   beforeEach(() => {
     // Mock login by setting the user in sessionStorage
     cy.window().then((win) => {
-      const user = { staff_id: '140001' }; // Using staff_id 140001 for testing
+      const user = { staff_id: '140001', role: '1', }; // Using staff_id 140001 for testing
       win.sessionStorage.setItem('user', JSON.stringify(user));
     });
     

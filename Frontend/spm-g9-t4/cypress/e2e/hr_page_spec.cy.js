@@ -2,7 +2,11 @@ import dayjs from 'dayjs';
 
 describe('HRPage Component', () => {
   beforeEach(() => {
-    cy.visit('https://spm-one.vercel.app/HR');
+    cy.window().then((win) => {
+      const user = { staff_id: '140001', role: '1', }; // Using staff_id 140001 for testing
+      win.sessionStorage.setItem('user', JSON.stringify(user));
+    });
+    cy.visit('http://localhost:3000/HR');
   });
 
   it('should load the page and display the correct elements', () => {
