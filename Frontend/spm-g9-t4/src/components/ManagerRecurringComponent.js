@@ -8,7 +8,6 @@ import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
-const user = JSON.parse(window.sessionStorage.getItem("user"))
 const ManagerID = user.staff_id;
 
 
@@ -33,6 +32,15 @@ const RecurringSchedule = () => {
     const [modifyData, setModifyData] = useState(null);
     const [path] = useState(process.env.NEXT_PUBLIC_API_URL);
     const [refreshKey, setRefreshKey] = useState(0);
+
+    useEffect(() => {
+        const storedUser = window.sessionStorage.getItem("user");
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setManagerID(parsedUser.staff_id);
+        }
+    }, []);
 
     useEffect(() => {
         const fetchEmployeeAndRecurringData = async () => {
