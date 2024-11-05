@@ -8,8 +8,9 @@ import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
-// const ManagerID = '130002'; 
-const ManagerID = '140001';
+const user = JSON.parse(window.sessionStorage.getItem("user"))
+const ManagerID = user.staff_id;
+
 
 const RecurringSchedule = () => {
     const [override50Percent, setOverride50Percent] = useState(false);
@@ -89,9 +90,6 @@ const RecurringSchedule = () => {
 
         if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
-        // } 
-        // else if (selectedStatus === 'Pending') {
-        //     filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
         }
@@ -221,23 +219,7 @@ const RecurringSchedule = () => {
             if (response.ok) {
                 const data = await response.json();
                 console.log("Change accepted successfully:", data);
-    
-                // // Update table
-                // setRecurringData(prevData => 
-                //     prevData.map(item => 
-                //         item.requestid === reqId 
-                //             ? { 
-                //                 ...item, 
-                //                 status: 'Approved', 
-                //                 wfh_records: item.wfh_records.map(record => ({ 
-                //                     ...record, 
-                //                     status: 'Approved' 
-                //                 })) 
-                //             }
-                //             : item
-                //     )
-                // );
-                refreshData(); // Refresh data 
+                refreshData(); 
             } else {
                 console.error("Failed to accept change:", response.statusText);
             }
@@ -264,21 +246,7 @@ const RecurringSchedule = () => {
                 setNotification('Error rejecting change request');
                 return;
             }
-    
-            // // Update the RecurringData state to reflect the rejected status and reason for the selected dates
-            // const updatedData = RecurringData.map(item => {
-            //     if (item.requestid === reqId) {
-            //         const updatedRecords = item.wfh_records.map(record => 
-            //             rejectDates.includes(record.wfh_date) && record.status === 'Pending Change'
-            //                 ? { ...record, status: 'Rejected', reject_reason: reason } // Update status and reason for selected dates
-            //                 : record // Keep other records as is
-            //         );
-            //         return { ...item, wfh_records: updatedRecords }; // Return updated item with modified records
-            //     }
-            //     return item; // Keep other items as is
-            // });
-            // setRecurringData(updatedData); // Update the main state with the modified data
-            refreshData(); // Refresh data 
+            refreshData(); 
             setNotification('Change request rejected'); // Display success notification
         } catch (error) {
             console.error('Error rejecting change request:', error);
@@ -317,14 +285,7 @@ const RecurringSchedule = () => {
 
             const result = await response.json();
             console.log('Modification successful:', result);
-
-            // // Update the local state with new dates for the modified request
-            // setRecurringData(prevData =>
-            //     prevData.map(req =>
-            //         req.requestid === requestid ? { ...req, wfh_dates: updatedData.wfh_dates } : req
-            //     )
-            // );
-            refreshData(); // Refresh data 
+            refreshData(); 
 
             // Display success notification
             setNotification('Modification successful!');
@@ -369,22 +330,6 @@ const handleAccept = async (requestid) => {
 
         // console.log("Email Updates");
         // console.log('Email sent successfully:', emailResponse);
-
-        // Update the status for BOTH recurring request & wfh_records in displayed table
-        // setRecurringData(prevData => 
-        //     prevData.map(item => 
-        //         item.requestid === requestid 
-        //             ? { 
-        //                 ...item, 
-        //                 status: 'Approved', 
-        //                 wfh_records: item.wfh_records.map(record => ({ 
-        //                     ...record, 
-        //                     status: 'Approved' 
-        //                 })) 
-        //             }
-        //             : item
-        //     )
-        // );
         refreshData(); 
         
         setNotification('Request accepted successfully!');
@@ -425,21 +370,6 @@ const handleReject = async (requestid,reason) => {
         // console.log("Email Updates");
         // console.log('Email sent successfully:', emailResponse);
 
-        // Update the status in displayed table
-        // setRecurringData(prevData => 
-        //     prevData.map(item => 
-        //         item.requestid === requestid 
-        //             ? { 
-        //                 ...item, 
-        //                 status: 'Rejected', // Updates the status of the recurring_request
-        //                 wfh_records: item.wfh_records.map(record => ({ 
-        //                     ...record, 
-        //                     status: 'Rejected' // Updates the status of each corresponding wfh_record
-        //                 })) 
-        //             }
-        //             : item
-        //     )
-        // );
         refreshData(); 
 
         setNotification('Request Rejected successfully!');
@@ -478,21 +408,6 @@ const handleAcceptWithdrawal = async (requestid) => {
         // console.log("Email Updates");
         // console.log('Email sent successfully:', emailResponse);
 
-        // Update the status for BOTH recurring request & wfh_records in displayed table
-        // setRecurringData(prevData => 
-        //     prevData.map(item => 
-        //         item.requestid === requestid 
-        //             ? { 
-        //                 ...item, 
-        //                 status: 'Pending Withdrawal', 
-        //                 wfh_records: item.wfh_records.map(record => ({ 
-        //                     ...record, 
-        //                     status: 'Pending Withdrawal' 
-        //                 })) 
-        //             }
-        //             : item
-        //     )
-        // );
         refreshData(); // Refresh data 
         
         setNotification('Withdrawal accepted successfully!');

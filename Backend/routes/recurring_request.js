@@ -3,7 +3,6 @@ const router = express.Router();
 const client = require('../databasepg');
 const calculateInOfficePercentage = require('../routes/wfh_records').calculateInOfficePercentage;
 const { addMonths, subMonths } = require('date-fns');
-const dayjs = require('dayjs');
 
 // Get all recurring requests
 router.get('/', async (req, res) => {
@@ -18,6 +17,7 @@ router.get('/', async (req, res) => {
         res.status(500).json({ message: 'Internal server error. ' + error.message });
     }
 });
+
 //submit recurring request
 router.post('/submit', async (req, res) => {
     const { staff_id, start_date, end_date, day_of_week, request_reason, timeslot } = req.body;
@@ -124,91 +124,6 @@ router.post('/submit', async (req, res) => {
         res.status(500).json({ message: 'Please fill up the form again. ' + error.message });
     }
 });
-
-// Delete recurring WFH request: REDUNDANT ?  
-// router.delete('/:requestID', async (req, res) => {
-//     const { requestID } = req.params;
-//     // Validate requestID
-//     if (!requestID) {
-//         return res.status(400).json({ message: 'Request ID is required.' });
-//     }
-//     try {
-//         // Delete from recurring_request table
-//         const result = await client.query(
-//             `
-//             DELETE FROM recurring_request
-//             WHERE requestID = $1
-//             RETURNING requestID;
-//             `,
-//             [requestID]
-//         );
-//         // Check if any rows were deleted
-//         if (result.rowCount === 0) {
-//             return res.status(404).json({ message: 'Request not found.' });
-//         }
-//         res.status(200).json({ message: 'Recurring WFH request deleted successfully', requestID });
-//     } catch (error) {
-//         console.error('Error deleting recurring WFH request:', error);
-//     }
-// });
-// router.delete('/:requestID', async (req, res) => {
-//     const { requestID } = req.params;
-
-//     // Validate requestID
-//     if (!requestID) {
-//         return res.status(400).json({ message: 'Request ID is required.' });
-//     }
-
-//     try {
-//         // Start a transaction to ensure both updates succeed or fail together
-//         await client.query('BEGIN');
-
-//         // Update status to "Deleted" in recurring_request table
-//         const recurringResult = await client.query(
-//             `
-//             UPDATE recurring_request
-//             SET status = 'Deleted'
-//             WHERE requestID = $1
-//             RETURNING requestID;
-//             `,
-//             [requestID]
-//         );
-
-//         // Check if any rows were updated in recurring_request
-//         if (recurringResult.rowCount === 0) {
-//             await client.query('ROLLBACK');
-//             return res.status(404).json({ message: 'Request not found.' });
-//         }
-
-//         // Update status to "Deleted" for corresponding records in wfh_records
-//         const wfhResult = await client.query(
-//             `
-//             UPDATE wfh_records
-//             SET status = 'Deleted'
-//             WHERE requestID = $1
-//             RETURNING recordID;
-//             `,
-//             [requestID]
-//         );
-
-//         // Commit the transaction
-//         await client.query('COMMIT');
-
-//         res.status(200).json({ 
-//             message: 'Recurring WFH request and corresponding records marked as Deleted successfully', 
-//             requestID, 
-//             deletedRecords: wfhResult.rows.map(row => row.recordID) 
-//         });
-//     } catch (error) {
-//         // Roll back the transaction in case of an error
-//         await client.query('ROLLBACK');
-//         console.error('Error marking recurring WFH request and records as Deleted:', error);
-//         res.status(500).json({ message: 'An error occurred while deleting the request.' });
-//     }
-// });
-
-
-
 
 // Get recurring requests by employee IDs with WFH records
 router.get('/by-employee-ids', async (req, res) => {
