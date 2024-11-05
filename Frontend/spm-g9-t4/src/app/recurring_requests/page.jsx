@@ -346,6 +346,15 @@ export default function PendingRequests() {
     return status === "Pending" || status === "Approved";
   };
 
+  const shouldShowChangeButton = (status, date) => {
+    return (status === "Approved" || status === "Pending") && isDateWithinTwoWeeks(date);
+  };
+  
+  const shouldShowWithdrawButton = (status, date) => {
+    return (status === "Pending") || (status === "Approved" && isDateWithinTwoWeeks(date));
+  };
+  
+
   // Function to handle tab changes
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -393,7 +402,7 @@ export default function PendingRequests() {
                       <TableCell>{new Date(record.wfh_date).toLocaleDateString()}</TableCell>
                       <TableCell>{record.status}</TableCell>
                       <TableCell>
-                        {isDateWithinTwoWeeks(record.wfh_date) && isStatusValidForAction(record.status) && (
+                        {shouldShowWithdrawButton(record.status, record.wfh_date) && (
                           <>
                             <Button
                               variant="outlined"
@@ -402,8 +411,9 @@ export default function PendingRequests() {
                             >
                               Withdraw
                             </Button>
-
+                          
                             {/* Change Button */}
+                            {shouldShowChangeButton(record.status, record.wfh_date) && (
                             <Button
                               variant="outlined"
                               color="primary"
@@ -412,7 +422,7 @@ export default function PendingRequests() {
                             >
                               Change
                             </Button>
-
+                            )}
                               {/* Change Request Dialog */}
                               <Dialog open={openChangeDialog} 
                               onClose={handleCloseChangeDialog}
