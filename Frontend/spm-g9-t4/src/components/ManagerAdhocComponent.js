@@ -15,7 +15,6 @@ const AdHocSchedule = () => {
     const [error, setError] = useState(null);
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
     const [selectedDate, setSelectedDate] = useState("");
-    const [setEmployeeIds] = useState([]);
     const [adhocData, setAdhocData] = useState([]);
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
@@ -36,7 +35,6 @@ const AdHocSchedule = () => {
                 }
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
-                setEmployeeIds(ids); // Store employee IDs in state
                 
                 // Create employeeNameid mapping
                 employeeData.forEach(emp => {
