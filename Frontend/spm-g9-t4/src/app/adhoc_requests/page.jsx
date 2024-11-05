@@ -295,26 +295,30 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.status}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>{request.request_reason || "N/A"}</TableCell>
                 <TableCell sx={{ border: "1px solid #ccc", textAlign: "center" }}>
-                  {shouldShowActionButton(request.status, request.wfh_date) && (
-                    <>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => onWithdraw(request.recordid, request.status)}
-                        sx={{ marginRight: 1 }}
-                      >
-                        Withdraw
-                      </Button>
+                    {/* Change button - isChangeAction is true */}
+                    {shouldShowActionButton(request.status, request.wfh_date, true) && (
                       <Button
                         variant="outlined"
                         color="primary"
                         onClick={() => onChange(request.recordid, request.status)}
+                        sx={{ marginRight: 1 }}
                       >
                         Change
                       </Button>
-                    </>
-                  )}
+                    )}
+                    
+                    {/* Withdraw button - isChangeAction is false */}
+                    {shouldShowActionButton(request.status, request.wfh_date, false) && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => onWithdraw(request.recordid, request.status)}
+                      >
+                        Withdraw
+                      </Button>
+                    )}
                 </TableCell>
+
 
               </TableRow>
             ))
@@ -334,20 +338,29 @@ function AdhocRequestsTable({ requests, onWithdraw, onChange }) {
 
 
 // Helper function to determine if the action button should be shown
-const shouldShowActionButton = (status, date) => {
-  if (status === "Pending") return true; // Show button regardless of date if status is pending
+const shouldShowActionButton = (status, date, isChangeAction = false) => {
+  const today = new Date();
+  const targetDate = new Date(date);
+  const twoWeeksBack = new Date(today);
+  twoWeeksBack.setDate(today.getDate() - 14);
+  const twoWeeksForward = new Date(today);
+  twoWeeksForward.setDate(today.getDate() + 14);
 
-  if (status === "Approved") {
-    const today = new Date();
-    const targetDate = new Date(date);
-    const twoWeeksBack = new Date(today);
-    twoWeeksBack.setDate(today.getDate() - 14);
-    const twoWeeksForward = new Date(today);
-    twoWeeksForward.setDate(today.getDate() + 14);
-
-    return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
+  if (isChangeAction) {
+    // For Change button: Show only if status is Approved or Pending and WFH date is within 2 weeks of today
+    if ((status === "Approved" || status === "Pending") && targetDate >= twoWeeksBack && targetDate <= twoWeeksForward) {
+      return true;
+    }
+  } else {
+    // For Withdraw button
+    if (status === "Pending") {
+      return true; // Show button regardless of date if status is pending
+    } else if (status === "Approved") {
+      // Show only if WFH date is within 2 weeks of today
+      return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
+    }
   }
 
-  return false; // Button not shown for other statuses
+  return false; // Button not shown for other cases
 };
 
