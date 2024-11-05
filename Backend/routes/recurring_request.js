@@ -54,19 +54,15 @@ router.post('/submit', async (req, res) => {
     const startDate = new Date(start_date);
     const endDate = new Date(end_date);
     const targetDay = (day_of_week % 7); // Convert 1-5 to 0-4 (Monday to Friday)
+    const status = (staff_id === 130002) ? 'Approved' : 'Pending';
+    console.log("Staff ID:", staff_id);
+    console.log("Status Assigned:", status)
     for (let date = startDate; date <= endDate; date.setDate(date.getDate() + 1)) {
         if (date.getDay() === targetDay) {
             wfh_dates.push(date.toISOString().split('T')[0]); // Store date as YYYY-MM-DD
         }
     }
     try {
-        // Fetch existing dates from recurring_request and wfh_records tables
-        // const existingDatesResult = await client.query(`
-        //     SELECT unnest(wfh_dates) AS date FROM recurring_request WHERE staff_id = $1
-        //     UNION ALL
-        //     SELECT wfh_date FROM wfh_records WHERE staffid = $1`,
-        //     [staff_id]
-        // );
         const existingDatesResult = await client.query(
             `SELECT wfh_date 
              FROM wfh_records 
@@ -102,10 +98,10 @@ router.post('/submit', async (req, res) => {
         const result = await client.query(
             `
             INSERT INTO recurring_request (staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending')
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING requestID;
             `,
-            [staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates]
+            [staff_id, start_date, end_date, day_of_week, request_reason, timeslot, wfh_dates, status]
         );
         const request_id = result.rows[0].requestid;
         console.log('Inserted Request ID:', request_id);
@@ -118,8 +114,8 @@ router.post('/submit', async (req, res) => {
         );
         await client.query(
             `INSERT INTO wfh_records (staffid, wfh_date, recurring, timeslot, status, request_reason, requestid, requestdate)
-             SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, 'Pending', $4, $5, CURRENT_DATE;`,
-            [staff_id, wfh_dates, timeslot, request_reason, request_id]
+             SELECT $1, unnest($2::DATE[]) AS wfh_date, TRUE, $3, $6, $4, $5, CURRENT_DATE;`,
+            [staff_id, wfh_dates, timeslot, request_reason, request_id, status]
         );
         const requestID = result.rows[0].requestID;
         res.status(201).json({ message: 'Recurring WFH request submitted successfully', requestID });
