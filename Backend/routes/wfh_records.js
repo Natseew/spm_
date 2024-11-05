@@ -994,7 +994,7 @@ router.patch('/reject_withdrawal/:recordID', async (req, res) => {
 // route to apply recurring change - wfh_records (staff side)
 router.patch('/change/:requestid', async (req, res) => {
   const { requestid } = req.params;
-  const { selected_date, actual_wfh_date } = req.body;
+  const { selected_date, actual_wfh_date, staff_id } = req.body;
 
   console.log("Received request to modify wfh_records for ID:", requestid);
   console.log("Update body:", req.body);
@@ -1020,6 +1020,25 @@ router.patch('/change/:requestid', async (req, res) => {
       }
 
       console.log("Update successful:", result.rows); // Log the updated records
+
+        if (Number(staff_id) === 130002) { // Ensure staff_id is treated as a number
+          // Start transaction
+          await client.query('BEGIN');
+
+          // Immediately approve for staff 130002
+          await client.query(`
+              UPDATE wfh_records 
+              SET status = 'Approved' 
+              WHERE wfh_date = $1 AND requestid = $2
+          `, [selected_date, requestid]);
+
+          // Commit the transaction
+          await client.query('COMMIT');
+          console.log("WFH Record approved directly for Jack Sim");
+
+          // Send success response for 130002 staff
+          return res.status(200).json({ message: 'WFH Record updated and approved successfully.' });
+      }
 
       // Send success response
       res.status(200).json({ message: 'WFH records updated successfully', records: result.rows });

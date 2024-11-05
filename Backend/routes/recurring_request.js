@@ -1001,12 +1001,124 @@ router.post('/withdraw_recurring_request', async (req, res) => {
 
 
 
+// router.patch('/change/:requestid', async (req, res) => {
+//     const { requestid } = req.params;
+//     const { selected_date, actual_wfh_date, staff_id, change_reason} = req.body;
+
+//     console.log("Received request to modify ID:", requestid);
+//     console.log("Update body:", req.body);
+//     console.log("Change Reason:",change_reason);
+
+//     // Validate input
+//     if (!selected_date || !actual_wfh_date) {
+//         return res.status(400).json({ message: 'Invalid input: selected_date and actual_wfh_date are required.' });
+//     }
+
+//     // Convert dates to Date objects and adjust for GMT+8
+//     const actualDate = new Date(actual_wfh_date);
+//     const selectedDate = new Date(selected_date);
+
+//     const adjustedActualDate = new Date(actualDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
+//     const adjustedSelectedDate = new Date(selectedDate.getTime() - 8 * 60 * 60 * 1000).toISOString(); // Adjust to GMT+8
+
+//     console.log("Adjusted Actual Date:", adjustedActualDate);
+//     console.log("Adjusted Selected Date:", adjustedSelectedDate);
+
+//     try {
+//         // Fetch the existing wfh_dates for the specified requestid
+//         const existingRequest = await client.query(`
+//             SELECT wfh_dates FROM recurring_request
+//             WHERE requestid = $1
+//         `, [requestid]);
+
+//         // Check if any request was found
+//         if (existingRequest.rowCount === 0) {
+//             console.log("No request found with the given request ID.");
+//             return res.status(404).json({ message: 'Request not found' });
+//         }
+
+//         const wfh_dates = existingRequest.rows[0].wfh_dates;
+//         console.log("Current WFH Dates: ", wfh_dates);
+
+//         // Convert existing dates to ISO strings
+//         const formattedWfhDates = wfh_dates.map(date => new Date(date).toISOString());
+//         console.log("Formatted WFH Dates: ", formattedWfhDates);
+
+//         // Update the wfh_dates array - Remove the actual_wfh_date and add the selected_date
+//         const updatedWfhDates = formattedWfhDates.filter(date => date !== adjustedActualDate); // Remove actual_wfh_date
+//         console.log("Updated WFH Dates (after removing): ", updatedWfhDates);
+
+//         // Add the selected date
+//         const newSelectedDate = new Date(adjustedSelectedDate);
+//         const adjustedNewSelectedDate = newSelectedDate.toISOString(); // Convert to ISO string format
+
+//         updatedWfhDates.push(adjustedNewSelectedDate); // Add new selected date to the end
+//         console.log("Updated WFH Dates: ", updatedWfhDates);
+
+//         const updatedWfhDatesPlusOne = updatedWfhDates.map(date => {
+//             const newDate = new Date(date); // Create a new Date object
+//             newDate.setDate(newDate.getDate() + 1); // Increment by one day
+//             return newDate.toISOString(); // Convert back to ISO string format
+//         });
+        
+//         // Log the new dates
+//         console.log("Updated WFH Dates (plus one day): ", updatedWfhDatesPlusOne);
+
+//         // Update the status and wfh_dates in the database
+//         const result = await client.query(`
+//             UPDATE recurring_request
+//             SET wfh_dates = $1::DATE[], status = 'Pending Change'
+//             WHERE requestid = $2
+//             RETURNING *;
+//         `, [updatedWfhDatesPlusOne, requestid]);
+
+//         const result2 = await client.query(
+//             `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+//             [requestid, `Changed Request- ${change_reason}`]
+//         );
+
+//         console.log("Update successful:", result.rows[0]); // Log the updated record
+//         console.log("Update to Activity Log successful:", result2.rows[0]); // Log the updated record
+
+//         // Send success response
+//         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+
+//         if (staff_id === 130002) {
+//             // Start transaction
+//             await client.query('BEGIN');
+
+//             //Straight away approve for Jack Sim
+//             await client.query(
+//                 `UPDATE wfh_records SET status = 'Approved' WHERE wfh_date = $1 AND requestID = $2`,
+//                 [adjustedNewSelectedDate, requestid]
+//             );
+
+//             // Straight away approve for Jack Sim
+//             await client.query(`
+//                 UPDATE recurring_request
+//                 SET wfh_dates = $1::DATE[], status = 'Approved'
+//                 WHERE requestid = $2
+//                 RETURNING *;
+//             `, [updatedWfhDatesPlusOne, requestid]);
+
+//             // Commit the transaction
+//             await client.query('COMMIT');
+//             return res.status(200).json({ message: 'Request changed successfully.' });
+//         }
+//     } catch (error) {
+//         console.error('Error updating request:', error);
+//         res.status(500).json({ message: 'Internal server error.' });
+//     }
+// });
+
 router.patch('/change/:requestid', async (req, res) => {
     const { requestid } = req.params;
-    const { selected_date, actual_wfh_date } = req.body;
+    const { selected_date, actual_wfh_date, staff_id, change_reason } = req.body;
 
     console.log("Received request to modify ID:", requestid);
     console.log("Update body:", req.body);
+    console.log("Change Reason:", change_reason);
+    console.log("Staff Id:",staff_id);
 
     // Validate input
     if (!selected_date || !actual_wfh_date) {
@@ -1059,7 +1171,7 @@ router.patch('/change/:requestid', async (req, res) => {
             newDate.setDate(newDate.getDate() + 1); // Increment by one day
             return newDate.toISOString(); // Convert back to ISO string format
         });
-        
+
         // Log the new dates
         console.log("Updated WFH Dates (plus one day): ", updatedWfhDatesPlusOne);
 
@@ -1071,14 +1183,50 @@ router.patch('/change/:requestid', async (req, res) => {
             RETURNING *;
         `, [updatedWfhDatesPlusOne, requestid]);
 
-        console.log("Update successful:", result.rows[0]); // Log the updated record
+        const result2 = await client.query(
+            `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+            [requestid, `Changed Request- ${change_reason}`]
+        );
 
-        // Send success response
+        console.log("Update successful:", result.rows[0]); // Log the updated record
+        console.log("Update to Activity Log successful:", result2.rows[0]); // Log the updated record
+
+        // Check if staff_id is 130002
+        if (Number(staff_id) === 130002) { // Ensure staff_id is treated as a number
+            // Start transaction
+            await client.query('BEGIN');
+
+            // Immediately approve for staff 130002
+            await client.query(`
+                UPDATE wfh_records 
+                SET status = 'Approved' 
+                WHERE wfh_date = $1 AND requestID = $2
+            `, [adjustedNewSelectedDate, requestid]);
+
+            // Update recurring request status to 'Approved'
+            await client.query(`
+                UPDATE recurring_request
+                SET wfh_dates = $1::DATE[], status = 'Approved'
+                WHERE requestid = $2
+                RETURNING *;
+            `, [updatedWfhDatesPlusOne, requestid]);
+
+            // Commit the transaction
+            await client.query('COMMIT');
+            console.log("Request approved directly for staff 130002");
+
+            // Send success response for 130002 staff
+            return res.status(200).json({ message: 'Request changed and approved successfully.' });
+        }
+
+        // For other staff, respond normally after the update
         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+
     } catch (error) {
         console.error('Error updating request:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
 
 module.exports = router;

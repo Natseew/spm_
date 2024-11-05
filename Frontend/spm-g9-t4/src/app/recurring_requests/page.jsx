@@ -230,6 +230,8 @@ export default function PendingRequests() {
             body: JSON.stringify({
                 selected_date: formatted_selected_date,
                 actual_wfh_date: correct_date,
+                change_reason: change_reason,
+                staff_id: staffId
             }),
         });
 
@@ -250,6 +252,8 @@ export default function PendingRequests() {
             body: JSON.stringify({
                 selected_date: formatted_selected_date,
                 actual_wfh_date: correct_date,
+                change_reason: change_reason,
+                staff_id: staffId
             }),
         });
 
