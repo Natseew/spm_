@@ -278,42 +278,151 @@ router.patch('/approve/:requestid', async (req, res) => {
     }
 });
 
-//Handle Accept Withdrawal Request
-router.patch('/approvewithdrawal/:requestid', async (req, res) => {
-    const { requestid } = req.params;
+// Handle Accept Withdrawal Request
+router.patch('/approvewithdrawal', async (req, res) => {
+    const { requestID, withdrawalDates } = req.body;
+
     try {
         await client.query('BEGIN');
-        // Update recurring request status to 'Approved'
+
+        // Check if there are any "Approved" records for this request
+        const approvedRecordsResult = await client.query(`
+            SELECT * FROM wfh_records
+            WHERE requestid = $1 AND status = 'Approved';
+        `, [requestID]);
+
+        if (approvedRecordsResult.rowCount > 0) {
+            // If there are approved records, only update specified dates to "Withdrawn" in wfh_records
+            const wfhRecordsResult = await client.query(`
+                UPDATE wfh_records
+                SET status = 'Withdrawn'
+                WHERE requestid = $1 AND wfh_date = ANY($2::date[])
+                RETURNING *;
+            `, [requestID, withdrawalDates]);
+
+            // Remove the withdrawn dates from recurring_request's wfh_dates array
+            await client.query(`
+                UPDATE recurring_request
+                SET wfh_dates = array(
+                    SELECT unnest(wfh_dates)
+                    EXCEPT SELECT unnest($1::date[])
+                )
+                WHERE requestid = $2
+                RETURNING *;
+            `, [withdrawalDates, requestID]);
+
+            // Check if there are still any approved records after the update
+            const remainingApprovedRecords = await client.query(`
+                SELECT * FROM wfh_records
+                WHERE requestid = $1 AND status = 'Approved';
+            `, [requestID]);
+
+            if (remainingApprovedRecords.rowCount > 0) {
+                // If there are still approved records, set recurring_request status back to "Approved"
+                await client.query(`
+                    UPDATE recurring_request
+                    SET status = 'Approved'
+                    WHERE requestid = $1
+                    RETURNING *;
+                `, [requestID]);
+            } else {
+                // Otherwise, set recurring_request status to "Withdrawn"
+                await client.query(`
+                    UPDATE recurring_request
+                    SET status = 'Withdrawn'
+                    WHERE requestid = $1
+                    RETURNING *;
+                `, [requestID]);
+            }
+
+            await client.query('COMMIT');
+
+            return res.status(200).json({
+                message: 'Specified WFH dates withdrawn successfully',
+                updatedRecords: wfhRecordsResult.rows
+            });
+        }
+
+        // If no approved records are left at the start, update the recurring request status to "Withdrawn"
         const recurringRequestResult = await client.query(`
             UPDATE recurring_request
             SET status = 'Withdrawn'
             WHERE requestid = $1
             RETURNING *;
-        `, [requestid]);
+        `, [requestID]);
 
-        if (recurringRequestResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Recurring request not found' });
-        }
-
-        // Update corresponding wfh_records status to 'Withdrawn'
+        // Update the specified wfh_records to "Withdrawn"
         const wfhRecordsResult = await client.query(`
             UPDATE wfh_records
             SET status = 'Withdrawn'
-            WHERE requestid = $1
+            WHERE requestid = $1 AND wfh_date = ANY($2::date[])
             RETURNING *;
-        `, [requestid]);
+        `, [requestID, withdrawalDates]);
 
         await client.query('COMMIT');
 
         res.status(200).json({
-            message: 'Request and corresponding WFH records approved successfully',
+            message: 'Request and corresponding WFH records withdrawn successfully',
             recurringRequest: recurringRequestResult.rows[0],
             wfhRecords: wfhRecordsResult.rows
         });
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error approving request:', error);
+        console.error('Error processing withdrawal:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+// Handle Reject Withdrawal Request
+router.patch('/rejectwithdrawal', async (req, res) => {
+    const { requestID, rejectDates } = req.body;
+
+    if (!requestID || !Array.isArray(rejectDates) || rejectDates.length === 0) {
+        return res.status(400).json({ message: 'Invalid request: requestID and rejectDates are required.' });
+    }
+
+    try {
+        await client.query('BEGIN');
+
+        // Update specified dates in wfh_records to "Approved"
+        const updatedRecordsResult = await client.query(`
+            UPDATE wfh_records
+            SET status = 'Approved'
+            WHERE requestid = $1 AND wfh_date = ANY($2::date[])
+            RETURNING *;
+        `, [requestID, rejectDates]);
+
+        if (updatedRecordsResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'No matching records found for rejection.' });
+        }
+
+        // Check if there are any remaining "Pending Withdrawal" records for this requestID
+        const remainingPendingWithdrawal = await client.query(`
+            SELECT * FROM wfh_records
+            WHERE requestid = $1 AND status = 'Pending Withdrawal';
+        `, [requestID]);
+
+        // If no records are still "Pending Withdrawal", update recurring_request status to "Approved"
+        if (remainingPendingWithdrawal.rowCount === 0) {
+            await client.query(`
+                UPDATE recurring_request
+                SET status = 'Approved'
+                WHERE requestid = $1
+                RETURNING *;
+            `, [requestID]);
+        }
+
+        await client.query('COMMIT');
+
+        res.status(200).json({
+            message: 'Withdrawal rejection processed successfully',
+            updatedRecords: updatedRecordsResult.rows,
+            recurringRequestStatus: remainingPendingWithdrawal.rowCount === 0 ? 'Approved' : 'Pending Withdrawal'
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error processing withdrawal rejection:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });

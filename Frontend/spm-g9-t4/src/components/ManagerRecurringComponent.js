@@ -5,6 +5,8 @@ import Notification from './Notification';
 import ModifyRecurringRequestModal from './ModifyRecurringRequestModal';
 import HandleRecurringAcceptChangeModal from './HandleRecurringAcceptChangeModal';
 import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal';
+import HandleRecurringAcceptWithdrawalModal from './HandleRecurringAcceptWithdrawalModal';
+import HandleRecurringRejectWithdrawalModal from './HandleRecurringRejectWithdrawalModal';
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
@@ -31,6 +33,11 @@ const RecurringSchedule = () => {
     const [modifyData, setModifyData] = useState(null);
     const [path] = useState(process.env.NEXT_PUBLIC_API_URL);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+    const [withdrawalData, setWithdrawalData] = useState(null);
+    const [rejectWithdrawalModalOpen, setRejectWithdrawalModalOpen] = useState(false);
+    const [rejectWithdrawalData, setRejectWithdrawalData] = useState(null);
+
 
     // Fetch user and set ManagerID
     useEffect(() => {
@@ -167,6 +174,38 @@ const RecurringSchedule = () => {
         setModifyData(null);
     };
 
+    const openWithdrawalModal = (data) => {
+        let withdrawalFilteredDates = [];
+        withdrawalFilteredDates = data.wfh_records
+            .filter(record => record.status === 'Pending Withdrawal')
+            .map(record => record.wfh_date);
+            
+        setWithdrawalData({ ...data, wfh_dates: withdrawalFilteredDates });
+        setWithdrawalModalOpen(true);
+    };
+    
+    const closeWithdrawalModal = () => {
+        setWithdrawalModalOpen(false);
+        setWithdrawalData(null);
+    };
+    
+    const openRejectWithdrawalModal = (data) => {
+        let rejectWithdrawalFilteredDates = [];
+        rejectWithdrawalFilteredDates = data.wfh_records
+            .filter(record => record.status === 'Pending Withdrawal')
+            .map(record => record.wfh_date);
+            
+        setRejectWithdrawalData({ ...data, wfh_dates: rejectWithdrawalFilteredDates });
+        setRejectWithdrawalModalOpen(true);
+    };
+    
+    const closeRejectWithdrawalModal = () => {
+        setRejectWithdrawalModalOpen(false);
+        setRejectWithdrawalData(null);
+    };
+    
+    
+
     if (loading) {
         return <p>Loading...</p>;
     }
@@ -265,10 +304,6 @@ const RecurringSchedule = () => {
         }
     };
     
-
-
-
-
     // Handle Modify
     const handleModify = async (requestid, updatedData) => {
         console.log('Request ID:', requestid);
@@ -371,33 +406,67 @@ const handleReject = async (requestid,reason) => {
     }
 };
 
-const handleAcceptWithdrawal = async (requestid) => {
-    console.log(`Accepting request with ID: ${requestid}`);
+const handleAcceptWithdrawal = async (reqId, withdrawalDates) => {
+    if (!reqId || !withdrawalDates || !Array.isArray(withdrawalDates)) {
+        console.error("Invalid inputs provided:", reqId, withdrawalDates);
+        return;
+    }
     try {
-        const response = await fetch(`${path}recurring_request/approvewithdrawal/${requestid}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        const response = await fetch(`${path}recurring_request/approvewithdrawal`, {
+            method: 'PATCH', // Use PATCH to align with backend route
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestID: reqId, withdrawalDates }),
         });
 
-        if (!response.ok) {
-            throw new Error(`Error updating status: ${response.status}`);
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Withdrawal accepted successfully:", data);
+            refreshData(); 
+            setNotification('Withdrawal accepted successfully!');
+            setTimeout(() => setNotification(''), 3000);
+        } else {
+            console.error("Failed to approve withdrawal:", response.statusText);
+            setNotification('Failed to approve withdrawal');
+            setTimeout(() => setNotification(''), 3000);
         }
-
-        const updatedData = await response.json();
-        console.log('Record updated successfully:', updatedData);
-
-        refreshData(); // Refresh data 
-        
-        setNotification('Withdrawal accepted successfully!');
-        setTimeout(() => setNotification(''), 3000);
     } catch (error) {
-        console.error('Error during status update:', error);
-        setNotification(`Error withdrawing request: ${error.message}`);
+        console.error("Error approving withdrawal:", error);
+        setNotification(`Error approving withdrawal: ${error.message}`);
         setTimeout(() => setNotification(''), 3000);
     }
 };
+
+const handleRejectWithdrawal = async (reqId, rejectDates) => {
+    if (!reqId || !rejectDates || !Array.isArray(rejectDates)) {
+        console.error("Invalid inputs provided:", reqId, rejectDates);
+        return;
+    }
+    try {
+        const response = await fetch(`${path}recurring_request/rejectwithdrawal`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestID: reqId, rejectDates }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Withdrawal rejected successfully:", data);
+            refreshData(); // Refresh data upon successful rejection
+            setNotification('Withdrawal rejected successfully!');
+            setTimeout(() => setNotification(''), 3000); // Auto-dismiss notification
+        } else {
+            console.error("Failed to reject withdrawal:", response.statusText);
+            setNotification('Failed to reject withdrawal');
+            setTimeout(() => setNotification(''), 3000);
+        }
+    } catch (error) {
+        console.error("Error rejecting withdrawal:", error);
+        setNotification(`Error rejecting withdrawal: ${error.message}`);
+        setTimeout(() => setNotification(''), 3000);
+    }
+};
+
+
 
 const confirmOverride = (requestid) => {
     setOverride50Percent(true);  // Set override flag to true
@@ -523,12 +592,14 @@ const cancelOverride = () => {
                                 
                                 {selectedStatus === 'Pending Withdrawal' && (
                                     <>
-                                        <button className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
-                                        onClick={() => handleAcceptWithdrawal(item.requestid)}>
+                                        <button 
+                                            className="bg-green-500 text-white px-2 py-1 rounded mr-2" 
+                                            onClick={() => openWithdrawalModal(item)}>
                                             Accept Withdrawal
                                         </button>
-                                        <button className="bg-red-500 text-white px-2 py-1 rounded" 
-                                        onClick={() => handleAccept(item.requestid)}>
+                                        <button 
+                                            className="bg-red-500 text-white px-2 py-1 rounded" 
+                                            onClick={() => openRejectWithdrawalModal(item)}>
                                             Reject Withdrawal
                                         </button>
                                     </>
@@ -601,6 +672,21 @@ const cancelOverride = () => {
             onAcceptChange={handleAcceptChange} 
             data={modifyData} 
             />
+
+            <HandleRecurringAcceptWithdrawalModal
+                isOpen={withdrawalModalOpen}
+                onClose={closeWithdrawalModal}
+                onAcceptWithdrawal={handleAcceptWithdrawal} // Use updated function here
+                data={withdrawalData}
+            />
+
+            <HandleRecurringRejectWithdrawalModal
+                isOpen={rejectWithdrawalModalOpen}
+                onClose={closeRejectWithdrawalModal}
+                onRejectWithdrawal={handleRejectWithdrawal}
+                data={rejectWithdrawalData}
+            />
+
         </div>
     );
 };
