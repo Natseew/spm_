@@ -41,6 +41,7 @@ export default function PendingRequests() {
   const [openReason, setOpenReason] = useState(false);
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState(new Date());
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -115,7 +116,7 @@ export default function PendingRequests() {
     const fetchApprovedPendingDates = async () => {
       try {
         const response = await fetch(
-          `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
+          `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
         );
         if (response.ok) {
           const data = await response.json();
@@ -131,6 +132,28 @@ export default function PendingRequests() {
     // Fetch the data when staffId changes
     fetchApprovedPendingDates();
   }, [staffId]);  // Dependency array: runs the effect when staffId changes
+
+  useEffect(() => {
+    const fetchPotentialExceedingDates = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const dates = data.map((dateString) => new Date(dateString));
+          setPotentialExceedingDates(dates);
+        } else {
+          console.error("Failed to fetch potential exceeding WFH dates");
+        }
+      } catch (error) {
+        console.error("Error fetching potential exceeding WFH dates:", error);
+      }
+    };
+  
+    // Fetch the potential exceeding dates whenever staffId changes
+    if (staffId) {
+      fetchPotentialExceedingDates();
+    }
+  }, [staffId]);  // Dependency array: reruns the effect when staffId changes
 
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
