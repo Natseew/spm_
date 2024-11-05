@@ -30,6 +30,16 @@ export default function Page() {
     { ssr: false }
   )
 
+  const getStatusLabel = (scheduleStatus) => {
+    switch (scheduleStatus) {
+      case 'AM': return 'AM Leave';
+      case 'PM': return 'PM Leave';
+      case 'FD': return 'Full Day Leave';
+      case 'Office':
+      default: return 'In Office';
+    }
+  };
+
   useEffect(()=>{
     try {
       const fetchStaffSchedule = async () => {
@@ -40,7 +50,7 @@ export default function Page() {
         for(let item of response.data){
           let eventItem = {
             id: uuid(),
-            label: "WFH",
+            label: getStatusLabel(item.timeslot),
             groupLabel: "WFH",
             user: "Current",
             color: "#099ce5",

@@ -70,6 +70,7 @@ const Navbar = () => {
         { href: '/HR', label: 'HR Home' },
         { href: '/manager-view', label: 'Manager View' },
         { href: '/staff', label: 'Own Schedule' },
+        { href: '/TeamScheduleHR', label: 'HR Team Schedule' },
         { href: '/staff/team_schedule', label: 'Team Schedule' },
         { href: '/adhoc_requests', label: 'View Requests' },
         { href: '/adhoc_application', label: 'WFH Application' },

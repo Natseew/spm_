@@ -89,7 +89,7 @@ const [loading, setLoading] = useState(true)
     }else{
       return(
       <DataGrid
-        getRowId={(row) => row.staff_id+row.wfh_date}
+        getRowId={(row) => row.staff_id+row.wfh_date+row.schedule_status}
         rows={staffData}
         columns={columns}
         initialState={{ pagination: { paginationModel } }}
@@ -109,6 +109,8 @@ const [loading, setLoading] = useState(true)
         <DateRange
           ranges={dateRange}
           onChange={(ranges) => setDateRange([ranges.selection])}
+          minDate={dayjs().subtract(2, 'months').toDate()}  // Lock 2 months back
+          maxDate={dayjs().add(3, 'months').toDate()}       // Lock 3 months forward
         />
       </Box>
       <StaffListTable staffData={staffData} />
