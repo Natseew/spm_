@@ -2,13 +2,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Updated import to `next/navigation` for `useRouter`
 import ToggleView from "@/components/ToggleViewComponent";
 import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 export default function ManagerView() {
-    const [selectedDate, setSelectedDate] = useState("");
-    const router = useRouter();
+    const [selectedDate] = useState("");
+    const [DayofWeek, setDayOfWeek] = useState("")
 
     function getDayName(date) {
         if (isNaN(date.getTime())) {
@@ -24,6 +23,7 @@ export default function ManagerView() {
             const dateObject = new Date(year, month - 1, day);
             const dayName = getDayName(dateObject);
             setDayOfWeek(dayName);
+            console.log(DayofWeek)
         }
     }, [selectedDate]);
 

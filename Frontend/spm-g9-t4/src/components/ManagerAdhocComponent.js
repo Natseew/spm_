@@ -3,7 +3,6 @@ import AdhocModal from './AdhocModal'; // Make sure to create or import the Moda
 // import CalendarComponent from "@/components/CalendarComponent";
 import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
-import emailjs from '@emailjs/browser';
 
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
@@ -16,16 +15,15 @@ const AdHocSchedule = () => {
     const [error, setError] = useState(null);
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
     const [selectedDate, setSelectedDate] = useState("");
-    const [employeeIds, setEmployeeIds] = useState([]);
+    const [setEmployeeIds] = useState([]);
     const [adhocData, setAdhocData] = useState([]);
-    const [employeeData, setEmployeeData] = useState([]); // State to store employee data
     const [modalOpen, setModalOpen] = useState(false); // State to control modal visibility
     const [modalData, setModalData] = useState(null); // State to hold data to display in the modal
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectPendingWithdrawalModalOpen, setRejectPendingWithdrawalModalOpen] = useState(false);
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
-    const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL)
+    const [path] = useState(process.env.NEXT_PUBLIC_API_URL)
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
@@ -313,10 +311,10 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
 };
 
 // Handling modal for reject action
-const handleRejectOpen = (data) => {
-    openRejectModal(data);
-    console.log(data);
-};
+// const handleRejectOpen = (data) => {
+//     openRejectModal(data);
+//     console.log(data);
+// };
 
 // Handle Cancelling Request
 const handleCancel = async (recordID) => {

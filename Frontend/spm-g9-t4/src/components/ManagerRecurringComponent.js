@@ -18,7 +18,6 @@ const RecurringSchedule = () => {
     const [RecurringData, setRecurringData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [employeeIds, setEmployeeIds] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [AcceptChangeModalOpen, setAcceptChangeModalOpen] = useState(false);
@@ -31,7 +30,7 @@ const RecurringSchedule = () => {
     const [selectedStatus, setSelectedStatus] = useState(statusOptions[0]);
     const [notification, setNotification] = useState('');
     const [modifyData, setModifyData] = useState(null);
-    const [path, setPath] = useState(process.env.NEXT_PUBLIC_API_URL);
+    const [path] = useState(process.env.NEXT_PUBLIC_API_URL);
     const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
@@ -43,7 +42,6 @@ const RecurringSchedule = () => {
                 }
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
-                setEmployeeIds(ids);
 
                 employeeData.forEach(emp => {
                     employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;
@@ -91,9 +89,9 @@ const RecurringSchedule = () => {
 
         if (selectedStatus === 'Pending') {
             filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
-        } 
-        else if (selectedStatus === 'Pending') {
-            filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
+        // } 
+        // else if (selectedStatus === 'Pending') {
+        //     filteredDates = data.wfh_records.filter(record => record.status === 'Pending').map(record => record.wfh_date);
         } else {
             filteredDates = data.wfh_records.map(record => record.wfh_date);
         }

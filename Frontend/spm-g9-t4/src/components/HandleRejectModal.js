@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import emailjs from '@emailjs/browser';
 
 const HandleRejectModal = ({ isOpen, onClose, onReject, data }) => {
     const [reason, setReason] = useState(''); // State for rejection reason
