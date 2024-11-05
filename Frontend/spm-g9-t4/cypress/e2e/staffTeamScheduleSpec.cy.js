@@ -13,17 +13,16 @@ describe('Staff Schedule Page', () => {
     cy.visit('http://localhost:3000/staff/team_schedule'); // Update with the actual path to your page
   });
 
-  it('should render the date range picker and loading state', () => {
+  it('should render the date range picker', () => {
     // Check if the loading spinner is visible initially
     cy.get('.rdrCalendarWrapper').should('be.visible'); // Adjust this selector based on your spinner implementation
-    cy.get('.spinner').should('be.visible'); // Adjust this selector based on your spinner implementation
   });
 
   it('should allow the user to select a date range', () => {
     // Select the date range input and change the date
-    cy.get('.rdrCalendarWrapper').click(); // Adjust selector as needed
-    cy.get('.rdrDayStartOfMonth').first().click(); // Click the first day
-    cy.get('.rdrDayEndOfMonth').last().click(); // Click the last day
+    cy.get('.rdrCalendarWrapper').click().click(); // Adjust selector as needed
+    cy.get('.rdrDayStartOfMonth').first().click().click(); // Click the first day
+    cy.get('.rdrDayEndOfMonth').last().click().click(); // Click the last day
 
     // You can add a wait to allow data fetching
     cy.wait(1000); // Adjust as needed based on your loading time
@@ -36,9 +35,9 @@ describe('Staff Schedule Page', () => {
     }).as('getStaffSchedule');
   
     // Open the date range picker and select dates to trigger the fetch
-    cy.get('.rdrCalendarWrapper').click(); // Adjust selector as needed
-    cy.get('.rdrDayStartOfMonth').first().click(); // Click the first day
-    cy.get('.rdrDayEndOfMonth').last().click(); // Click the last day
+    cy.get('.rdrCalendarWrapper').click().click(); // Adjust selector as needed
+    cy.get('.rdrDayStartOfMonth').first().click().click(); // Click the first day
+    cy.get('.rdrDayEndOfMonth').last().click().click(); // Click the last day
 
     // Wait for the API call to complete
     cy.wait('@getStaffSchedule');

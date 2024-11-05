@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from '../../components/Navbar';
 import {
   Typography,
@@ -25,7 +25,6 @@ import {
 import { useRouter } from "next/navigation";
 import DatePicker from "react-datepicker";
 import { addMonths, subMonths, isSameDay } from 'date-fns';
-import axios from "axios";
 
 export default function PendingRequests() {
   const [recurringRequests, setRecurringRequests] = useState([]);
@@ -36,7 +35,7 @@ export default function PendingRequests() {
   const [activeTab, setActiveTab] = useState(1); // Set default to Recurring Requests tab
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedRecordId, setSelectedRecordId] = useState(null);
+  // const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
@@ -177,13 +176,13 @@ export default function PendingRequests() {
   };
 
   const handleOpenChangeDialog = (id, date) => {
-    setSelectedRecordId(id);
+    // setSelectedRecordId(id);
     setOpenChangeDialog(true);
     setExistingDate(date);
   };
 
   const handleCloseChangeDialog = () => {
-    setSelectedRecordId(null);
+    // setSelectedRecordId(null);
     setSelectedDate(new Date());
     setOpenChangeDialog(false);
     setReason("");

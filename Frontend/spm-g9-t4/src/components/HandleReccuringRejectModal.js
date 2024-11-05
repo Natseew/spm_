@@ -2,22 +2,22 @@ import React, { useState } from 'react';
 
 const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) => {
     const [reason, setReason] = useState(''); // State for rejection reason
-    const [selectedDates, setSelectedDates] = useState([]); // State for selected dates
+    // const [selectedDates, setSelectedDates] = useState([]); // State for selected dates
 
     if (!isOpen) return null; // Do not render if the modal is not open
 
-    const handleDateChange = (date) => {
-        setSelectedDates((prevSelected) => 
-            prevSelected.includes(date)
-                ? prevSelected.filter((d) => d !== date) // Unselect date if already selected
-                : [...prevSelected, date] // Select the date
-        );
-    };
+    // const handleDateChange = (date) => {
+    //     setSelectedDates((prevSelected) => 
+    //         prevSelected.includes(date)
+    //             ? prevSelected.filter((d) => d !== date) // Unselect date if already selected
+    //             : [...prevSelected, date] // Select the date
+    //     );
+    // };
 
-    const formatDate = (dateString) => {
-        const [year, month, day] = dateString.split('T')[0].split('-');
-        return `${day}/${month}/${year}`;
-    };
+    // const formatDate = (dateString) => {
+    //     const [year, month, day] = dateString.split('T')[0].split('-');
+    //     return `${day}/${month}/${year}`;
+    // };
     
 
     const handleRejectConfirm = () => {
