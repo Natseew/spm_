@@ -1,0 +1,42 @@
+name: Run Jest Tests
+
+# Trigger the workflow on push and pull request events
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # You can change this to macos-latest or windows-latest if needed
+
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.17' 
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        working-directory: Backend
+        run: npm install
+
+      # Step 4: Run Jest tests
+      - name: Run Jest tests
+        working-directory: Backend
+        run: npm test  # Assuming `npm test` runs Jest tests by default
+
+      # Optional: Upload Jest test results (if you want to display them in the GitHub UI)
+      - name: Upload Jest Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: jest-results
+          path: ./jest-test-results.xml  # Make sure to generate this file using Jest configuration
