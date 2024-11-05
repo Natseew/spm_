@@ -41,6 +41,6 @@ jobs:
 
       - name: Run Cypress tests
         working-directory: Frontend/spm-g9-t4
-        run: npx cypress run
+        run: npx cypress run --headed --browser chrome
         env:
           CYPRESS_BASE_URL: http://localhost:3000
