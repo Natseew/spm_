@@ -539,91 +539,41 @@ router.patch('/auto-reject/:reason', async (req, res) => {
 });
 
 
-// For staff : Withdraw a date from a recurring WFH request 
-// router.post('/withdraw_recurring_wfh', async (req, res) => {
-//     const { requestID, wfhDate, reason } = req.body;
-  
-//     try {
-//       // Start a transaction to ensure atomicity
-//       await client.query('BEGIN');
-  
-//       // 1. Fetch the recurring request to modify the wfh_dates array
-//       const result = await client.query(
-//         `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
-//         [requestID]
-//       );
-  
-//       if (result.rows.length === 0) {
-//         await client.query('ROLLBACK');
-//         return res.status(404).json({ message: 'Recurring request not found.' });
-//       }
-  
-//       const { wfh_dates, status } = result.rows[0];
-  
-//       // Convert the input date to the correct format and check if it exists in the array
-//       const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
-  
-//       if (!wfh_dates.includes(dateToRemove)) {
-//         await client.query('ROLLBACK');
-//         return res.status(404).json({ message: 'WFH date not found in the request.' });
-//       }
-  
-//       // Remove the date from the wfh_dates array
-//       const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
-  
-//       // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
-//       if (status === 'Pending') {
-//         await client.query(
-//           `UPDATE recurring_request SET wfh_dates = $1 WHERE requestID = $2`,
-//           [updatedDates, requestID]
-//         );
-  
-//         // 3. Insert a new activity log entry for the withdrawal
-//         await client.query(
-//           `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-//           [requestID, `Withdrawn - ${reason}`]
-//         );
-//       }
-  
-//       // 4. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
-//       if (status === 'Approved') {
-//         // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
-//         await client.query(
-//           `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
-//           [wfhDate, requestID]
-//         );
-  
-//         // 5. Also update the status of the recurring request itself
-//         await client.query(
-//           `UPDATE recurring_request SET status = 'Pending Withdrawal' WHERE requestID = $1`,
-//           [requestID]
-//         );
-  
-//         // 6. Insert a new activity log entry for the withdrawal
-//         await client.query(
-//           `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-//           [requestID, `Pending Withdrawal - ${reason}`]
-//         );
-//       }
-  
-//       // Commit the transaction
-//       await client.query('COMMIT');
-//       res.status(200).json({ message: 'Withdrawal successfully processed.' });
-//     } catch (error) {
-//       // Rollback the transaction in case of errors
-//       await client.query('ROLLBACK');
-//       console.error('Error withdrawing WFH date from recurring request:', error);
-//       res.status(500).json({ message: 'Internal server error.' });
-//     }
-//   });
 // For staff: Withdraw a date from a recurring WFH request
 router.post('/withdraw_recurring_wfh', async (req, res) => {
-    const { requestID, wfhDate, reason } = req.body;
+    const { requestID, wfhDate, reason, staff_id } = req.body;
+    console.log("Requested WFH date to remove:", wfhDate);
   
     try {
         // Start a transaction to ensure atomicity
         await client.query('BEGIN');
+
+          // Check if the staff_id is 130002 for instant withdrawal
+          if (staff_id === 130002) {
+            // Immediately set status to 'Withdrawn' in wfh_records for the specified date
+            await client.query(
+                `UPDATE wfh_records SET status = 'Withdrawn' WHERE wfh_date = $1 AND requestID = $2`,
+                [wfhDate, requestID]
+            );
+
+            // Set the status to 'Withdrawn' in the recurring_request
+            await client.query(
+                `UPDATE recurring_request SET status = 'Withdrawn' WHERE requestID = $1`,
+                [requestID]
+            );
+
+            // Insert a new activity log entry for the direct withdrawal
+            await client.query(
+                `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+                [requestID, `Withdrawn - ${reason}`]
+            );
+
+            // Commit the transaction and respond
+            await client.query('COMMIT');
+            return res.status(200).json({ message: 'Request withdrawn successfully.' });
+        }
   
+        // Continue with the regular logic if staff_id is not 130002
         // 1. Fetch the recurring request to modify the wfh_dates array
         const result = await client.query(
             `SELECT wfh_dates, status FROM recurring_request WHERE requestID = $1`,
@@ -634,19 +584,32 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Recurring request not found.' });
         }
+
   
         const { wfh_dates, status } = result.rows[0];
   
-        // Convert the input date to the correct format and check if it exists in the array
-        const dateToRemove = new Date(wfhDate).toISOString().slice(0, 10);
-  
-        if (!wfh_dates.includes(dateToRemove)) {
+        // Adjust each date in wfh_dates to local time and format to YYYY-MM-DD for comparison
+        const localizedWfhDates = wfh_dates.map(date => {
+            const localDate = new Date(date);
+            localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset()); // Adjust to local time
+            return localDate.toISOString().split('T')[0]; // Format to YYYY-MM-DD
+        });
+
+        console.log('Localized wfh_dates from DB:', localizedWfhDates);
+        console.log('Date to remove:', wfhDate);
+
+        // Check if the localized date to remove exists in the array
+        if (!localizedWfhDates.includes(wfhDate)) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'WFH date not found in the request.' });
         }
-  
-        // Remove the date from the wfh_dates array
-        const updatedDates = wfh_dates.filter(date => date !== dateToRemove);
+
+        // Remove the date from the original wfh_dates array if it's found
+        const updatedDates = wfh_dates.filter(date => {
+            const localDate = new Date(date);
+            localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+            return localDate.toISOString().split('T')[0] !== wfhDate;
+        });
   
         // 2. If the request status is 'Pending', update the wfh_dates array in recurring_request
         if (status === 'Pending') {
@@ -699,6 +662,7 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
 
 
 
@@ -929,6 +893,113 @@ router.patch('/modify/:requestid', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
+// Used to withdraw recurring request
+router.post('/withdraw_recurring_request', async (req, res) => {
+    const { requestId, date, reason, staff_id } = req.body;
+  
+    try {
+      console.log('Request data:', req.body); // Log the request data
+  
+      // Start a transaction to ensure atomicity
+      await client.query('BEGIN');
+  
+      console.log(`Processing withdrawal for date: ${date}`);
+  
+      // Convert the provided date to a UTC-only date string (without time component)
+      const utcDate = new Date(date).toISOString().split('T')[0]; // Extract 'YYYY-MM-DD'
+      console.log('Selected Date for Withdrawal (utcDate):', utcDate); // Log selected date
+  
+      // 1. Fetch the current request status and wfh_dates from recurring_request
+      const result = await client.query(
+        `SELECT status, wfh_dates FROM recurring_request WHERE requestid = $1`,
+        [requestId]
+      );
+  
+      if (result.rows.length === 0) {
+        throw new Error(`No recurring request found for requestId ${requestId}`);
+      }
+  
+      const { status, wfh_dates } = result.rows[0];
+  
+      console.log('Original wfh_dates from DB:', wfh_dates); // Log original dates
+  
+      // 2. Validate the current status for withdrawal
+      if (status !== "Pending" && status !== "Approved") {
+        throw new Error(`Invalid status for withdrawal: ${status}`);
+      }
+  
+      // 3. Only modify the wfh_dates array if status is Pending
+      if (status === "Pending") {
+        const updatedDates = wfh_dates.filter(wfhDate => {
+          const formattedWfhDate = new Date(wfhDate).toISOString().split('T')[0]; // Force UTC conversion
+          console.log('Comparing wfhDate:', formattedWfhDate, 'with selected date:', utcDate); // Log comparison
+          return formattedWfhDate !== utcDate;
+        });
+  
+        console.log('Updated wfh_dates after filtering:', updatedDates); // Log updated dates after filtering
+  
+        // 4. Update the recurring_request table to remove the selected date from wfh_dates
+        await client.query(
+          `UPDATE recurring_request 
+           SET wfh_dates = $1 
+           WHERE requestid = $2`,
+          [updatedDates, requestId]
+        );
+      }
+  
+      // 5. Update the wfh_records table for the selected date, adjusting for timezone if needed
+      const newStatus = status === "Approved" ? "Pending Withdrawal" : "Withdrawn";
+  
+      // Adjust the selected date to the next day to account for timezone differences (e.g., UTC+8)
+      const adjustedDate = new Date(date);
+      adjustedDate.setDate(adjustedDate.getDate() + 1); // Move the date forward by 1 day
+      const adjustedDateString = adjustedDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+  
+      const updateResult = await client.query(
+        `UPDATE wfh_records 
+         SET status = $1 
+         WHERE requestid = $2 AND wfh_date::date = $3`,
+        [newStatus, requestId, adjustedDateString]  // Use adjustedDateString in the query
+      );
+  
+      if (updateResult.rowCount === 0) {
+        throw new Error(`Failed to update status for WFH record with requestId ${requestId} and date ${adjustedDateString}`);
+      }
+  
+      // 6. Insert the action into the activity log
+      const activityLog = {
+        Staff_id: staff_id,
+        Action: newStatus,
+        Reason: reason,
+        Date: adjustedDateString,
+      };
+  
+      await client.query(
+        `INSERT INTO activitylog (requestid, activity) 
+         VALUES ($1, $2)`,
+        [requestId, JSON.stringify(activityLog)]
+      );
+  
+      // Commit the transaction
+      await client.query('COMMIT');
+  
+      const message = status === "Approved"
+        ? `Withdrawal for the approved date ${adjustedDateString} is pending manager approval.`
+        : `WFH request for the date ${adjustedDateString} has been withdrawn successfully.`;
+  
+      res.status(200).json({ message });
+  
+    } catch (error) {
+      console.error('Error withdrawing recurring WFH request:', error.message);
+      await client.query('ROLLBACK'); // Rollback in case of any errors
+      res.status(500).json({ message: `Internal server error: ${error.message}` });
+    }
+  });
+  
+
+
+
 
 router.patch('/change/:requestid', async (req, res) => {
     const { requestid } = req.params;

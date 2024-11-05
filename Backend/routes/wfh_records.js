@@ -547,6 +547,56 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 });
 
 
+// Get dates where approving an additional WFH request would exceed 50% WFH rule
+router.get('/wfh_50%_teamrule/:staffid', async (req, res) => {
+  const staffId = req.params.staffid;
+
+  try {
+    // Get reporting manager for the staff member
+    const managerResult = await client.query(
+      `SELECT Reporting_Manager FROM Employee WHERE Staff_ID = $1`,
+      [staffId]
+    );
+
+    if (managerResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Staff ID not found.' });
+    }
+
+    const reportingManagerId = managerResult.rows[0].reporting_manager;
+
+    // Get total team count under the same reporting manager
+    const totalTeamResult = await client.query(
+      `SELECT COUNT(*) AS total_team FROM Employee WHERE Reporting_Manager = $1 OR Staff_ID = $1`,
+      [reportingManagerId]
+    );
+    const totalTeam = parseInt(totalTeamResult.rows[0].total_team, 10);
+
+    // Find dates where approving one more WFH request would exceed 50%
+    const exceedingDatesResult = await client.query(
+      `
+      SELECT wfh_date, COUNT(*) AS current_team_wfh
+      FROM wfh_records
+      WHERE status = 'Approved'
+      AND staffID IN (
+        SELECT Staff_ID FROM Employee WHERE Reporting_Manager = $1 OR Staff_ID = $1
+      )
+      GROUP BY wfh_date
+      HAVING (COUNT(*) + 1) * 1.0 / $2 > 0.5;
+      `,
+      [reportingManagerId, totalTeam]
+    );
+
+    // Map the results to a list of dates
+    const exceedingDates = exceedingDatesResult.rows.map(row => row.wfh_date);
+    res.status(200).json(exceedingDates);
+  } catch (error) {
+    console.error('Error fetching potential exceeding WFH dates:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+
 
 // Get all approved and pending WFH requests of an employee
 router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
@@ -574,9 +624,9 @@ router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
 
 
 // Failed Test (Refer to Test Case 4)
-// Withdraw an ad-hoc WFH request
+// Staff Withdraw an ad-hoc WFH request
 router.post('/withdraw_adhoc_wfh', async (req, res) => {
-  const { recordID, reason,staff_id} = req.body;
+  const { recordID, reason, staff_id } = req.body;
 
   try {
     // Start a transaction to ensure atomicity
@@ -596,8 +646,15 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
       return res.status(400).json({ message: 'Invalid request status for withdrawal.' });
     }
 
-    // Determine new status based on the current status
-    const newStatus = currentStatus === "Approved" ? "Pending Withdrawal" : "Withdrawn";
+    // Determine new status based on the current status and staff ID
+    let newStatus;
+    if (staff_id === 130002) {
+      // If the staff ID is 130002, set status directly to "Withdrawn"
+      newStatus = "Withdrawn";
+    } else {
+      // Otherwise, set to "Pending Withdrawal" if currently "Approved", or directly "Withdrawn" if "Pending"
+      newStatus = currentStatus === "Approved" ? "Pending Withdrawal" : "Withdrawn";
+    }
 
     // 2. Update the wfh_records table to set the new status
     const updateResult = await client.query(
@@ -615,7 +672,6 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
     }
 
     // 3. Insert a new row into the activity log to log the withdrawal along with the reason
-
     const activityLog = {
       Staff_id: staff_id, 
       Action: newStatus,
@@ -625,14 +681,14 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
     await client.query(
       `INSERT INTO activitylog (recordID, activity) 
        VALUES ($1, $2)`,
-       [recordID, JSON.stringify(activityLog)] // Convert the activity log to a JSON string
+      [recordID, JSON.stringify(activityLog)]
     );
 
     // Commit the transaction
     await client.query('COMMIT');
 
     // Send a different response message based on the original status
-    if (currentStatus === "Approved") {
+    if (newStatus === "Pending Withdrawal") {
       res.status(200).json({ message: 'Withdrawal has been submitted to Reporting Manager for approval.' });
     } else {
       res.status(200).json({ message: 'WFH request withdrawn successfully.' });
@@ -646,9 +702,11 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
   }
 });
 
+
 // Change an ad-hoc WFH request
 router.post('/change_adhoc_wfh', async (req, res) => {
   const { recordID, new_wfh_date, reason, staff_id } = req.body;
+  console.log(new_wfh_date);
 
   try {
     // Start a transaction to ensure atomicity
@@ -686,7 +744,13 @@ router.post('/change_adhoc_wfh', async (req, res) => {
       return res.status(400).json({ message: 'Invalid new WFH date provided. Use format YYYY-MM-DD.' });
     }
 
-    const newStatus = currentStatus === "Pending" ? "Pending" : "Pending Change";
+    let newStatus;
+    if (staff_id === 130002) {
+      newStatus = "Approved";
+    } else {
+      newStatus = currentStatus === "Pending" ? "Pending" : "Pending Change";
+    }
+
     console.log(`Updating WFH record status to ${newStatus} and date to ${new_wfh_date}`);
 
     // Update the wfh_records table with the new status and date
@@ -735,110 +799,6 @@ router.post('/change_adhoc_wfh', async (req, res) => {
   }
 });
 
-
-
-// REMOVE !!!!!??????
-router.post('/withdraw_recurring_request', async (req, res) => {
-  const { requestId, date, reason, staff_id } = req.body;
-
-  try {
-    console.log('Request data:', req.body); // Log the request data
-
-    // Start a transaction to ensure atomicity
-    await client.query('BEGIN');
-
-    console.log(`Processing withdrawal for date: ${date}`);
-
-    // Convert the provided date to a UTC-only date string (without time component)
-    const utcDate = new Date(date).toISOString().split('T')[0]; // Extract 'YYYY-MM-DD'
-    console.log('Selected Date for Withdrawal (utcDate):', utcDate); // Log selected date
-
-    // 1. Fetch the current request status and wfh_dates from recurring_request
-    const result = await client.query(
-      `SELECT status, wfh_dates FROM recurring_request WHERE requestid = $1`,
-      [requestId]
-    );
-
-    if (result.rows.length === 0) {
-      throw new Error(`No recurring request found for requestId ${requestId}`);
-    }
-
-    const { status, wfh_dates } = result.rows[0];
-
-    console.log('Original wfh_dates from DB:', wfh_dates); // Log original dates
-
-    // 2. Validate the current status for withdrawal
-    if (status !== "Pending" && status !== "Approved") {
-      throw new Error(`Invalid status for withdrawal: ${status}`);
-    }
-
-    // 3. Only modify the wfh_dates array if status is Pending
-    if (status === "Pending") {
-      const updatedDates = wfh_dates.filter(wfhDate => {
-        const formattedWfhDate = new Date(wfhDate).toISOString().split('T')[0]; // Force UTC conversion
-        console.log('Comparing wfhDate:', formattedWfhDate, 'with selected date:', utcDate); // Log comparison
-        return formattedWfhDate !== utcDate;
-      });
-
-      console.log('Updated wfh_dates after filtering:', updatedDates); // Log updated dates after filtering
-
-      // 4. Update the recurring_request table to remove the selected date from wfh_dates
-      await client.query(
-        `UPDATE recurring_request 
-         SET wfh_dates = $1 
-         WHERE requestid = $2`,
-        [updatedDates, requestId]
-      );
-    }
-
-    // 5. Update the wfh_records table for the selected date, adjusting for timezone if needed
-    const newStatus = status === "Approved" ? "Pending Withdrawal" : "Withdrawn";
-
-    // Adjust the selected date to the next day to account for timezone differences (e.g., UTC+8)
-    const adjustedDate = new Date(date);
-    adjustedDate.setDate(adjustedDate.getDate() + 1); // Move the date forward by 1 day
-    const adjustedDateString = adjustedDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-    const updateResult = await client.query(
-      `UPDATE wfh_records 
-       SET status = $1 
-       WHERE requestid = $2 AND wfh_date::date = $3`,
-      [newStatus, requestId, adjustedDateString]  // Use adjustedDateString in the query
-    );
-
-    if (updateResult.rowCount === 0) {
-      throw new Error(`Failed to update status for WFH record with requestId ${requestId} and date ${adjustedDateString}`);
-    }
-
-    // 6. Insert the action into the activity log
-    const activityLog = {
-      Staff_id: staff_id,
-      Action: newStatus,
-      Reason: reason,
-      Date: adjustedDateString,
-    };
-
-    await client.query(
-      `INSERT INTO activitylog (requestid, activity) 
-       VALUES ($1, $2)`,
-      [requestId, JSON.stringify(activityLog)]
-    );
-
-    // Commit the transaction
-    await client.query('COMMIT');
-
-    const message = status === "Approved"
-      ? `Withdrawal for the approved date ${adjustedDateString} is pending manager approval.`
-      : `WFH request for the date ${adjustedDateString} has been withdrawn successfully.`;
-
-    res.status(200).json({ message });
-
-  } catch (error) {
-    console.error('Error withdrawing recurring WFH request:', error.message);
-    await client.query('ROLLBACK'); // Rollback in case of any errors
-    res.status(500).json({ message: `Internal server error: ${error.message}` });
-  }
-});
 
 
 
@@ -1031,7 +991,7 @@ router.patch('/reject_withdrawal/:recordID', async (req, res) => {
   }
 });
 
-// route to apply change - wfh_records (staff side)
+// route to apply recurring change - wfh_records (staff side)
 router.patch('/change/:requestid', async (req, res) => {
   const { requestid } = req.params;
   const { selected_date, actual_wfh_date } = req.body;
