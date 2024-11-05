@@ -94,7 +94,8 @@ router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, re
         for(date of dateRange){
           const scheduleResult = await client.query(
             `
-            SELECT 
+            WITH ranked_data AS (
+              SELECT
                 e.staff_id, 
                 e.staff_fname, 
                 e.staff_lname, 
@@ -102,24 +103,49 @@ router.get('/team-schedule-v2/:manager_id/:start_date/:end_date', async (req, re
                 e.reporting_manager, 
                 COALESCE(wr.wfh_date, $2) AS wfh_date,
                 COALESCE(wr.timeslot, 'Office') AS timeslot,
-                COALESCE(wr.status, 'Office') AS status,
-                CASE 
-                    WHEN wr.timeslot = 'FD' THEN 'Full-Day'
-                    WHEN wr.timeslot = 'AM' THEN 'AM'
-                    WHEN wr.timeslot = 'PM' THEN 'PM'
-                    ELSE 'Office'
-                END AS schedule_status,
-                wr.recurring,
-                wr.request_reason,
-                wr.requestDate,
-                wr.reject_reason
-            FROM 
-                Employee e
-            LEFT JOIN 
-                wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
-            WHERE 
-                e.reporting_manager = $1
-                AND e.staff_id <> $1
+                CASE
+                  WHEN COALESCE(wr.status, 'Office') IN ('Pending Change', 'Withdrawn', 'Pending', 'Rejected') THEN 'Office'
+                  ELSE COALESCE(wr.status, 'Office')
+                END AS status,
+                        CASE
+                  WHEN COALESCE(wr.status, 'Office') IN ('Pending Change', 'Withdrawn', 'Pending', 'Rejected') THEN 'Office'
+                            WHEN wr.timeslot = 'FD' THEN 'Full-Day'
+                            WHEN wr.timeslot = 'AM' THEN 'AM'
+                            WHEN wr.timeslot = 'PM' THEN 'PM'
+                            ELSE COALESCE(wr.timeslot, 'Office')
+                        END AS schedule_status,
+                        wr.recurring,
+                        wr.request_reason,
+                        wr.requestDate,
+                        wr.reject_reason,
+                ROW_NUMBER() OVER (PARTITION BY e.staff_id ORDER BY wr.wfh_date DESC) AS rn
+                    FROM 
+                        Employee e
+                    LEFT JOIN 
+                        wfh_records wr ON e.staff_id = wr.staffID AND wr.wfh_date = $2
+                    WHERE 
+                        e.reporting_manager = $1
+                        AND e.staff_id <> $1
+                AND (COALESCE(wr.status, 'Office') = 'Office' 
+                      OR COALESCE(wr.status, 'Office') = 'Approved'
+                      OR COALESCE(wr.status, 'Office') IN ('Pending Change', 'Withdrawn', 'Pending', 'Rejected'))
+            )
+            SELECT
+                staff_id, 
+                staff_fname, 
+                staff_lname, 
+                dept, 
+                reporting_manager, 
+                wfh_date, 
+                timeslot, 
+                status, 
+                schedule_status, 
+                recurring, 
+                request_reason, 
+                requestDate, 
+                reject_reason
+            FROM ranked_data
+            WHERE rn = 1;
             `,
             [manager_id, date]
         );
