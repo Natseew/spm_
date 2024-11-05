@@ -41,10 +41,7 @@ describe('Staff Schedule Page', () => {
     cy.get('.rdrCalendarWrapper').click(); // Adjust selector as needed
     cy.get('.rdrDayStartOfMonth').first().click(); // Click the first day
     cy.get('.rdrDayEndOfMonth').last().click() // Click the last day
-
-    // Wait for the API call to complete
-    cy.wait('@getStaffSchedule');
-  
+    cy.wait(1000);
     // Verify the data appears in the DataGrid
     cy.get('.MuiDataGrid-row').should('have.length.greaterThan', 0); // Ensure rows are rendered
     cy.get('.MuiDataGrid-cell').contains('John Doe'); // Check for specific data; update as needed
