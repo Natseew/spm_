@@ -996,17 +996,15 @@ router.post('/withdraw_recurring_request', async (req, res) => {
       res.status(500).json({ message: `Internal server error: ${error.message}` });
     }
   });
-  
-
-
-
 
 router.patch('/change/:requestid', async (req, res) => {
     const { requestid } = req.params;
-    const { selected_date, actual_wfh_date } = req.body;
+    const { selected_date, actual_wfh_date, staff_id, change_reason } = req.body;
 
     console.log("Received request to modify ID:", requestid);
     console.log("Update body:", req.body);
+    console.log("Change Reason:", change_reason);
+    console.log("Staff Id:",staff_id);
 
     // Validate input
     if (!selected_date || !actual_wfh_date) {
@@ -1059,7 +1057,7 @@ router.patch('/change/:requestid', async (req, res) => {
             newDate.setDate(newDate.getDate() + 1); // Increment by one day
             return newDate.toISOString(); // Convert back to ISO string format
         });
-        
+
         // Log the new dates
         console.log("Updated WFH Dates (plus one day): ", updatedWfhDatesPlusOne);
 
@@ -1071,14 +1069,50 @@ router.patch('/change/:requestid', async (req, res) => {
             RETURNING *;
         `, [updatedWfhDatesPlusOne, requestid]);
 
-        console.log("Update successful:", result.rows[0]); // Log the updated record
+        const result2 = await client.query(
+            `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
+            [requestid, `Changed Request- ${change_reason}`]
+        );
 
-        // Send success response
+        console.log("Update successful:", result.rows[0]); // Log the updated record
+        console.log("Update to Activity Log successful:", result2.rows[0]); // Log the updated record
+
+        // Check if staff_id is 130002
+        if (Number(staff_id) === 130002) { // Ensure staff_id is treated as a number
+            // Start transaction
+            await client.query('BEGIN');
+
+            // Immediately approve for staff 130002
+            await client.query(`
+                UPDATE wfh_records 
+                SET status = 'Approved' 
+                WHERE wfh_date = $1 AND requestID = $2
+            `, [adjustedNewSelectedDate, requestid]);
+
+            // Update recurring request status to 'Approved'
+            await client.query(`
+                UPDATE recurring_request
+                SET wfh_dates = $1::DATE[], status = 'Approved'
+                WHERE requestid = $2
+                RETURNING *;
+            `, [updatedWfhDatesPlusOne, requestid]);
+
+            // Commit the transaction
+            await client.query('COMMIT');
+            console.log("Request approved directly for staff 130002");
+
+            // Send success response for 130002 staff
+            return res.status(200).json({ message: 'Request changed and approved successfully.' });
+        }
+
+        // For other staff, respond normally after the update
         res.status(200).json({ message: 'Request updated successfully', record: result.rows[0] });
+
     } catch (error) {
         console.error('Error updating request:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
 
 module.exports = router;

@@ -38,9 +38,9 @@ export default function PendingRequests() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
-  const [openReason, setOpenReason] = useState(false);
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState(new Date());
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
@@ -98,28 +98,65 @@ export default function PendingRequests() {
   }, []);
 
 
+  // const isDateDisabled = (date) => {
+  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+  //   return isWeekend || isApprovedOrPending;
+  // };
+
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending;
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending || wouldExceedLimit;
   };
 
-  const fetchApprovedPendingDates = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:4000/wfh_records/approved&pending_wfh_requests/${staffId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const dates = data.map((record) => new Date(record.wfh_date));
-        setApprovedPendingDates(dates);
-      } else {
-        console.error("Failed to fetch approved and pending dates");
-      }
-    } catch (error) {
-      console.error("Error fetching approved and pending dates:", error);
+  useEffect(() => {
+    // Check if staffId is set before making the request
+    if (staffId !== null) {
+      const fetchApprovedPendingDates = async () => {
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
+          );
+          if (response.ok) {
+             const data = await response.json();
+             const dates = data.map((record) => new Date(record.wfh_date));
+             setApprovedPendingDates(dates);
+          } else {
+              console.error("Failed to fetch approved and pending dates");
+           }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      };
+  
+      fetchApprovedPendingDates();
     }
-  },[staffId]);
+  }, [staffId]); // Only run when staffId changes
+
+  useEffect(() => {
+    const fetchPotentialExceedingDates = async () => {
+      try {
+        console.log("Staff ID: ", staffId);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const dates = data.map((dateString) => new Date(dateString));
+          setPotentialExceedingDates(dates);
+        } else {
+          console.error("Failed to fetch potential exceeding WFH dates");
+        }
+      } catch (error) {
+        console.error("Error fetching potential exceeding WFH dates:", error);
+      }
+    };
+  
+    // Fetch the potential exceeding dates whenever staffId changes
+    if (staffId) {
+      fetchPotentialExceedingDates();
+    }
+  }, [staffId]);  // Dependency array: reruns the effect when staffId changes
 
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
@@ -185,54 +222,63 @@ export default function PendingRequests() {
     console.log("Selected Date:", formatted_selected_date);
     console.log("Actual WFH Date:", correct_date);
     console.log("Reason:", change_reason);
-
+  
     try {
-        // First, update the wfh_records table
-        const wfhRecordsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/change/${requestID}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                selected_date: formatted_selected_date,
-                actual_wfh_date: correct_date,
-            }),
-        });
-
-        if (!wfhRecordsResponse.ok) {
-            const errorData = await wfhRecordsResponse.json();
-            throw new Error(`Error updating wfh_records: ${errorData.message}`);
-        }
-
-        const wfhRecordsData = await wfhRecordsResponse.json();
-        console.log(wfhRecordsData.message);
-
-        // Then, update the recurring_request table
-        const recurringRequestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/change/${requestID}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                selected_date: formatted_selected_date,
-                actual_wfh_date: correct_date,
-            }),
-        });
-
-        if (!recurringRequestResponse.ok) {
-            const errorData = await recurringRequestResponse.json();
-            throw new Error(`Error updating recurring_request: ${errorData.message}`);
-        }
-
-        const recurringRequestData = await recurringRequestResponse.json();
-        alert(recurringRequestData.message);
-
-        window.location.reload(); // Force full page reload after successful Change
+      // First, update the wfh_records table
+      const wfhRecordsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/change/${requestID}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selected_date: formatted_selected_date,
+          actual_wfh_date: correct_date,
+          change_reason: change_reason,
+          staff_id: staffId
+        }),
+      });
+  
+      if (!wfhRecordsResponse.ok) {
+        const errorData = await wfhRecordsResponse.json();
+        throw new Error(`Error updating wfh_records: ${errorData.message}`);
+      }
+  
+      const wfhRecordsData = await wfhRecordsResponse.json();
+      console.log(wfhRecordsData.message);
+  
+      // Then, update the recurring_request table
+      const recurringRequestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}recurring_request/change/${requestID}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selected_date: formatted_selected_date,
+          actual_wfh_date: correct_date,
+          change_reason: change_reason,
+          staff_id: staffId
+        }),
+      });
+  
+      if (!recurringRequestResponse.ok) {
+        const errorData = await recurringRequestResponse.json();
+        throw new Error(`Error updating recurring_request: ${errorData.message}`);
+      }
+  
+      const recurringRequestData = await recurringRequestResponse.json();
+      alert(recurringRequestData.message);
+  
+      // Force page reload or update selected date state
+      setSelectedDate(new Date(formatted_selected_date)); // Update selected date
+      handleCloseChangeDialog();  // Close the modal
+      window.location.reload(); // Force full page reload after successful Change
+  
     } catch (error) {
-        console.error('Error submitting change date:', error);
-        // Handle the error (e.g., display a message to the user)
+      console.error('Error submitting change date:', error);
+      // Handle the error (e.g., display a message to the user)
     }
-};
+  };
+  
 
   // Function to handle withdrawn date
   const handleWithdrawDate = async (recordId, date) => {
@@ -369,7 +415,9 @@ export default function PendingRequests() {
                             </Button>
 
                               {/* Change Request Dialog */}
-                              <Dialog open={openChangeDialog} onClose={handleCloseChangeDialog}>
+                              <Dialog open={openChangeDialog} 
+                              onClose={handleCloseChangeDialog}
+                              >
                               <DialogTitle>Change WFH Date</DialogTitle>
                               <DialogContent>
                                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
