@@ -961,6 +961,7 @@ router.patch('/modify/:requestid', async (req, res) => {
 
         // Convert the dates to ISO 8601 format for wfh_records operations
         const isoWfhDates = wfh_dates.map(formatToISO8601);
+        console.log(isoWfhDates)
 
         // 2. Update the status to 'Deleted' in `wfh_records` for matching dates instead of deleting them
         const wfhRecordResult = await client.query(`

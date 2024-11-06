@@ -226,7 +226,7 @@ const RecurringSchedule = () => {
 
     const addOneDayAndFormat = (dateString) => {
         const date = new Date(dateString);
-        date.setUTCDate(date.getUTCDate() + 1); // Add one day in UTC
+        date.setUTCDate(date.getUTCDate()); // Add one day in UTC
     
         const day = String(date.getUTCDate()).padStart(2, '0');
         const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Months are zero-based
