@@ -30,7 +30,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 export default function PendingRequests() {
   const [adhocRequests, setAdhocRequests] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
@@ -251,11 +251,12 @@ export default function PendingRequests() {
         <DialogTitle>Change WFH Date</DialogTitle>
         <DialogContent>
           <DatePicker
-            selected={selectedDate}
+            
             onChange={(date) => setSelectedDate(date)}
             minDate={subMonths(new Date(), 2)}
             maxDate={addMonths(new Date(), 3)}
             filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+            
             inline
           />
         </DialogContent>
