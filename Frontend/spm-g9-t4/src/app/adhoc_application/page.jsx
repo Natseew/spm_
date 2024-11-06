@@ -192,7 +192,6 @@ const fetchPotentialExceedingDates = async () => {
           </Typography>
           <Box sx={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
             <DatePicker
-              selected={wfhDate}
               onChange={(date) => setWfhDate(date)}
               minDate={minDate}
               maxDate={maxDate}
@@ -200,7 +199,7 @@ const fetchPotentialExceedingDates = async () => {
               dateFormat="yyyy/MM/dd"
               placeholderText="Select WFH Date"
               inline
-              openToDate={today}
+              
             />
           </Box>
           <FormControl fullWidth margin="normal" required>
