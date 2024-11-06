@@ -777,9 +777,16 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     await client.query('COMMIT');
     console.log('Transaction committed successfully');
 
-    const message = currentStatus === "Approved"
-      ? 'Change request has been submitted to Reporting Manager for approval.'
-      : 'WFH date changed successfully.';
+    let message;
+
+    if (staff_id === 130002 && newStatus === "Approved") {
+      message = 'Change request approved.';
+    } else if (currentStatus === "Pending") {
+      message = 'WFH date changed successfully.';
+    } else {
+      message = 'Change request has been submitted to Reporting Manager for approval.';
+    }
+
     
     res.status(200).json({ message });
 
