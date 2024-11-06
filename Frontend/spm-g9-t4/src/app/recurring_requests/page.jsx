@@ -342,9 +342,6 @@ export default function PendingRequests() {
     return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
   };
 
-  const isStatusValidForAction = (status) => {
-    return status === "Pending" || status === "Approved";
-  };
 
   const shouldShowChangeButton = (status, date) => {
     return (status === "Approved" || status === "Pending") && isDateWithinTwoWeeks(date);
@@ -431,7 +428,7 @@ export default function PendingRequests() {
                               <DialogContent>
                                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
                                   <DatePicker
-                                    selected={selectedDate}
+                                    
                                     onChange={(date) => setSelectedDate(date)}
                                     minDate={subMonths(new Date(), 2)}
                                     maxDate={addMonths(new Date(), 3)}
