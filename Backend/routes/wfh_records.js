@@ -516,13 +516,16 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     const recordID = wfhRecordResult.rows[0].recordid;
 
+    const activityLog = {
+      Action: 'New Adhoc Request'
+    }
     // Log activity with "New Request"
     await client.query(
       `
       INSERT INTO ActivityLog (recordID, activity)
       VALUES ($1, $2);
       `,
-      [recordID, 'New Request']
+      [recordID, JSON.stringify(activityLog)]
     );
 
     // Commit transaction
@@ -664,7 +667,6 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
 
     // 3. Insert a new row into the activity log to log the withdrawal along with the reason
     const activityLog = {
-      Staff_id: staff_id, 
       Action: newStatus,
       Reason: reason,
     };
@@ -761,7 +763,6 @@ router.post('/change_adhoc_wfh', async (req, res) => {
 
     const formattedCurrentWfhDateString = currentWfhDate.toISOString().split('T')[0];
     const activityLog = {
-      Staff_id: staff_id,
       Action: newStatus === "Pending Change" ? "Pending Change" : "Changed",
       Reason: reason,
       CurrentWFHDate: formattedCurrentWfhDateString,

@@ -583,9 +583,14 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
             );
 
             // Insert a new activity log entry for the direct withdrawal
+            const activityLog = {
+                Action: 'Withdrawn',
+                Reason: reason
+            };
+            
             await client.query(
                 `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-                [requestID, `Withdrawn - ${reason}`]
+                [requestID, JSON.stringify(activityLog)]
             );
 
             // Commit the transaction and respond
@@ -645,10 +650,16 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
             );
 
             // 4. Insert a new activity log entry for the withdrawal
+            const activityLog = {
+                Action: 'Withdrawn',
+                Reason: reason
+            };
+            
             await client.query(
                 `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-                [requestID, `Withdrawn - ${reason}`]
+                [requestID, JSON.stringify(activityLog)]
             );
+            
         }
   
         // 5. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
@@ -666,10 +677,16 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
             );
   
             // 7. Insert a new activity log entry for the withdrawal
+            const activityLog = {
+                Action: 'Pending Withdrawal',
+                Reason: reason
+            };
+            
             await client.query(
                 `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-                [requestID, `Pending Withdrawal - ${reason}`]
+                [requestID, JSON.stringify(activityLog)]
             );
+            
         }
   
         // Commit the transaction
