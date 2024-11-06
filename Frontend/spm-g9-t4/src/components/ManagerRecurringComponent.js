@@ -7,6 +7,7 @@ import HandleRecurringAcceptChangeModal from './HandleRecurringAcceptChangeModal
 import HandleReccuringRejectChangeModal from './HandleReccuringRejectChangeModal';
 import HandleRecurringAcceptWithdrawalModal from './HandleRecurringAcceptWithdrawalModal';
 import HandleRecurringRejectWithdrawalModal from './HandleRecurringRejectWithdrawalModal';
+import dayjs from 'dayjs';
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', "Pending Withdrawal", 'Pending Change'];
 const employeeNameid = {};
@@ -226,7 +227,8 @@ const RecurringSchedule = () => {
 
     const addOneDayAndFormat = (dateString) => {
         const date = new Date(dateString);
-        date.setUTCDate(date.getUTCDate()); // Add one day in UTC
+        console.log(dateString)
+        date.setUTCDate(date.getUTCDate()+1); // Add one day in UTC
     
         const day = String(date.getUTCDate()).padStart(2, '0');
         const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Months are zero-based
@@ -530,8 +532,8 @@ const cancelOverride = () => {
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.requestid}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.staff_id}</td>
                             <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{getStaffName(item.staff_id)}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.start_date}</td>
-                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{item.end_date}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{ dayjs(item.start_date).format('YYYY-MM-DD')}</td>
+                            <td className="py-2 px-4 border-b bg-white-400 border-gray-300">{dayjs(item.end_date).format('YYYY-MM-DD')}</td>
                             <td className="py-2 px-4 border-b border-gray-300">
                                 {item.wfh_records.length > 0 ? (
                                     item.wfh_records.map(record => (
