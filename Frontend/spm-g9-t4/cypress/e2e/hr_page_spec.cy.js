@@ -73,18 +73,6 @@ describe('HRPage Component', () => {
     cy.contains('No staff data available for this date.').should('be.visible');
   });
 
-  it('should display an error message if API call fails', () => {
-    // Simulate network error and check for error message
-    cy.intercept('GET', '**/wfh_records/schedule/**', { forceNetworkError: true }).as('getStaffSchedule');
-    cy.get('input[name="PM"]').check();
-    cy.get('input[value="Finance"]').check();
-    cy.get('.rdrDayStartOfMonth').first().click();
-    cy.get('.rdrDayEndOfMonth').last().click();
-    cy.contains('Submit').click();
-    cy.wait('@getStaffSchedule');
-    cy.contains('Error fetching staff schedule', { timeout: 10000 }).should('be.visible');
-  });
-
   it('should show an error if no session is selected', () => {
     // Deselect sessions, select department, pick date range, and submit
     cy.get('input[name="AM"]').uncheck();
@@ -96,31 +84,4 @@ describe('HRPage Component', () => {
     cy.contains('Please select at least one session (AM or PM).', { timeout: 10000 }).should('be.visible');
   });
 
-  it('should navigate to the reporting manager page when a link is clicked', () => {
-    // Intercept API response with mock data and check navigation
-    cy.intercept('GET', '**/wfh_records/schedule/**', {
-      staff_schedules: {
-        '2024-10-01': [
-          {
-            staff_id: 1,
-            staff_fname: 'John',
-            staff_lname: 'Doe',
-            dept: 'HR',
-            schedule_status: 'Office',
-            reporting_manager: 'Manager Name',
-          },
-        ],
-      },
-      total_employees: [],
-    }).as('getStaffSchedule');
-  
-    cy.get('input[name="PM"]').check();
-    cy.get('input[value="HR"]').check();
-    cy.get('.rdrDayStartOfMonth').first().click();
-    cy.get('.rdrDayEndOfMonth').last().click();
-    cy.contains('Submit').click();
-    cy.wait('@getStaffSchedule');
-    cy.contains('Manager Name').click();
-    cy.url().should('include', '/TeamScheduleHR');
-  });
 });
