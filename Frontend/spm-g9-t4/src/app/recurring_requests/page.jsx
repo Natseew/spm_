@@ -35,9 +35,9 @@ export default function PendingRequests() {
   const [activeTab, setActiveTab] = useState(1); // Set default to Recurring Requests tab
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  // const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
-  const [loading, setLoading] = useState(true)
+  // const [loading, setLoading] = useState(true)
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
   const [potentialExceedingDates, setPotentialExceedingDates] = useState(new Date());
@@ -114,7 +114,7 @@ export default function PendingRequests() {
     if (staffId !== null) {
       const fetchApprovedPendingDates = async () => {
         try {
-          setLoading(true)
+          // setLoading(true)
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
           );
@@ -122,7 +122,7 @@ export default function PendingRequests() {
              const data = await response.json();
              const dates = data.map((record) => new Date(record.wfh_date));
              setApprovedPendingDates(dates);
-             setLoading(false)
+            //  setLoading(false)
           } else {
               console.error("Failed to fetch approved and pending dates");
            }
@@ -138,14 +138,14 @@ export default function PendingRequests() {
   useEffect(() => {
     const fetchPotentialExceedingDates = async () => {
       try {
-        setLoading(true)
+        // setLoading(true)
         console.log("Staff ID: ", staffId);
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`);
         if (response.ok) {
           const data = await response.json();
           const dates = data.map((dateString) => new Date(dateString));
           setPotentialExceedingDates(dates);
-          setLoading(false)
+          // setLoading(false)
         } else {
           console.error("Failed to fetch potential exceeding WFH dates");
         }
@@ -179,16 +179,16 @@ export default function PendingRequests() {
   };
 
   const handleOpenChangeDialog = (id, date) => {
-    // setSelectedRecordId(id);
     setOpenChangeDialog(true);
     setExistingDate(date);
+    setSelectedRecordId(id);
   };
 
   const handleCloseChangeDialog = () => {
-    // setSelectedRecordId(null);
     setSelectedDate(new Date());
     setOpenChangeDialog(false);
     setReason("");
+    setSelectedRecordId(null);
   };
 
 
@@ -354,49 +354,49 @@ export default function PendingRequests() {
     }
   };
 
-  function DatePickerLoaded(){
-    if(loading){
-      return <>Loading</>
-    }else{
-      return(
-        <Dialog open={openChangeDialog} 
-          onClose={handleCloseChangeDialog}
-          >
-          <DialogTitle>Change WFH Date</DialogTitle>
-          <DialogContent>
-            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
-              <DatePicker
+  // function DatePickerLoaded(){
+  //   if(loading){
+  //     return <>Loading</>
+  //   }else{
+  //     return(
+  //       <Dialog open={openChangeDialog} 
+  //         onClose={handleCloseChangeDialog}
+  //         >
+  //         <DialogTitle>Change WFH Date</DialogTitle>
+  //         <DialogContent>
+  //           <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+  //             <DatePicker
                 
-                onChange={(date) => setSelectedDate(date)}
-                minDate={subMonths(new Date(), 2)}
-                maxDate={addMonths(new Date(), 3)}
-                filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
-                inline
-              />
-              <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
-              <Typography variant="subtitle1">Reason for Changing</Typography>
-              <TextField
-                label="Reason"
-                value={change_reason}
-                onChange={(e) => setReason(e.target.value)}
-                fullWidth
-                multiline
-                rows={4}
-                margin="normal"
-                required
-              />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseChangeDialog}>Cancel</Button>
-            <Button onClick={() => submitChangeDate(record.requestid, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
-              Submit Change
-            </Button>
-          </DialogActions>
-        </Dialog>
-      );
-    }
-  }
+  //               onChange={(date) => setSelectedDate(date)}
+  //               minDate={subMonths(new Date(), 2)}
+  //               maxDate={addMonths(new Date(), 3)}
+  //               filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+  //               inline
+  //             />
+  //             <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
+  //             <Typography variant="subtitle1">Reason for Changing</Typography>
+  //             <TextField
+  //               label="Reason"
+  //               value={change_reason}
+  //               onChange={(e) => setReason(e.target.value)}
+  //               fullWidth
+  //               multiline
+  //               rows={4}
+  //               margin="normal"
+  //               required
+  //             />
+  //           </Box>
+  //         </DialogContent>
+  //         <DialogActions>
+  //           <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+  //           <Button onClick={() => submitChangeDate(selectedRecordId, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
+  //             Submit Change
+  //           </Button>
+  //         </DialogActions>
+  //       </Dialog>
+  //     );
+  //   }
+  // }
 
   return (
     <>
@@ -459,7 +459,42 @@ export default function PendingRequests() {
                             </Button>
                             )}
                               {/* Change Request Dialog */}
-                              <DatePickerLoaded></DatePickerLoaded>
+                              {/* <DatePickerLoaded></DatePickerLoaded> */}
+                              <Dialog open={openChangeDialog} 
+                              onClose={handleCloseChangeDialog}
+                              >
+                              <DialogTitle>Change WFH Date</DialogTitle>
+                              <DialogContent>
+                                <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+                                  <DatePicker
+                                    
+                                    onChange={(date) => setSelectedDate(date)}
+                                    minDate={subMonths(new Date(), 2)}
+                                    maxDate={addMonths(new Date(), 3)}
+                                    filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+                                    inline
+                                  />
+                                  <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
+                                  <Typography variant="subtitle1">Reason for Changing</Typography>
+                                  <TextField
+                                    label="Reason"
+                                    value={change_reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    fullWidth
+                                    multiline
+                                    rows={4}
+                                    margin="normal"
+                                    required
+                                  />
+                                </Box>
+                              </DialogContent>
+                              <DialogActions>
+                                <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+                                <Button onClick={() => submitChangeDate(selectedRecordId, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
+                                  Submit Change
+                                </Button>
+                              </DialogActions>
+                            </Dialog>
                           </>
                         )}
                       </TableCell>
