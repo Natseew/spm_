@@ -264,7 +264,7 @@ const handleAcceptWithdraw = async (recordID) => {
 const handleRejectPendingWithdrawal = async (reqId, reason) => {
     console.log(`Rejecting request with ID: ${reqId} for reason: ${reason}`);
     try {
-        const response = await fetch(`http://localhost:4000/wfh_records/reject_withdrawal/${reqId}`, {
+        const response = await fetch(`${path}wfh_records/reject_withdrawal/${reqId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

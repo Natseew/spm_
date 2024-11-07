@@ -7,6 +7,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import dayjs from 'dayjs';
 import axios from 'axios';
+import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 // StaffCountBox component to display counts for AM and PM sessions
 const StaffCountBox = ({ officeCount, homeCount, totalEmployees }) => (
@@ -144,6 +145,8 @@ const ManagerIDPage = () => {
 
   return (
     <Box sx={{ padding: '20px' }}>
+      <Navbar /> {/* Render Navbar at the top */}
+
       {error && <Alert severity="error">{error}</Alert>}
 
       <FormControlLabel

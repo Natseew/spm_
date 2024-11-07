@@ -97,17 +97,13 @@ export default function PendingRequests() {
   }, [staffId, openChangeDialog]);
 
 
-  // const isDateDisabled = (date) => {
-  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-  //   return isWeekend || isApprovedOrPending;
-  // };
 
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
     const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending || wouldExceedLimit;
+    console.log(isWeekend || isApprovedOrPending || wouldExceedLimit)
+    return isWeekend
   };
 
   useEffect(() => {
@@ -309,7 +305,7 @@ export default function PendingRequests() {
         const result = await response.json();
         // Refresh page after a successful change
         alert(result.message); // Display success message
-        window.location.reload(); // Force full page reload after successful withdrawal
+        window.location.reload() // Force full page reload after successful withdrawal
         
 
       } else {
@@ -333,9 +329,15 @@ export default function PendingRequests() {
     return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
   };
 
-  const isStatusValidForAction = (status) => {
-    return status === "Pending" || status === "Approved";
+
+  const shouldShowChangeButton = (status, date) => {
+    return (status === "Approved" || status === "Pending") && isDateWithinTwoWeeks(date);
   };
+  
+  const shouldShowWithdrawButton = (status, date) => {
+    return (status === "Pending") || (status === "Approved" && isDateWithinTwoWeeks(date));
+  };
+  
 
   // Function to handle tab changes
   const handleTabChange = (event, newValue) => {
@@ -384,7 +386,7 @@ export default function PendingRequests() {
                       <TableCell>{new Date(record.wfh_date).toLocaleDateString()}</TableCell>
                       <TableCell>{record.status}</TableCell>
                       <TableCell>
-                        {isDateWithinTwoWeeks(record.wfh_date) && isStatusValidForAction(record.status) && (
+                        {shouldShowWithdrawButton(record.status, record.wfh_date) && (
                           <>
                             <Button
                               variant="outlined"
@@ -393,8 +395,9 @@ export default function PendingRequests() {
                             >
                               Withdraw
                             </Button>
-
+                          
                             {/* Change Button */}
+                            {shouldShowChangeButton(record.status, record.wfh_date) && (
                             <Button
                               variant="outlined"
                               color="primary"
@@ -403,7 +406,7 @@ export default function PendingRequests() {
                             >
                               Change
                             </Button>
-
+                            )}
                               {/* Change Request Dialog */}
                               <Dialog open={openChangeDialog} 
                               onClose={handleCloseChangeDialog}
@@ -412,7 +415,7 @@ export default function PendingRequests() {
                               <DialogContent>
                                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
                                   <DatePicker
-                                    selected={selectedDate}
+                                    
                                     onChange={(date) => setSelectedDate(date)}
                                     minDate={subMonths(new Date(), 2)}
                                     maxDate={addMonths(new Date(), 3)}
