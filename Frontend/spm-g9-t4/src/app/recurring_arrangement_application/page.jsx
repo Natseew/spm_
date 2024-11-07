@@ -38,6 +38,7 @@ const RecurringArrangementPage = () => {
   const [timeslot, setTimeSlot] = useState('');
   const [open, setOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState([]);
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -47,6 +48,28 @@ const RecurringArrangementPage = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (staff_id !== null) {
+      fetchPotentialExceedingDates();
+    }
+  }, [staff_id, potentialExceedingDates]);
+
+  const fetchPotentialExceedingDates = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staff_id}`);
+      if (response.ok) {
+        const data = await response.json();
+        const dates = data.map((dateString) => new Date(dateString));
+        setPotentialExceedingDates(dates);
+      } else {
+        console.error("Failed to fetch potential exceeding WFH dates");
+      }
+    } catch (error) {
+      console.error("Error fetching potential exceeding WFH dates:", error);
+    }
+  }, [staff_id, potentialExceedingDates]);
+  console.log("Potential Exceeding Dates:", potentialExceedingDates);
 
   // Current date and date restrictions
   // const today = new Date(); // Current date
@@ -90,155 +113,13 @@ const RecurringArrangementPage = () => {
         const data = await response.json();
         setStatusMessage(data.message);
       }
-        // setStatusMessage('Recurring request application failed: Please try again.' + response.statusText);
-        // console.log(response); 
-        // Handle different HTTP status codes
-      //   switch (response.status) {
-      //     case 400:
-      //         // Bad Request
-      //         setStatusMessage('Bad Request: (test)' + data.message);
-      //         break;
-      //     case 409:
-      //         // Conflict
-      //         setStatusMessage('Conflict: (test)' + data.message);
-      //         break;
-      //     case 500:
-      //         // Internal Server Error
-      //         setStatusMessage('Server Error: (test)' + data.message);
-      //         break;
-      //     default:
-      //         // Other errors
-      //         setStatusMessage('Error: (test)' + data.message);
-      //         break;
-      // }
           } catch (error) {
       console.error("Error:", error);
       setStatusMessage("Request failed. Please fill up the form again");
-      // Handle different HTTP status codes
-    //   switch (response.status) {
-    //     case 400:
-    //         // Bad Request
-    //         setStatusMessage('Bad Request: (test)' + data.message);
-    //         break;
-    //     case 409:
-    //         // Conflict
-    //         setStatusMessage('Conflict: (test)' + data.message);
-    //         break;
-    //     case 500:
-    //         // Internal Server Error
-    //         setStatusMessage('Server Error: (test)' + data.message);
-    //         break;
-    //     default:
-    //         // Other errors
-    //         setStatusMessage('Error: (test)' + data.message);
-    //         break;
-    // }
     }
   };
 
   return (
-    // <LocalizationProvider dateAdapter={AdapterDateFns}>
-    //   <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: 600 }}>
-    //     <Typography variant="h6" gutterBottom>
-    //       WFH Recurring Request Application
-    //     </Typography>
-
-    //     <form noValidate autoComplete="off">
-    //       {/* <TextField
-    //         label="Staff ID"
-    //         value={staff_id}
-    //         onChange={(e) => setStaffId(e.target.value)}
-    //         fullWidth
-    //         margin="normal"
-    //         required
-    //       /> */}
-
-    //       <DatePicker
-    //         label="Start Date"
-    //         value={startDate}
-    //         minDate={minDate}
-    //         maxDate={maxDate}
-    //         onChange={(newValue) => setStartDate(newValue)}
-    //         renderInput={(params) => (
-    //           <TextField {...params} fullWidth margin="normal" required />
-    //         )}
-    //       />
-
-    //     {/* <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} /> */}
-
-    //       <DatePicker
-    //         label="End Date"
-    //         value={endDate}
-    //         minDate={minDate}
-    //         maxDate={maxDate}
-    //         onChange={(newValue) => setEndDate(newValue)}
-    //         renderInput={(params) => (
-    //           <TextField {...params} fullWidth margin="normal" required />
-    //         )}
-    //       />
-
-    //       <FormControl fullWidth margin="normal" required>
-    //         <InputLabel>Day of the Week</InputLabel>
-    //         <Select
-    //           value={dayOfWeek}
-    //           onChange={(e) => setDayOfWeek(e.target.value)}
-    //           label="Day of the Week"
-    //         >
-    //           <MenuItem value={1}>Monday</MenuItem>
-    //           <MenuItem value={2}>Tuesday</MenuItem>
-    //           <MenuItem value={3}>Wednesday</MenuItem>
-    //           <MenuItem value={4}>Thursday</MenuItem>
-    //           <MenuItem value={5}>Friday</MenuItem>
-    //         </Select>
-    //       </FormControl>
-
-    //       <FormControl fullWidth margin="normal" required>
-    //         <InputLabel>Timeslot</InputLabel>
-    //         <Select
-    //           value={timeslot}
-    //           onChange={(e) => setTimeSlot(e.target.value)}
-    //           label="Timeslot"
-    //         >
-    //           <MenuItem value={"AM"}>AM</MenuItem>
-    //           <MenuItem value={"PM"}>PM</MenuItem>
-    //           <MenuItem value={"FD"}>FD</MenuItem>
-    //         </Select>
-    //       </FormControl>
-
-    //       <TextField
-    //         label="Reason"
-    //         value={request_reason}
-    //         onChange={(e) => setReason(e.target.value)}
-    //         fullWidth
-    //         multiline
-    //         rows={4}
-    //         margin="normal"
-    //         required
-    //       />
-
-    //       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginTop: 2 }}>
-    //         <Button variant="outlined" color="secondary" onClick={handleCancel}>
-    //           Cancel
-    //         </Button>
-    //         <Button variant="contained" color="primary" onClick={handleSubmit}>
-    //           Submit
-    //         </Button>
-    //       </Box>
-    //     </form>
-    //   </Paper>
-
-    //   <Dialog
-    //     open={open}
-    //     onClose={() => setOpen(false)}
-    //     aria-labelledby="alert-dialog-title"
-    //     aria-describedby="alert-dialog-description"
-    //   >
-    //     <DialogTitle id="alert-dialog-title">{statusMessage}</DialogTitle>
-    //     <DialogActions>
-    //       <Button onClick={() => setOpen(false)}>Close</Button>
-    //     </DialogActions>
-    //   </Dialog>
-    // </LocalizationProvider>
     <Paper elevation={3} sx={{ padding: 4, width: "100%", maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
         WFH Recurring Request Application
