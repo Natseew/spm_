@@ -70,11 +70,7 @@ const RecurringArrangementPage = () => {
     }
   }, [staff_id, potentialExceedingDates]);
   console.log("Potential Exceeding Dates:", potentialExceedingDates);
-
-  // Current date and date restrictions
-  // const today = new Date(); // Current date
-  // const minDate = subMonths(today, 2); // 2 months back
-  // const maxDate = addMonths(today, 3); // 3 months in front
+  
   console.log(staff_id);
 
   const handleCancel = () => {
