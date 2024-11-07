@@ -1126,6 +1126,9 @@ router.post('/withdraw_recurring_request', async (req, res) => {
     console.log("Change Reason:", change_reason);
     console.log("Staff Id:",staff_id);
 
+    const start_display = req.body.actual_wfh_date;
+    const end_display = req.body.selected_date;
+
     // Validate input
     if (!selected_date || !actual_wfh_date) {
         return res.status(400).json({ message: 'Invalid input: selected_date and actual_wfh_date are required.' });
@@ -1189,13 +1192,20 @@ router.post('/withdraw_recurring_request', async (req, res) => {
             RETURNING *;
         `, [updatedWfhDatesPlusOne, requestid]);
 
-        const result2 = await client.query(
-            `INSERT INTO activitylog (requestID, activity) VALUES ($1, $2)`,
-            [requestid, `Changed Request- ${change_reason}`]
-        );
+        const activityLog = {
+            Action: "Changed",
+            Reason: change_reason,
+            CurrentWFHDate: start_display,
+            NewWFHDate: end_display, // Using the exact date format as provided
+          };
+
+        await client.query(
+            `INSERT INTO activitylog (requestID, activity) 
+             VALUES ($1, $2)`,
+            [requestid, JSON.stringify(activityLog)]
+          );
 
         console.log("Update successful:", result.rows[0]); // Log the updated record
-        console.log("Update to Activity Log successful:", result2.rows[0]); // Log the updated record
 
         // Update the status and date of the specific wfh_record for the pending change date
         await client.query(

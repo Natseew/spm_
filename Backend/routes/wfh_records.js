@@ -997,6 +997,7 @@ router.patch('/change/:requestid', async (req, res) => {
 
   console.log("Received request to modify wfh_records for ID:", requestid);
   console.log("Update body:", req.body);
+  console.log("Selected Date that is being inserted:", selected_date);
 
   // Validate input
   if (!selected_date || !actual_wfh_date) {
