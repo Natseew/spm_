@@ -98,12 +98,13 @@ export default function PendingRequests() {
 
 
 
-  // const isDateDisabled = (date) => {
-  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-  //   const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
-  //   return isWeekend || isApprovedOrPending || wouldExceedLimit;
-  // };
+  const isDateDisabled = (date) => {
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    console.log(isWeekend || isApprovedOrPending || wouldExceedLimit)
+    return isWeekend
+  };
 
   useEffect(() => {
     // Check if staffId is set before making the request
@@ -427,7 +428,7 @@ export default function PendingRequests() {
                                     onChange={(date) => setSelectedDate(date)}
                                     minDate={subMonths(new Date(), 2)}
                                     maxDate={addMonths(new Date(), 3)}
-                                    //filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+                                    filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
                                     inline
                                   />
                                   <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
