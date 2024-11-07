@@ -1208,12 +1208,13 @@ router.post('/withdraw_recurring_request', async (req, res) => {
         console.log("Update successful:", result.rows[0]); // Log the updated record
 
         // Update the status and date of the specific wfh_record for the pending change date
-        await client.query(
-            `UPDATE wfh_records
-            SET status = 'Pending Change', wfh_date = $1
-            WHERE requestID = $2 AND wfh_date = $3;`,
-            [adjustedNewSelectedDate, requestid, adjustedActualDate]
-        );
+        
+        // await client.query(
+        //     `UPDATE wfh_records
+        //     SET status = 'Pending Change', wfh_date = $1
+        //     WHERE requestID = $2 AND wfh_date = $3;`,
+        //     [adjustedNewSelectedDate, requestid, adjustedActualDate]
+        // );
 
         // Check if staff_id is 130002
         if (Number(staff_id) === 130002) { // Ensure staff_id is treated as a number

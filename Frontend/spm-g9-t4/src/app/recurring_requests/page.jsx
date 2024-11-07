@@ -40,7 +40,7 @@ export default function PendingRequests() {
   // const [loading, setLoading] = useState(true)
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
-  const [potentialExceedingDates, setPotentialExceedingDates] = useState(new Date());
+  const [potentialExceedingDates, setPotentialExceedingDates] = useState([]);
   const router = useRouter(); // Initialize the router
 
   // Retrieve the user data from sessionStorage
