@@ -221,6 +221,7 @@ export default function PendingRequests() {
     const formatted_selected_date = convertToDateFormat(selectedDate);
     
     console.log("RequestID:", requestID);
+    console.log("Unformatted Date:", selectedDate);
     console.log("Selected Date:", formatted_selected_date);
     console.log("Actual WFH Date:", correct_date);
     console.log("Reason:", change_reason);
@@ -234,6 +235,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           selected_date: formatted_selected_date,
+          // selected_date: selectedDate,
           actual_wfh_date: correct_date,
           change_reason: change_reason,
           staff_id: staffId
@@ -256,6 +258,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           selected_date: formatted_selected_date,
+          // selected_date: selectedDate,
           actual_wfh_date: correct_date,
           change_reason: change_reason,
           staff_id: staffId
@@ -270,7 +273,8 @@ export default function PendingRequests() {
       const recurringRequestData = await recurringRequestResponse.json();
       alert(recurringRequestData.message);
   
-      setSelectedDate(new Date(formatted_selected_date)); // Update selected date
+      // setSelectedDate(new Date(formatted_selected_date)); // Update selected date
+      setSelectedDate(new Date(selectedDate)); // Update selected date
       handleCloseChangeDialog();  // Close the modal
       handleCloseDetailsDialog();
   
