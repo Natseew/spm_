@@ -663,7 +663,7 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
         }
   
         // 5. If the request status is 'Approved', update wfh_records and mark it as 'Pending Withdrawal'
-        if (status === 'Approved') {
+        if (status != 'Pending') {
             // Update the status to 'Pending Withdrawal' for the corresponding date in wfh_records
             await client.query(
                 `UPDATE wfh_records SET status = 'Pending Withdrawal' WHERE wfh_date = $1 AND requestID = $2`,
