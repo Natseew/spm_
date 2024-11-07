@@ -498,45 +498,10 @@ router.post('/wfh_adhoc_request', async (req, res) => {
       });
     }
 
-    // Retrieve reporting manager ID for the staff
-    const managerResult = await client.query(
-      `SELECT Reporting_Manager FROM Employee WHERE Staff_ID = $1`,
-      [staff_id]
-    );
+    // Set status to 'Approved' for staff_id 130002, otherwise 'Pending'
+    let status = staff_id === 130002 ? 'Approved' : 'Pending';
 
-    if (managerResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Staff ID not found.' });
-    }
-
-    const reportingManagerId = managerResult.rows[0].reporting_manager;
-    let status = 'Pending';
-
-    // Check if approving this request would cause more than 50% of the team to be WFH
-    const totalTeamResult = await client.query(
-      `SELECT COUNT(*) AS total_team FROM Employee WHERE Reporting_Manager = $1 AND Staff_ID != $1`,
-      [reportingManagerId]
-    );
-    const totalTeam = parseInt(totalTeamResult.rows[0].total_team, 10) + 1;
-
-    const teamWfhResult = await client.query(
-      `
-      SELECT COUNT(*) AS team_wfh FROM wfh_records 
-      WHERE wfh_date = $1 AND status = 'Approved' AND staffID IN (
-        SELECT Staff_ID FROM Employee WHERE Reporting_Manager = $2 OR Staff_ID = $2
-      )
-      `,
-      [formattedSchedDate, reportingManagerId]
-    );
-    const teamWfh = parseInt(teamWfhResult.rows[0].team_wfh, 10);
-
-    if ((teamWfh + 1) / totalTeam > 0.5) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({
-        message: 'WFH request denied. More than 50% of the team would be WFH on this date.',
-      });
-    }
-
+   
     // Insert WFH request record with date-only formatted wfh_date
     const wfhRecordResult = await client.query(
       `
@@ -551,19 +516,22 @@ router.post('/wfh_adhoc_request', async (req, res) => {
 
     const recordID = wfhRecordResult.rows[0].recordid;
 
+    const activityLog = {
+      Action: 'New Adhoc Request'
+    }
     // Log activity with "New Request"
     await client.query(
       `
       INSERT INTO ActivityLog (recordID, activity)
       VALUES ($1, $2);
       `,
-      [recordID, 'New Request']
+      [recordID, JSON.stringify(activityLog)]
     );
 
     // Commit transaction
     await client.query('COMMIT');
 
-    res.status(201).json({ message: 'WFH request submitted successfully', recordID });
+    res.status(201).json({ message: 'AdHoc WFH request submitted successfully', recordID });
   } catch (error) {
     // Rollback transaction in case of error
     await client.query('ROLLBACK');
@@ -699,7 +667,6 @@ router.post('/withdraw_adhoc_wfh', async (req, res) => {
 
     // 3. Insert a new row into the activity log to log the withdrawal along with the reason
     const activityLog = {
-      Staff_id: staff_id, 
       Action: newStatus,
       Reason: reason,
     };
@@ -796,7 +763,6 @@ router.post('/change_adhoc_wfh', async (req, res) => {
 
     const formattedCurrentWfhDateString = currentWfhDate.toISOString().split('T')[0];
     const activityLog = {
-      Staff_id: staff_id,
       Action: newStatus === "Pending Change" ? "Pending Change" : "Changed",
       Reason: reason,
       CurrentWFHDate: formattedCurrentWfhDateString,
@@ -812,9 +778,16 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     await client.query('COMMIT');
     console.log('Transaction committed successfully');
 
-    const message = currentStatus === "Approved"
-      ? 'Change request has been submitted to Reporting Manager for approval.'
-      : 'WFH date changed successfully.';
+    let message;
+
+    if (staff_id === 130002 && newStatus === "Approved") {
+      message = 'Change request approved.';
+    } else if (currentStatus === "Pending") {
+      message = 'WFH date changed successfully.';
+    } else {
+      message = 'Change request has been submitted to Reporting Manager for approval.';
+    }
+
     
     res.status(200).json({ message });
 
@@ -1024,6 +997,7 @@ router.patch('/change/:requestid', async (req, res) => {
 
   console.log("Received request to modify wfh_records for ID:", requestid);
   console.log("Update body:", req.body);
+  console.log("Selected Date that is being inserted:", selected_date);
 
   // Validate input
   if (!selected_date || !actual_wfh_date) {

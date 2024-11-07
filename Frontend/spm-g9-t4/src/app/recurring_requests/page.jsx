@@ -35,8 +35,9 @@ export default function PendingRequests() {
   const [activeTab, setActiveTab] = useState(1); // Set default to Recurring Requests tab
   const [openChangeDialog, setOpenChangeDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  // const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [approvedPendingDates, setApprovedPendingDates] = useState([]);
+  // const [loading, setLoading] = useState(true)
   const [change_reason, setReason] = useState('');
   const [existingDate, setExistingDate] = useState(new Date());
   const [potentialExceedingDates, setPotentialExceedingDates] = useState(new Date());
@@ -79,7 +80,7 @@ export default function PendingRequests() {
     };
 
     fetchRecurringRequests();
-  }, [staffId]);
+  }, [staffId, openChangeDialog]);
 
   // Fetch all WFH records from the backend
   useEffect(() => {
@@ -94,20 +95,18 @@ export default function PendingRequests() {
     };
 
     fetchWfhRecords();
-  }, []);
+  }, [staffId, openChangeDialog]);
 
 
-  // const isDateDisabled = (date) => {
-  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-  //   return isWeekend || isApprovedOrPending;
-  // };
 
   const isDateDisabled = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending || wouldExceedLimit;
+    if(approvedPendingDates && potentialExceedingDates){
+      const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+      const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+      return isWeekend || isApprovedOrPending || wouldExceedLimit
+    }
+    return isWeekend
   };
 
   useEffect(() => {
@@ -115,6 +114,7 @@ export default function PendingRequests() {
     if (staffId !== null) {
       const fetchApprovedPendingDates = async () => {
         try {
+          // setLoading(true)
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}wfh_records/approved&pending_wfh_requests/${staffId}`
           );
@@ -122,6 +122,7 @@ export default function PendingRequests() {
              const data = await response.json();
              const dates = data.map((record) => new Date(record.wfh_date));
              setApprovedPendingDates(dates);
+            //  setLoading(false)
           } else {
               console.error("Failed to fetch approved and pending dates");
            }
@@ -132,17 +133,19 @@ export default function PendingRequests() {
   
       fetchApprovedPendingDates();
     }
-  }, [staffId]); // Only run when staffId changes
+  }, [staffId, openChangeDialog]); // Only run when staffId changes
 
   useEffect(() => {
     const fetchPotentialExceedingDates = async () => {
       try {
+        // setLoading(true)
         console.log("Staff ID: ", staffId);
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/wfh_50%_teamrule/${staffId}`);
         if (response.ok) {
           const data = await response.json();
           const dates = data.map((dateString) => new Date(dateString));
           setPotentialExceedingDates(dates);
+          // setLoading(false)
         } else {
           console.error("Failed to fetch potential exceeding WFH dates");
         }
@@ -155,7 +158,7 @@ export default function PendingRequests() {
     if (staffId) {
       fetchPotentialExceedingDates();
     }
-  }, [staffId]);  // Dependency array: reruns the effect when staffId changes
+  }, [staffId, openChangeDialog]);  // Dependency array: reruns the effect when staffId changes
 
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
@@ -176,16 +179,16 @@ export default function PendingRequests() {
   };
 
   const handleOpenChangeDialog = (id, date) => {
-    // setSelectedRecordId(id);
     setOpenChangeDialog(true);
     setExistingDate(date);
+    setSelectedRecordId(id);
   };
 
   const handleCloseChangeDialog = () => {
-    // setSelectedRecordId(null);
     setSelectedDate(new Date());
     setOpenChangeDialog(false);
     setReason("");
+    setSelectedRecordId(null);
   };
 
 
@@ -218,6 +221,7 @@ export default function PendingRequests() {
     const formatted_selected_date = convertToDateFormat(selectedDate);
     
     console.log("RequestID:", requestID);
+    console.log("Unformatted Date:", selectedDate);
     console.log("Selected Date:", formatted_selected_date);
     console.log("Actual WFH Date:", correct_date);
     console.log("Reason:", change_reason);
@@ -231,6 +235,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           selected_date: formatted_selected_date,
+          // selected_date: selectedDate,
           actual_wfh_date: correct_date,
           change_reason: change_reason,
           staff_id: staffId
@@ -253,6 +258,7 @@ export default function PendingRequests() {
         },
         body: JSON.stringify({
           selected_date: formatted_selected_date,
+          // selected_date: selectedDate,
           actual_wfh_date: correct_date,
           change_reason: change_reason,
           staff_id: staffId
@@ -267,10 +273,10 @@ export default function PendingRequests() {
       const recurringRequestData = await recurringRequestResponse.json();
       alert(recurringRequestData.message);
   
-      // Force page reload or update selected date state
-      setSelectedDate(new Date(formatted_selected_date)); // Update selected date
+      // setSelectedDate(new Date(formatted_selected_date)); // Update selected date
+      setSelectedDate(new Date(selectedDate)); // Update selected date
       handleCloseChangeDialog();  // Close the modal
-      window.location.reload(); // Force full page reload after successful Change
+      handleCloseDetailsDialog();
   
     } catch (error) {
       console.error('Error submitting change date:', error);
@@ -310,7 +316,7 @@ export default function PendingRequests() {
         const result = await response.json();
         // Refresh page after a successful change
         alert(result.message); // Display success message
-        window.location.reload(); // Force full page reload after successful withdrawal
+        window.location.reload() // Force full page reload after successful withdrawal
         
 
       } else {
@@ -322,14 +328,6 @@ export default function PendingRequests() {
       alert("An error occurred while withdrawing the request.");
     }
   };
-  
-
-
-  // const handleChangeDate = (recordId, date) => {
-  //   // Handle the change logic for a specific WFH date
-  //   console.log("Change Date:", recordId, date);  
-    
-  // };
 
   const isDateWithinTwoWeeks = (date) => {
     const today = new Date();
@@ -342,9 +340,6 @@ export default function PendingRequests() {
     return targetDate >= twoWeeksBack && targetDate <= twoWeeksForward;
   };
 
-  const isStatusValidForAction = (status) => {
-    return status === "Pending" || status === "Approved";
-  };
 
   const shouldShowChangeButton = (status, date) => {
     return (status === "Approved" || status === "Pending") && isDateWithinTwoWeeks(date);
@@ -362,6 +357,50 @@ export default function PendingRequests() {
       router.push("/adhoc_requests"); // Navigate to Ad-Hoc Requests page
     }
   };
+
+  // function DatePickerLoaded(){
+  //   if(loading){
+  //     return <>Loading</>
+  //   }else{
+  //     return(
+  //       <Dialog open={openChangeDialog} 
+  //         onClose={handleCloseChangeDialog}
+  //         >
+  //         <DialogTitle>Change WFH Date</DialogTitle>
+  //         <DialogContent>
+  //           <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+  //             <DatePicker
+                
+  //               onChange={(date) => setSelectedDate(date)}
+  //               minDate={subMonths(new Date(), 2)}
+  //               maxDate={addMonths(new Date(), 3)}
+  //               filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+  //               inline
+  //             />
+  //             <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
+  //             <Typography variant="subtitle1">Reason for Changing</Typography>
+  //             <TextField
+  //               label="Reason"
+  //               value={change_reason}
+  //               onChange={(e) => setReason(e.target.value)}
+  //               fullWidth
+  //               multiline
+  //               rows={4}
+  //               margin="normal"
+  //               required
+  //             />
+  //           </Box>
+  //         </DialogContent>
+  //         <DialogActions>
+  //           <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+  //           <Button onClick={() => submitChangeDate(selectedRecordId, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
+  //             Submit Change
+  //           </Button>
+  //         </DialogActions>
+  //       </Dialog>
+  //     );
+  //   }
+  // }
 
   return (
     <>
@@ -424,6 +463,7 @@ export default function PendingRequests() {
                             </Button>
                             )}
                               {/* Change Request Dialog */}
+                              {/* <DatePickerLoaded></DatePickerLoaded> */}
                               <Dialog open={openChangeDialog} 
                               onClose={handleCloseChangeDialog}
                               >
@@ -431,7 +471,7 @@ export default function PendingRequests() {
                               <DialogContent>
                                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
                                   <DatePicker
-                                    selected={selectedDate}
+                                    
                                     onChange={(date) => setSelectedDate(date)}
                                     minDate={subMonths(new Date(), 2)}
                                     maxDate={addMonths(new Date(), 3)}
@@ -454,7 +494,7 @@ export default function PendingRequests() {
                               </DialogContent>
                               <DialogActions>
                                 <Button onClick={handleCloseChangeDialog}>Cancel</Button>
-                                <Button onClick={() => submitChangeDate(record.requestid, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
+                                <Button onClick={() => submitChangeDate(selectedRecordId, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
                                   Submit Change
                                 </Button>
                               </DialogActions>
@@ -480,6 +520,8 @@ export default function PendingRequests() {
     </>
   );
 }
+
+
 
 // Component to display Recurring Requests Table
 function RecurringRequestsTable({ requests, onViewDetails}) {
