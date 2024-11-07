@@ -7,7 +7,6 @@ import Notification from './Notification'; // Import your Notification component
 
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
-const ManagerID = '130002'; //Change according to the managerID of the Session. Hardcoded for now. 
 
 
 const AdHocSchedule = () => {
@@ -23,6 +22,17 @@ const AdHocSchedule = () => {
     const [rejectData, setRejectData] = useState(null);
     const [notification, setNotification] = useState(''); // State for notification message
     const [path] = useState(process.env.NEXT_PUBLIC_API_URL)
+    const [ManagerID, setManagerID] = useState(null);
+
+
+        // Fetch user and set ManagerID
+        useEffect(() => {
+            const storedUser = window.sessionStorage.getItem("user");
+            if (storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                setManagerID(parsedUser.staff_id);
+            }
+        }, []);
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
