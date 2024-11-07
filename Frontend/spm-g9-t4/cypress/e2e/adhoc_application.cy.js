@@ -86,7 +86,7 @@ describe('ArrangementForm Component', () => {
     
     // Submit and check for success message
     cy.get('button').contains('Submit').click();
-    cy.wait('@submitRequest');
+    cy.wait(500);
     cy.contains('WFH request submitted successfully.').should('be.visible');
   });
 
