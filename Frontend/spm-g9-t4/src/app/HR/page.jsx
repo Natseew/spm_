@@ -123,30 +123,37 @@ const HRPage = () => {
   };
 
   const fetchStaffSchedule = async () => {
+    // Check if any department is selected
+    if (selectedDepartments.length === 0) {
+      setError('Please select at least one department.');
+      return;
+    }
+  
+    // Check if at least one session is selected
     if (!validateSessionSelection()) {
       setError('Please select at least one session (AM or PM).');
       return;
     }
-
+  
     try {
       setError('');
       setLoading(true);
       const formattedStartDate = dayjs(dateRange[0].startDate).format('YYYY-MM-DD');
       const formattedEndDate = dayjs(dateRange[0].endDate).format('YYYY-MM-DD');
       const departmentsParam = selectedDepartments.join(',');
-
+  
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}wfh_records/schedule/${departmentsParam}/${formattedStartDate}/${formattedEndDate}`);
       const schedules = response.data.staff_schedules || {};
       const employeeCount = response.data.total_employees || [];
-
+  
       setEmployeeCount(employeeCount);
       setStaffSchedules(schedules);
-
+  
       const availableDates = Object.keys(schedules);
       if (availableDates.length > 0) {
         setSelectedDate(availableDates[0]);
       }
-
+  
     } catch (error) {
       console.error("Error fetching staff schedule:", error);
       setError('Error fetching staff schedule');
@@ -154,6 +161,7 @@ const HRPage = () => {
       setLoading(false);
     }
   };
+  
 
   const calculateStaffCounts = (selectedDate) => {
     const filteredData = staffSchedules[selectedDate] || [];
