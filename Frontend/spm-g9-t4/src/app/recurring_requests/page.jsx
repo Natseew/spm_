@@ -358,6 +358,50 @@ export default function PendingRequests() {
     }
   };
 
+  // function DatePickerLoaded(){
+  //   if(loading){
+  //     return <>Loading</>
+  //   }else{
+  //     return(
+  //       <Dialog open={openChangeDialog} 
+  //         onClose={handleCloseChangeDialog}
+  //         >
+  //         <DialogTitle>Change WFH Date</DialogTitle>
+  //         <DialogContent>
+  //           <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+  //             <DatePicker
+                
+  //               onChange={(date) => setSelectedDate(date)}
+  //               minDate={subMonths(new Date(), 2)}
+  //               maxDate={addMonths(new Date(), 3)}
+  //               filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+  //               inline
+  //             />
+  //             <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}
+  //             <Typography variant="subtitle1">Reason for Changing</Typography>
+  //             <TextField
+  //               label="Reason"
+  //               value={change_reason}
+  //               onChange={(e) => setReason(e.target.value)}
+  //               fullWidth
+  //               multiline
+  //               rows={4}
+  //               margin="normal"
+  //               required
+  //             />
+  //           </Box>
+  //         </DialogContent>
+  //         <DialogActions>
+  //           <Button onClick={handleCloseChangeDialog}>Cancel</Button>
+  //           <Button onClick={() => submitChangeDate(selectedRecordId, existingDate, selectedDate, change_reason)} variant="contained" color="primary">
+  //             Submit Change
+  //           </Button>
+  //         </DialogActions>
+  //       </Dialog>
+  //     );
+  //   }
+  // }
+
   return (
     <>
      <Navbar /> {/* Added Navbar here */}

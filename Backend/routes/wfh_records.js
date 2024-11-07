@@ -590,6 +590,8 @@ router.get('/wfh_50%_teamrule/:staffid', async (req, res) => {
 });
 
 
+
+
 // Get all approved and pending WFH requests of an employee
 router.get('/approved&pending_wfh_requests/:staffid', async (req, res) => {
   try {
@@ -795,6 +797,9 @@ router.post('/change_adhoc_wfh', async (req, res) => {
     res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
+
+
 
 
 // New route to get WFH records by an array of employee IDs
