@@ -24,10 +24,10 @@ const Navbar = () => {
               setUserType("HR");
               break;
             case 2:
-              setUserType("Manager");
+              setUserType("Staff");
               break;
             case 3:
-              setUserType("Staff");
+              setUserType("Manager");
               break;
             default:
               setUserType("Staff");
