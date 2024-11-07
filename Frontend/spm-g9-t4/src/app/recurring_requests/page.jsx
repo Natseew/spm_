@@ -79,7 +79,7 @@ export default function PendingRequests() {
     };
 
     fetchRecurringRequests();
-  }, [staffId]);
+  }, [staffId, openChangeDialog]);
 
   // Fetch all WFH records from the backend
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function PendingRequests() {
     };
 
     fetchWfhRecords();
-  }, []);
+  }, [staffId, openChangeDialog]);
 
 
   // const isDateDisabled = (date) => {
@@ -132,7 +132,7 @@ export default function PendingRequests() {
   
       fetchApprovedPendingDates();
     }
-  }, [staffId]); // Only run when staffId changes
+  }, [staffId, openChangeDialog]); // Only run when staffId changes
 
   useEffect(() => {
     const fetchPotentialExceedingDates = async () => {
@@ -155,7 +155,7 @@ export default function PendingRequests() {
     if (staffId) {
       fetchPotentialExceedingDates();
     }
-  }, [staffId]);  // Dependency array: reruns the effect when staffId changes
+  }, [staffId, openChangeDialog]);  // Dependency array: reruns the effect when staffId changes
 
   // Function to handle opening the details dialog for a request
   const handleOpenDetailsDialog = (request) => {
@@ -267,10 +267,9 @@ export default function PendingRequests() {
       const recurringRequestData = await recurringRequestResponse.json();
       alert(recurringRequestData.message);
   
-      // Force page reload or update selected date state
       setSelectedDate(new Date(formatted_selected_date)); // Update selected date
       handleCloseChangeDialog();  // Close the modal
-      window.location.reload(); // Force full page reload after successful Change
+      handleCloseDetailsDialog();
   
     } catch (error) {
       console.error('Error submitting change date:', error);
@@ -322,14 +321,6 @@ export default function PendingRequests() {
       alert("An error occurred while withdrawing the request.");
     }
   };
-  
-
-
-  // const handleChangeDate = (recordId, date) => {
-  //   // Handle the change logic for a specific WFH date
-  //   console.log("Change Date:", recordId, date);  
-    
-  // };
 
   const isDateWithinTwoWeeks = (date) => {
     const today = new Date();
