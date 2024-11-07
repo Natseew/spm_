@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import AdhocModal from './AdhocModal'; // Make sure to create or import the Modal component.
-// import CalendarComponent from "@/components/CalendarComponent";
 import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
 
-
 const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
-
 
 const AdHocSchedule = () => {
     const [loading, setLoading] = useState(true);
@@ -47,7 +44,10 @@ const AdHocSchedule = () => {
                 }
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
-                
+
+                if (ids.length === 0) { 
+                    throw new Error('There are no employees reporting to you'); 
+                } 
                 // Create employeeNameid mapping
                 employeeData.forEach(emp => {
                 employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`; // Map staff_id to full name
@@ -155,9 +155,6 @@ const AdHocSchedule = () => {
     const getStaffName = (id) => {
         // Use the employeeNameid dictionary to retrieve the full name
         const name = employeeNameid[Number(id)] || 'Unknown'; // Convert id to number for matching
-    
-        // Optionally log the name for debugging purposes
-        // console.log(name); // Log the retrieved name
         return name; // Return either found name or 'Unknown'
     };
     
@@ -179,16 +176,6 @@ const handleAccept = async (recordID) => {
 
         const updatedData = await response.json();
         console.log('Record updated successfully:', updatedData);
-
-        // COMMENTED OUT - because of email limits 
-        // const emailResponse = await emailjs.send('service_aby0abw', 'template_or5vnzs', {
-        //     user_name: "",
-        //     recordID: recordID,
-        //     }, 
-        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
-
-        // console.log("Email Updates");
-        // console.log('Email sent successfully:', emailResponse);
 
         // Update the state
         setAdhocData(prevData => 
@@ -290,22 +277,6 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
 
         const updatedData = await response.json();
         console.log('Rejection recorded successfully:', updatedData);
-
-        // COMMENTED OUT - bc of email limits
-        // this is the data we can use to format email
-        // console.log(updatedData.record);
-
-        // const reqId = 290;
-        // const reject_reason = updatedData.record.reject_reason;
-        // const emailResponse = await emailjs.send('service_aby0abw', 'template_7x88wcp', {
-        //     user_name: "",
-        //     recordID: reqId,
-        //     reject_reason: reject_reason,
-        //     }, 
-        //     'iPUoaKtoJPR3QXdd9'); // Replace with your actual public key
-
-        // console.log("Email Updates");
-        // console.log('Email sent successfully:', emailResponse);
         
         setAdhocData(prevData => 
             prevData.map(item => 
@@ -319,12 +290,6 @@ const handleRejectPendingWithdrawal = async (reqId, reason) => {
         console.error('Error during rejection update:', error);
     }
 };
-
-// Handling modal for reject action
-// const handleRejectOpen = (data) => {
-//     openRejectModal(data);
-//     console.log(data);
-// };
 
 // Handle Cancelling Request
 const handleCancel = async (recordID) => {
@@ -345,7 +310,7 @@ const handleCancel = async (recordID) => {
         console.log('Record updated successfully:', updatedData);
 
         // Optionally update the state if you want more control over the UI
-        // You can still leave this here if you want:
+
         setAdhocData(prevData => 
             prevData.map(item => 
                 item.recordid === recordID ? { ...item, status: 'Cancelled' } : item

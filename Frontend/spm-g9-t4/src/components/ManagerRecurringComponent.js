@@ -61,6 +61,10 @@ const RecurringSchedule = () => {
                 }
                 const employeeData = await idResponse.json();
                 const ids = employeeData.map(emp => emp.staff_id);
+                
+                if (ids.length === 0) { 
+                    throw new Error('There are no employees reporting to you'); 
+                } 
 
                 employeeData.forEach(emp => {
                     employeeNameid[emp.staff_id] = `${emp.staff_fname} ${emp.staff_lname}`;

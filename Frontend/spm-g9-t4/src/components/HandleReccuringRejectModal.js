@@ -2,23 +2,8 @@ import React, { useState } from 'react';
 
 const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) => {
     const [reason, setReason] = useState(''); // State for rejection reason
-    // const [selectedDates, setSelectedDates] = useState([]); // State for selected dates
 
     if (!isOpen) return null; // Do not render if the modal is not open
-
-    // const handleDateChange = (date) => {
-    //     setSelectedDates((prevSelected) => 
-    //         prevSelected.includes(date)
-    //             ? prevSelected.filter((d) => d !== date) // Unselect date if already selected
-    //             : [...prevSelected, date] // Select the date
-    //     );
-    // };
-
-    // const formatDate = (dateString) => {
-    //     const [year, month, day] = dateString.split('T')[0].split('-');
-    //     return `${day}/${month}/${year}`;
-    // };
-    
 
     const handleRejectConfirm = () => {
         onReject(data.requestid, reason); // Pass only the record ID and reason
@@ -51,14 +36,6 @@ const HandleRecurringRejectModal = ({ isOpen, onClose, onReject, data, dates }) 
                     {/* <h3 className="font-semibold mb-2">Select Dates:</h3> */}
                     {dates.map((date) => (
                         <div key={date} className="flex items-center">
-                            {/* <input 
-                                type="checkbox" 
-                                id={date} 
-                                checked={selectedDates.includes(date)} 
-                                onChange={() => handleDateChange(date)} 
-                                className="mr-2"
-                            />
-                            <label htmlFor={date}>{formatDate(date)}</label>  */}
                         </div>
                     ))}
                 </div>
