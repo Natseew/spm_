@@ -5,7 +5,7 @@ import HandleRejectModal from './HandleRejectModal';
 import Notification from './Notification'; // Import your Notification component
 
 
-const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected','Pending Withdrawal','Pending Change'];
+const statusOptions = ['Pending', 'Approved', 'Withdrawn', 'Rejected', 'Pending Withdrawal', 'Pending Change'];
 const employeeNameid = {} // Object to store staff_id and their corresponding full names
 
 
@@ -24,20 +24,22 @@ const AdHocSchedule = () => {
     const [path] = useState(process.env.NEXT_PUBLIC_API_URL)
     const [ManagerID, setManagerID] = useState(null);
 
-
-        // Fetch user and set ManagerID
-        useEffect(() => {
-            const storedUser = window.sessionStorage.getItem("user");
-            if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                setManagerID(parsedUser.staff_id);
-            }
-        }, []);
+    // Fetch user and set ManagerID
+    useEffect(() => {
+        const storedUser = window.sessionStorage.getItem("user");
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setManagerID(parsedUser.staff_id);
+        }
+    }, []);
 
     // Combine the fetching of employee IDs and ad hoc schedule data into one function
     useEffect(() => {
+        if (!ManagerID) return; // Ensure ManagerID is defined before making the fetch request
+
         const fetchEmployeeAndAdhocData = async () => {
             try {
+                console.log("Manager ID!!! "+ ManagerID)
                 // Step 1: Fetch employee IDs based on the manager ID
                 const idResponse = await fetch(`${path}employee/by-manager/${ManagerID}`); // Replace with actual managerId
                 if (!idResponse.ok) {
@@ -81,7 +83,7 @@ const AdHocSchedule = () => {
             }
         };
         fetchEmployeeAndAdhocData();
-    }, []); // Fetch once when component mounts
+    }, [ManagerID,path]); // Fetch once when component mounts
 
     
     useEffect(() => {
