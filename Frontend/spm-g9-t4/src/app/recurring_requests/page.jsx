@@ -97,18 +97,13 @@ export default function PendingRequests() {
   }, []);
 
 
+
   // const isDateDisabled = (date) => {
   //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-  //   return isWeekend || isApprovedOrPending;
+  //   const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+  //   return isWeekend || isApprovedOrPending || wouldExceedLimit;
   // };
-
-  const isDateDisabled = (date) => {
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
-    return isWeekend || isApprovedOrPending || wouldExceedLimit;
-  };
 
   useEffect(() => {
     // Check if staffId is set before making the request

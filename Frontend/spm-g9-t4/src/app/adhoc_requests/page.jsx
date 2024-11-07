@@ -215,12 +215,12 @@ export default function PendingRequests() {
   };
 
   // Disable weekends and already approved/pending WFH dates and 50% wfh dates
-  // const isDateDisabled = (date) => {
-  //   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  //   const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
-  //   const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
-  //   return isWeekend || isApprovedOrPending || wouldExceedLimit;
-  // };
+  const isDateDisabled = (date) => {
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isApprovedOrPending = approvedPendingDates.some((d) => isSameDay(d, date));
+    const wouldExceedLimit = potentialExceedingDates.some((d) => isSameDay(d, date));
+    return isWeekend || isApprovedOrPending || wouldExceedLimit;
+  };
   
 
   return (
