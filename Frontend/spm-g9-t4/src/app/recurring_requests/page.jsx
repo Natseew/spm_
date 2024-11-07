@@ -270,7 +270,7 @@ export default function PendingRequests() {
       // Force page reload or update selected date state
       setSelectedDate(new Date(formatted_selected_date)); // Update selected date
       handleCloseChangeDialog();  // Close the modal
-      window.location.reload(); // Force full page reload after successful Change
+      Router.replace('/recurring_requests'); // Force full page reload after successful Change
   
     } catch (error) {
       console.error('Error submitting change date:', error);
@@ -310,7 +310,7 @@ export default function PendingRequests() {
         const result = await response.json();
         // Refresh page after a successful change
         alert(result.message); // Display success message
-        window.location.reload(); // Force full page reload after successful withdrawal
+        Router.replace('/recurring_requests') // Force full page reload after successful withdrawal
         
 
       } else {
@@ -432,7 +432,7 @@ export default function PendingRequests() {
                                     onChange={(date) => setSelectedDate(date)}
                                     minDate={subMonths(new Date(), 2)}
                                     maxDate={addMonths(new Date(), 3)}
-                                    //filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
+                                    filterDate={(date) => !isDateDisabled(date)} // Disable weekends and specific dates
                                     inline
                                   />
                                   <Divider sx={{ margin: "16px 0" }} /> {/* Add margin for spacing */}

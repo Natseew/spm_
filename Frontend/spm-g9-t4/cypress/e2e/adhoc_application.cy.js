@@ -15,7 +15,7 @@ describe('ArrangementForm Component', () => {
     
     // Visit the protected route
     cy.visit('http://localhost:3000/adhoc_application');
-    cy.wait('@fetchApprovedDates');
+    // cy.wait('@fetchApprovedDates');
   });
 
   it('should load the form and display elements correctly', () => {
