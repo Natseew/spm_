@@ -427,7 +427,6 @@ router.patch('/rejectwithdrawal', async (req, res) => {
     }
 });
 
-
 // cancel approved recurring request 
 // Reject a recurring request
 router.patch('/reject/:requestid', async (req, res) => {
@@ -699,122 +698,6 @@ router.post('/withdraw_recurring_wfh', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
-
-
-// // Manager accept pending change
-// router.post('/accept-change', async (req, res) => {
-//     console.log("Request body:", req.body);
-
-//     let { requestID, changeDates } = req.body;
-
-//     // Validate requestID
-//     if (!requestID || isNaN(requestID)) {
-//         console.error('Invalid or missing requestID:', requestID);
-//         return res.status(400).json({ message: 'Invalid requestID' });
-//     }
-
-//     requestID = parseInt(requestID);
-
-//     // Ensure changeDates are in date format (assuming changeDates is an array of date strings)
-//     changeDates = changeDates.map(date => new Date(date));
-//     console.log(`Received request to accept change. RequestID: ${requestID}, changeDates: ${changeDates}`);
-
-//     try {
-//         await client.query('BEGIN');
-
-//         // Retrieve the current start_date and end_date from recurring_request
-//         const { rows } = await client.query(
-//             `SELECT start_date, end_date FROM recurring_request WHERE requestID = $1;`,
-//             [requestID]
-//         );
-
-//         if (rows.length === 0) {
-//             await client.query('ROLLBACK');
-//             return res.status(404).json({ message: 'Recurring request not found.' });
-//         }
-
-//         let { start_date, end_date } = rows[0];
-//         start_date = new Date(start_date);
-//         end_date = new Date(end_date);
-
-//         // Check for the earliest and latest dates in changeDates
-//         const earliestChangeDate = new Date(Math.min(...changeDates));
-//         const latestChangeDate = new Date(Math.max(...changeDates));
-
-//         // Update start_date if earliestChangeDate is before start_date
-//         if (earliestChangeDate < start_date) {
-//             console.log(`Updating start_date to ${earliestChangeDate}`);
-//             await client.query(
-//                 `UPDATE recurring_request SET start_date = $1 WHERE requestID = $2;`,
-//                 [earliestChangeDate, requestID]
-//             );
-//         }
-
-//         // Update end_date if latestChangeDate is after end_date
-//         if (latestChangeDate > end_date) {
-//             console.log(`Updating end_date to ${latestChangeDate}`);
-//             await client.query(
-//                 `UPDATE recurring_request SET end_date = $1 WHERE requestID = $2;`,
-//                 [latestChangeDate, requestID]
-//             );
-//         }
-
-//         // 1. Update the status in wfh_records for the matching requestID and wfh_date
-//         console.log('Starting update for wfh_records...');
-//         const result = await client.query(
-//             `UPDATE wfh_records
-//              SET status = 'Approved'
-//              WHERE requestID = $1 AND wfh_date = ANY($2::date[])
-//              RETURNING *;`,
-//             [requestID, changeDates]
-//         );
-
-//         if (result.rowCount === 0) {
-//             console.error('No matching record found.');
-//             await client.query('ROLLBACK');
-//             return res.status(404).json({ message: 'Record not found.' });
-//         }
-
-//         // Check if there are any remaining wfh_records with status 'Pending Change'
-//         const pendingChangeCheck = await client.query(
-//             `SELECT COUNT(*) AS pending_count
-//              FROM wfh_records
-//              WHERE requestID = $1 AND status = 'Pending Change';`,
-//             [requestID]
-//         );
-
-//         const pendingCount = parseInt(pendingChangeCheck.rows[0].pending_count, 10);
-
-//         // 2. Update the status in recurring_request to 'Approved' only if no 'Pending Change' records are left
-//         if (pendingCount === 0) {
-//             console.log('No pending changes left, updating status in recurring_request to Approved...');
-//             await client.query(
-//                 `UPDATE recurring_request
-//                  SET status = 'Approved'
-//                  WHERE requestID = $1;`,
-//                 [requestID]
-//             );
-//         } else {
-//             console.log('Pending changes still exist, recurring_request status remains unchanged.');
-//         }
-
-//         // 3. Insert a new activity log entry for the change
-//         console.log('Inserting activity log...');
-//         await client.query(
-//             `INSERT INTO activitylog (requestID, activity)
-//              VALUES ($1, $2);`,
-//             [requestID, `Accepted Change`]
-//         );
-
-//         await client.query('COMMIT');
-//         console.log('Change request accepted successfully.');
-//         res.status(200).json({ message: 'Recurring change request accepted successfully.' });
-//     } catch (error) {
-//         await client.query('ROLLBACK');
-//         console.error('Error accepting recurring change request:', error);
-//         res.status(500).json({ message: 'Internal server error.' });
-//     }
-// });
 
 // Manager accept pending change
 router.post('/accept-change', async (req, res) => {
@@ -1352,15 +1235,6 @@ router.post('/withdraw_recurring_request', async (req, res) => {
 
         console.log("Update successful:", result.rows[0]); // Log the updated record
 
-        // Update the status and date of the specific wfh_record for the pending change date
-        
-        // await client.query(
-        //     `UPDATE wfh_records
-        //     SET status = 'Pending Change', wfh_date = $1
-        //     WHERE requestID = $2 AND wfh_date = $3;`,
-        //     [adjustedNewSelectedDate, requestid, adjustedActualDate]
-        // );
-
         // Check if staff_id is 130002
         if (Number(staff_id) === 130002) { // Ensure staff_id is treated as a number
             // Start transaction
@@ -1397,6 +1271,5 @@ router.post('/withdraw_recurring_request', async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
-
 
 module.exports = router;

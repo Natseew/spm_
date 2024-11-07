@@ -10,18 +10,6 @@ import Navbar from "@/components/Navbar"; // Import the Navbar component
 
 export default function Page() {
   const [events, setEvents] = useState([
-    //   {
-  //     id: "WFH-1",
-  //     label: "WFH",
-  //     groupLabel: "WFH",
-  //     user: "Dr Shaun Murphy",
-  //     color: "#099ce5",
-  //     startHour: "04:00 AM",
-  //     endHour: "05:00 AM",
-  //     date: "2022-05-05",
-  //     createdAt: new Date(),
-  //     createdBy: "Kristina Mayer"
-  //   }
   ]);
   const eventsRef = useRef(events)
 
